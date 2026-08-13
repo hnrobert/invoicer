@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      # Persist the SQLite database and uploaded invoices across container rebuilds.
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      # Expose the host timezone so timestamps/emails resolve in local time.
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      NODE_ENV: production
+      DB_PATH: /app/data/app.db
+      UPLOADS_DIR: /app/uploads
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      SITE_URL: ${SITE_URL:-}
+    restart: unless-stopped

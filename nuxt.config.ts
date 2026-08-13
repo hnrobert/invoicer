@@ -1,0 +1,103 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
+
+// The HTML email template is authored as a standalone file (email/template.html).
+// Read at config-eval time and shipped to the server via runtimeConfig so it
+// bundles reliably (Nitro serverAssets didn't). Edits require a dev restart.
+const emailTemplate = readFileSync(
+  fileURLToPath(new URL('./email/template.html', import.meta.url)),
+  'utf-8',
+)
+const emailLogo = `data:image/svg+xml;base64,${Buffer.from(
+  readFileSync(fileURLToPath(new URL('./public/favicon.svg', import.meta.url))),
+).toString('base64')}`
+
+// Nuxt 4 full-stack config. The invoice audit UI is SSR-rendered; sessions,
+// uploads, OCR/extraction and mail run as Nitro server routes.
+export default defineNuxtConfig({
+  compatibilityDate: '2026-07-13',
+  devtools: { enabled: true },
+  ssr: true,
+  // Flat (Nuxt 3-style) layout: pages/components/layouts/… live at the project
+  // root alongside app.vue, not under an app/ dir.
+  srcDir: '.',
+
+  // vue-sonner: registers the client-only <Toaster> and auto-imports `toast`.
+  modules: ['vue-sonner/nuxt'],
+  imports: { presets: [{ from: 'vue-sonner', imports: ['toast'] }] },
+
+  // Tailwind v4 + shadcn theme CSS (the UNNC-yellow design system, copied from
+  // the reference project).
+  css: ['~/assets/css/main.css'],
+  vite: {
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: [
+        '@vueuse/core',
+        'class-variance-authority',
+        'clsx',
+        'lucide-vue-next',
+        'tailwind-merge',
+      ],
+    },
+  },
+
+  // Auto-import components by filename (no path prefix) so shadcn-vue <Button>,
+  // <Card>, … and public <Icon> resolve without explicit imports. Only scan .vue.
+  components: [{ path: '~/components', pathPrefix: false, extensions: ['.vue'] }],
+
+  runtimeConfig: {
+    sessionSecret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    dbPath: process.env.DB_PATH || './data/app.db',
+    uploadsDir: process.env.UPLOADS_DIR || './uploads',
+    siteUrl: process.env.SITE_URL || '',
+    emailTemplate,
+    emailLogo,
+  },
+
+  // No-FOUC dark mode: apply the saved/system theme synchronously in <head>
+  // before first paint (matches @vueuse useColorMode's vg.theme key + logic).
+  app: {
+    head: {
+      link: [{ key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+      script: [
+        {
+          tagPosition: 'head',
+          innerHTML:
+            "(function(){try{var s=localStorage.getItem('vg.theme');" +
+            "var d=s==='dark'||((s==='auto'||!s)&&matchMedia('(prefers-color-scheme: dark)').matches);" +
+            'if(d)document.documentElement.classList.add("dark");}catch(e){}})();',
+        },
+      ],
+    },
+  },
+
+  typescript: {
+    strict: true,
+    tsConfig: {
+      compilerOptions: {
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+      },
+    },
+  },
+
+  // TypeORM decorator support for the Nitro server (esbuild tsconfigRaw).
+  // Without this the @Column metadata is emitted as plain String/Number and
+  // TypeORM infers the wrong column type at runtime.
+  nitro: {
+    esbuild: {
+      options: {
+        tsconfigRaw: JSON.stringify({
+          compilerOptions: {
+            experimentalDecorators: true,
+            emitDecoratorMetadata: true,
+          },
+        }),
+      },
+    },
+  },
+
+  future: { compatibilityVersion: 4 },
+})

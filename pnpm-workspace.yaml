@@ -1,0 +1,12 @@
+# pnpm workspace manifest. This isn't a monorepo; the file exists to allowlist
+# native-build dependencies so pnpm doesn't prompt/skip their install scripts.
+# pnpm v11 reads `allowBuilds` (a map of package -> bool).
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  '@parcel/watcher': true
+  tesseract.js: true
+  vue-demi: true
+  # canvas is an optional transitive dep of tesseract.js (server-side image
+  # preprocessing); we don't need it, so skip its heavy native build.
+  canvas: false
