@@ -41,7 +41,7 @@ ENV DB_PATH=/app/data/app.db
 ENV UPLOADS_DIR=/app/uploads
 ENV TESSDATA_DIR=/app/tessdata
 ENV HOST=0.0.0.0
-ENV PORT=3000
-EXPOSE 3000
+ENV PORT=10752
+EXPOSE 10752
 
 CMD ["node", ".output/server/index.mjs"]

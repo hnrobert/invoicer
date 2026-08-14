@@ -60,6 +60,37 @@ export class MailConfig {
   @Column({ name: "max_len_body", type: "integer", default: 50000 })
   maxLenBody!: number;
 
+  // --- POST webhook (provider === 'post') ---
+  @Column({ type: "text", default: "smtp" })
+  provider!: string; // 'smtp' | 'post'
+
+  @Column({ name: "post_url", type: "text", default: "" })
+  postUrl!: string;
+
+  @Column({ name: "post_schema", type: "text", default: "smtogo" })
+  postSchema!: string; // legacy discriminator: 'smtogo' | 'powerautomate'
+
+  @Column({ name: "post_auth_token", type: "text", default: "" })
+  postAuthToken!: string;
+
+  /**
+   * email-poster FieldMap as JSON (logical field → downstream key), edited by
+   * the visual interface editor. When empty, the effective map is derived from
+   * `post_schema` for backward compatibility ('powerautomate' → custom_example
+   * preset, otherwise smtogo). Once non-empty, this column is authoritative.
+   */
+  @Column({ name: "post_field_map", type: "text", default: "" })
+  postFieldMap!: string;
+
+  /**
+   * The post-schemas library (email-poster `PostSchema[]`) as JSON — the named
+   * field maps the operator switches between / adds / renames / deletes in the
+   * editor. Stored server-side (shared, not per-browser). Empty string = never
+   * stored; `'[]'` = explicitly cleared.
+   */
+  @Column({ name: "post_schemas", type: "text", default: "" })
+  postSchemas!: string;
+
   @Column({
     name: "created_at",
     type: "datetime",

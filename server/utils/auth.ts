@@ -32,7 +32,7 @@ export const auth = betterAuth({
   baseURL:
     process.env.BETTER_AUTH_URL ||
     process.env.SITE_URL ||
-    "http://localhost:3000",
+    "http://localhost:10752",
   // ≥32 chars required by better-auth. `BETTER_AUTH_SECRET` must be set in
   // production (see docker-compose.yml); the long default is dev-only.
   secret:
@@ -87,7 +87,7 @@ export const auth = betterAuth({
   },
   // Trusted origins for the cross-origin OAuth/CSRF checks (added to in #15).
   trustedOrigins: [
-    "http://localhost:3000",
+    "http://localhost:10752",
     process.env.BETTER_AUTH_URL || "",
     process.env.SITE_URL || "",
   ].filter(Boolean),

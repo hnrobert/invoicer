@@ -14,8 +14,8 @@
 
   // ── theme & language ───────────────────────────────────────────
   theme: {
-    toLight: "Switch to light",
-    toDark: "Switch to dark",
+    light: "Light",
+    dark: "Dark",
   },
   lang: {
     switch: "Switch language",
@@ -71,8 +71,12 @@
   // ── account / linked providers (merge flow) ──────────────────
   account: {
     title: "Account",
-    desc: "Manage your profile and the sign-in providers linked to this account. Connecting a provider merges it into your current account.",
+    desc: "Manage your profile, preferences, and the sign-in providers linked to this account. Connecting a provider merges it into your current account.",
     profile: "Profile",
+    prefsTitle: "Preferences",
+    prefsDesc: "Interface theme and language. The language follows your device on first visit; change it anytime here.",
+    themeLabel: "Theme",
+    langLabel: "Language",
     linkedTitle: "Linked providers",
     linkedDesc: "Providers you can sign in with for this account.",
     noLinks: "No providers linked yet.",
@@ -220,7 +224,7 @@
       title: "Send audit report",
       desc: "Email the results of this batch (detail table + compliant total).",
       toLabel: "Recipient email",
-      needMailConfig: "Configure SMTP in {link} first.",
+      needMailConfig: "Configure mail delivery in {link} first.",
       mailSettingsLink: "Mail settings",
       needTo: "Please enter a recipient email",
       sent: "Sent: compliant ¥{total} · {count} invoice(s)",
@@ -230,12 +234,15 @@
     },
   },
 
-  // ── settings (SMTP) ────────────────────────────────────────────
+  // ── settings (mail delivery: SMTP / POST webhook) ─────────────
   settings: {
     title: "Mail Settings",
     back: "Back",
-    smtpTitle: "SMTP configuration",
-    smtpDesc: "Mail server used to send audit reports. The password is overwritten only when re-entered; leave it blank to keep the current one.",
+    desc: "Delivery configuration for audit-report emails. Passwords / tokens are overwritten only when re-entered; leave them blank to keep the current values.",
+    provider: { smtp: "SMTP", post: "POST Webhook" },
+    smtpDesc: "Send through an SMTP mail server directly.",
+    postDesc:
+      "Relay emails via an HTTP POST webhook (e.g. SMToGo, Power Automate gateways), using the JSON payload format defined by the editor below.",
     loading: "Loading…",
     serverLabel: "SMTP server",
     serverPlaceholder: "smtp.example.com",
@@ -243,7 +250,7 @@
     ssl: "SSL / implicit TLS (port 465)",
     starttls: "STARTTLS (port 587/25)",
     usePassword: "Require password auth",
-    senderLabel: "Login email / sender address",
+    senderLabel: "Sender address",
     senderPlaceholder: "noreply{'@'}example.com",
     displayLabel: "Display sender (optional)",
     displayPlaceholder: "Finance System",
@@ -252,6 +259,13 @@
     passwordPlaceholderEmpty: "Enter password or auth code",
     domainLabel: "Sender domain (Message-ID suffix, optional)",
     domainPlaceholder: "example.com",
+    postUrlLabel: "Webhook URL",
+    postUrlPlaceholder: "https://…",
+    postTokenLabel: "Bearer token (optional)",
+    postTokenPlaceholderEmpty: "Enter bearer token",
+    editorTitle: "POST payload format",
+    editorDesc:
+      "Map each email field to its JSON key in the payload. Save multiple formats and switch anytime; they persist with the configuration.",
     limitsTitle: "Length limits (advanced)",
     maxRecipient: "Max recipient email length",
     maxSubject: "Max subject length",
@@ -260,11 +274,13 @@
     saving: "Saving…",
     needServer: "Please enter the SMTP server",
     needSender: "A login email is required when password auth is enabled",
+    needPostUrl: "Please enter the webhook URL",
     saved: "Mail configuration saved",
     loadFailed: "Failed to load configuration: ",
     saveFailed: "Save failed: ",
+    schemasSaveFailed: "Failed to save the format library",
     testTitle: "Send a test email",
-    testDesc: "After saving, send a test email to verify the SMTP connection.",
+    testDesc: "After saving, send a test email to verify the delivery channel.",
     testToLabel: "Test recipient",
     testSend: "Send test",
     testing: "Sending…",

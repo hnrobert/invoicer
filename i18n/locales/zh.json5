@@ -14,8 +14,8 @@
 
   // ── 主题与语言 ─────────────────────────────────────────────────
   theme: {
-    toLight: "切换到浅色",
-    toDark: "切换到深色",
+    light: "浅色",
+    dark: "深色",
   },
   lang: {
     switch: "切换语言",
@@ -71,8 +71,12 @@
   // ── 账号 / 已绑定登录方式（合并流程）────────────────────────
   account: {
     title: "账号",
-    desc: "管理你的资料以及绑定到此账号的登录方式。连接新的登录方式会将其合并到当前账号。",
+    desc: "管理你的资料、偏好设置以及绑定到此账号的登录方式。连接新的登录方式会将其合并到当前账号。",
     profile: "资料",
+    prefsTitle: "偏好设置",
+    prefsDesc: "界面主题与语言。语言首次访问时默认跟随设备，可随时在此修改。",
+    themeLabel: "主题",
+    langLabel: "语言",
     linkedTitle: "已绑定的登录方式",
     linkedDesc: "当前账号可用的登录方式。",
     noLinks: "尚未绑定任何登录方式。",
@@ -220,7 +224,7 @@
       title: "发送审核报告",
       desc: "将本批审核结果（含明细表与合规金额）以邮件发送。",
       toLabel: "收件人邮箱",
-      needMailConfig: "需先在 {link} 配置 SMTP。",
+      needMailConfig: "需先在 {link} 配置邮件发送。",
       mailSettingsLink: "邮件设置",
       needTo: "请填写收件人邮箱",
       sent: "已发送：合规 ¥{total} · 共 {count} 张",
@@ -230,12 +234,15 @@
     },
   },
 
-  // ── 设置页（SMTP）────────────────────────────────────────────
+  // ── 设置页（邮件发送：SMTP / POST Webhook）────────────────
   settings: {
     title: "邮件设置",
     back: "返回",
-    smtpTitle: "SMTP 邮件配置",
-    smtpDesc: "用于发送审核报告的邮件服务器信息。密码仅在重新输入时覆盖，留空则保留原密码。",
+    desc: "用于发送审核报告的邮件发送配置。密码 / 令牌仅在重新输入时覆盖，留空则保留原值。",
+    provider: { smtp: "SMTP", post: "POST Webhook" },
+    smtpDesc: "直接连接 SMTP 邮件服务器发送。",
+    postDesc:
+      "通过 HTTP POST Webhook 转发邮件（如 SMToGo、Power Automate 等网关），按下方编辑器定义的 JSON 载荷格式发送。",
     loading: "加载中…",
     serverLabel: "SMTP 服务器",
     serverPlaceholder: "smtp.example.com",
@@ -243,7 +250,7 @@
     ssl: "SSL / 隐式 TLS（端口 465）",
     starttls: "STARTTLS（端口 587/25）",
     usePassword: "需要密码认证",
-    senderLabel: "登录邮箱 / 发信地址",
+    senderLabel: "发信地址",
     senderPlaceholder: "noreply{'@'}example.com",
     displayLabel: "显示发件人（可选）",
     displayPlaceholder: "财务系统",
@@ -252,6 +259,13 @@
     passwordPlaceholderEmpty: "输入密码或授权码",
     domainLabel: "发信域名（Message-ID 后缀，可选）",
     domainPlaceholder: "example.com",
+    postUrlLabel: "Webhook 地址",
+    postUrlPlaceholder: "https://…",
+    postTokenLabel: "Bearer Token（可选）",
+    postTokenPlaceholderEmpty: "输入 Bearer Token",
+    editorTitle: "POST 请求格式",
+    editorDesc:
+      "自定义 JSON 载荷中各邮件字段对应的键名；可保存多个格式随时切换，随配置一并保存。",
     limitsTitle: "长度限制（高级）",
     maxRecipient: "收件人邮箱最大长度",
     maxSubject: "主题最大长度",
@@ -260,11 +274,13 @@
     saving: "保存中…",
     needServer: "请填写 SMTP 服务器",
     needSender: "开启密码认证时需填写登录邮箱",
+    needPostUrl: "请填写 Webhook 地址",
     saved: "邮件配置已保存",
     loadFailed: "加载配置失败：",
     saveFailed: "保存失败：",
+    schemasSaveFailed: "保存请求格式库失败",
     testTitle: "发送测试邮件",
-    testDesc: "保存配置后，发一封测试邮件验证 SMTP 是否通畅。",
+    testDesc: "保存配置后，发一封测试邮件验证发送通道是否通畅。",
     testToLabel: "测试收件人",
     testSend: "发送测试",
     testing: "发送中…",

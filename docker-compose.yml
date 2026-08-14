@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-10752}:10752"
     volumes:
       # Persist the SQLite database and uploaded invoices across container rebuilds.
       - ./data:/app/data
@@ -17,7 +17,7 @@ services:
       # Better Auth: ≥32-char secret (falls back to a dev-only value if unset).
       # Reuse SESSION_SECRET when it is long enough, else set BETTER_AUTH_SECRET.
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-${SESSION_SECRET:-invoicer-dev-better-auth-secret-replace-in-prod-0123456789}}
-      BETTER_AUTH_URL: ${SITE_URL:-http://localhost:3000}
+      BETTER_AUTH_URL: ${SITE_URL:-http://localhost:10752}
       SITE_URL: ${SITE_URL:-}
       # OAuth providers (optional — a provider is enabled only when both its
       # credentials are present). Both are built-in Better Auth providers.

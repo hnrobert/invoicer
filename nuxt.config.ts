@@ -22,6 +22,8 @@ export default defineNuxtConfig({
   // Flat (Nuxt 3-style) layout: pages/components/layouts/… live at the project
   // root alongside app.vue, not under an app/ dir.
   srcDir: ".",
+  // Default dev port (pnpm dev); production uses PORT (Dockerfile/compose set 10752).
+  devServer: { port: 10752 },
 
   // vue-sonner: registers the client-only <Toaster> and auto-imports `toast`.
   // @nuxtjs/i18n: zh/en UI strings (locale files in i18n/locales/*.json5 — JSON5 is
@@ -29,8 +31,7 @@ export default defineNuxtConfig({
   modules: ["vue-sonner/nuxt", "@nuxtjs/i18n"],
   imports: { presets: [{ from: "vue-sonner", imports: ["toast"] }] },
 
-  // Tailwind v4 + shadcn theme CSS (the UNNC-yellow design system, copied from
-  // the reference project).
+  // Tailwind v4 + shadcn theme CSS (monochrome GitHub-like design system).
   css: ["~/assets/css/main.css"],
   vite: {
     plugins: [tailwindcss()],
@@ -42,6 +43,9 @@ export default defineNuxtConfig({
         "lucide-vue-next",
         "tailwind-merge",
       ],
+      // email-poster's ./vue entry is raw .vue source, which esbuild can't
+      // pre-bundle — exclude it and let the Vue plugin transform it.
+      exclude: ["email-poster"],
     },
   },
 

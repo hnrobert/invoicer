@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useColorMode } from "@vueuse/core";
 import type { ProviderId } from "~/composables/useAuth";
 
 // Auth is enforced by the global auth.global.ts middleware; /account is not in
@@ -6,6 +7,16 @@ import type { ProviderId } from "~/composables/useAuth";
 const { t } = useI18n();
 const { user, linkProvider, unlinkProvider, listAccounts } = useAuth();
 const { list: enabledList } = useOAuthProviders();
+
+// Preferences — theme + language live here (not in the header). Theme shares
+// the `vg.theme` storage key used by the no-FOUC inline script in
+// nuxt.config.ts; language defaults to the device language on first visit
+// (i18n detectBrowserLanguage) and is remembered per browser via setLocale.
+const colorMode = useColorMode({ storageKey: "vg.theme" });
+const { locale, locales, setLocale } = useI18n();
+const localeList = computed(
+  () => locales.value as { code: "zh" | "en"; name?: string }[],
+);
 
 useHead({ title: () => t("account.title") });
 
@@ -70,6 +81,58 @@ onMounted(refresh);
       </h2>
       <p class="text-sm text-muted-foreground">{{ t("account.desc") }}</p>
     </div>
+
+    <!-- Preferences (theme + language) -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("account.prefsTitle") }}</CardTitle>
+        <CardDescription>{{ t("account.prefsDesc") }}</CardDescription>
+      </CardHeader>
+      <CardContent class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="w-20 shrink-0 text-muted-foreground">{{
+            t("account.themeLabel")
+          }}</span>
+          <div class="inline-flex rounded-lg border p-1">
+            <button
+              v-for="m in ['light', 'dark'] as const"
+              :key="m"
+              type="button"
+              class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
+              :class="
+                (colorMode === 'dark') === (m === 'dark')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              @click="colorMode = m"
+            >
+              {{ t(`theme.${m}`) }}
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="w-20 shrink-0 text-muted-foreground">{{
+            t("account.langLabel")
+          }}</span>
+          <div class="inline-flex rounded-lg border p-1">
+            <button
+              v-for="l in localeList"
+              :key="l.code"
+              type="button"
+              class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
+              :class="
+                locale === l.code
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              @click="setLocale(l.code)"
+            >
+              {{ l.name }}
+            </button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <!-- Profile -->
     <Card>

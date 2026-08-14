@@ -162,7 +162,9 @@ onMounted(load);
   <div class="flex flex-col gap-6">
     <!-- breadcrumb -->
     <div class="flex items-center gap-2 text-sm text-muted-foreground">
-      <NuxtLink to="/" class="hover:text-foreground"
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-1 whitespace-nowrap hover:text-foreground"
         ><Icon spec="ArrowLeft" :size="14" /> {{ t("settings.back") }}</NuxtLink
       >
       <span>/</span>

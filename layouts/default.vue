@@ -4,20 +4,15 @@ const { user, signOut } = useAuth();
 </script>
 
 <template>
-  <div class="relative flex min-h-screen flex-col bg-background">
-    <!-- decorative yellow blob (matches the reference project's motif) -->
-    <div
-      class="pointer-events-none absolute -top-40 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
-    />
-
+  <div class="flex min-h-screen flex-col bg-background">
     <header class="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
       <div
         class="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6"
       >
         <span
-          class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
+          class="flex size-9 shrink-0 items-center justify-center rounded-full border bg-background"
         >
-          <Icon spec="ReceiptText" :size="20" />
+          <img src="/favicon.svg" alt="" class="size-7" />
         </span>
         <div class="min-w-0">
           <h1 class="truncate text-sm font-semibold leading-tight sm:text-base">
@@ -74,8 +69,6 @@ const { user, signOut } = useAuth();
           >
             <Icon spec="Settings" :size="18" />
           </NuxtLink>
-          <LanguageSwitcher />
-          <ThemeToggle />
         </div>
       </div>
     </header>

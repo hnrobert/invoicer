@@ -13,6 +13,12 @@ export interface MailConfigClient {
   maxLenRecipientEmail: number;
   maxLenSubject: number;
   maxLenBody: number;
+  provider: string;
+  postUrl: string;
+  postSchema: string;
+  postFieldMap: string;
+  postSchemas: string;
+  hasPostAuthToken: boolean;
 }
 
 export type FilterKey = "all" | InvoiceStatus;

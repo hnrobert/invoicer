@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
+import { EmailPoster, PRESETS, type FieldMap } from "email-poster";
 import { AppDataSource } from "./database";
 import { MailConfig } from "#server/entities/mailConfig.entity";
 
@@ -27,6 +28,15 @@ export interface MailConfigInput {
   maxLenRecipientEmail?: number;
   maxLenSubject?: number;
   maxLenBody?: number;
+  // POST webhook
+  provider?: string;
+  postUrl?: string;
+  postSchema?: string;
+  postAuthToken?: string;
+  /** email-poster FieldMap JSON (logical field → downstream key). '' = derive from post_schema. */
+  postFieldMap?: string;
+  /** email-poster PostSchema[] JSON — the editor's post-schemas library. '' = never stored. */
+  postSchemas?: string;
 }
 
 /** Reserved site-wide config owner (no real user has id 0). */
@@ -39,9 +49,9 @@ export async function getMailConfig(): Promise<MailConfig | null> {
 }
 
 /**
- * Upsert the site mail config. `senderPassword` is only overwritten when a
- * non-empty value is supplied, so "save without re-entering the password" leaves
- * the stored secret intact.
+ * Upsert the site mail config. Secrets (`senderPassword`, `postAuthToken`) are
+ * only overwritten when a non-empty value is supplied, so "save without
+ * re-entering the secret" leaves the stored value intact.
  */
 export async function saveMailConfig(
   patch: MailConfigInput,
@@ -49,10 +59,13 @@ export async function saveMailConfig(
   const repo = AppDataSource.getRepository(MailConfig);
   const existing = await repo.findOneBy({ userId: SITE_USER_ID });
   if (existing) {
-    const { senderPassword, ...rest } = patch;
+    const { senderPassword, postAuthToken, ...rest } = patch;
     Object.assign(existing, rest);
     if (typeof senderPassword === "string" && senderPassword !== "") {
       existing.senderPassword = senderPassword;
+    }
+    if (typeof postAuthToken === "string" && postAuthToken !== "") {
+      existing.postAuthToken = postAuthToken;
     }
     return repo.save(existing);
   }
@@ -76,6 +89,12 @@ export function mailConfigToClient(c: MailConfig | null) {
     maxLenRecipientEmail: c.maxLenRecipientEmail,
     maxLenSubject: c.maxLenSubject,
     maxLenBody: c.maxLenBody,
+    provider: c.provider,
+    postUrl: c.postUrl,
+    postSchema: c.postSchema,
+    postFieldMap: c.postFieldMap,
+    postSchemas: c.postSchemas,
+    hasPostAuthToken: !!c.postAuthToken,
   };
 }
 
@@ -103,11 +122,72 @@ function validate(c: MailConfig, input: SendMailInput): void {
   }
 }
 
+/**
+ * Resolve the effective email-poster FieldMap for a config. The stored
+ * `post_field_map` JSON is authoritative when present; otherwise migrate from
+ * the legacy `post_schema` discriminator ('powerautomate' → custom_example,
+ * i.e. {email, subject, content}; otherwise smtogo's {from, to, subject, html}).
+ * Malformed JSON falls back to the migration path so a corrupt row never
+ * blocks sending.
+ */
+function resolveFieldMapFromConfig(c: MailConfig): FieldMap {
+  const raw = c.postFieldMap?.trim();
+  if (raw) {
+    try {
+      return JSON.parse(raw) as FieldMap;
+    } catch {
+      // fall through to legacy migration
+    }
+  }
+  return c.postSchema === "powerautomate"
+    ? PRESETS.custom_example
+    : PRESETS.smtogo;
+}
+
+/**
+ * Send via an HTTP POST webhook through email-poster. The field map is fully
+ * editable from the settings page's visual editor; the two legacy shapes
+ * (smtogo / Custom Example) are the presets / migration defaults.
+ */
+async function sendViaPost(
+  c: MailConfig,
+  input: SendMailInput,
+): Promise<string> {
+  if (!c.postUrl) throw new Error("POST Webhook 地址未配置");
+  validate(c, input);
+  const poster = new EmailPoster({
+    postUrl: c.postUrl,
+    preset: "none",
+    fields: resolveFieldMapFromConfig(c),
+    fromAddress: fromAddress(c),
+    headers: c.postAuthToken
+      ? { Authorization: `Bearer ${c.postAuthToken}` }
+      : {},
+    retry: { maxAttempts: 1 },
+    recipients: { serialize: "comma" },
+    parseMessageId: false,
+  });
+  try {
+    const { messageId } = await poster.send({
+      to: input.to,
+      subject: input.subject,
+      body: input.body,
+      type: input.html ? "html" : "text",
+    });
+    return messageId;
+  } catch (e) {
+    // email-poster already formats HTTP failures as "Webhook returned <status>:
+    // <detail>"; surface that message verbatim, fall back for non-Error throws.
+    throw new Error(e instanceof Error ? e.message : "Webhook 发送失败");
+  }
+}
+
 /** Send using an explicit config (bypasses the DB lookup). Returns the message id. */
 export async function sendMailWithConfig(
   c: MailConfig,
   input: SendMailInput,
 ): Promise<string> {
+  if (c.provider === "post") return sendViaPost(c, input);
   if (!c.smtpServer) throw new Error("SMTP 服务器未配置");
   validate(c, input);
   const transporter = nodemailer.createTransport({

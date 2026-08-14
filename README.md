@@ -89,7 +89,7 @@ reimbursement campaigns — is in place. Likely next steps:
 
 ```bash
 pnpm install
-pnpm dev          # http://localhost:3000
+pnpm dev          # http://localhost:10752
 ```
 
 Useful scripts:
@@ -104,7 +104,7 @@ pnpm tsup         # bundle scripts/*.ts (esbuild, ~10ms)
 ### Production with Docker Compose
 
 ```bash
-docker compose up -d --build      # http://localhost:3000
+docker compose up -d --build      # http://localhost:10752
 ```
 
 The SQLite database and uploaded files are persisted via bind mounts
@@ -127,7 +127,7 @@ Runtime configuration is via environment variables (see `docker-compose.yml`):
 | `SITE_URL`                                  | _(empty)_                 | Public base URL (used in emails + as `BETTER_AUTH_URL`)                                                                                                                                   |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | _(empty)_                 | GitHub OAuth App credentials — enables "Sign in with GitHub". Callback URL: `${SITE_URL}/api/auth/callback/github`                                                                        |
 | `WECHAT_APP_ID` / `WECHAT_APP_SECRET`       | _(empty)_                 | WeChat Open Platform app credentials — enables "Sign in with WeChat". Callback URL: `${SITE_URL}/api/auth/callback/wechat`. Users matched by `unionId`/`openId` (WeChat returns no email) |
-| `PORT`                                      | `3000`                    | HTTP port                                                                                                                                                                                 |
+| `PORT`                                      | `10752`                   | HTTP port                                                                                                                                                                                 |
 
 OAuth providers are **optional** — each is enabled only when both its
 credentials are set, and its sign-in button is hidden otherwise. GitHub needs a

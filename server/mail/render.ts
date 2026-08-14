@@ -31,7 +31,7 @@ export function renderEmail(c: EmailContent): string {
 
   const action =
     c.actionLabel && c.actionUrl
-      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0 4px;"><tr><td bgcolor="#F7D447" style="border-radius: 10px;"><a href="${escapeHtml(c.actionUrl)}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #1c1917; text-decoration: none; border-radius: 10px;">${escapeHtml(c.actionLabel)}</a></td></tr></table>`
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0 4px;"><tr><td bgcolor="#1C1917" style="border-radius: 10px;"><a href="${escapeHtml(c.actionUrl)}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #FFFFFF; text-decoration: none; border-radius: 10px;">${escapeHtml(c.actionLabel)}</a></td></tr></table>`
       : "";
 
   return template
