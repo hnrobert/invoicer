@@ -3,6 +3,7 @@ import { auth, authDb } from "./auth";
 import { AppDataSource } from "./database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
+import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 import type { SessionUser } from "./auth";
 import type { CampaignRights, OrgRole } from "#shared/types";
 
@@ -66,8 +67,16 @@ export function isOrgMember(
   return !!row;
 }
 
-/** The user's organization role, normalized to the five built-in tiers. */
-export function getOrgRole(organizationId: string, userId: string): OrgRole | null {
+/**
+ * The user's organization role, normalized to the five built-in tiers. A
+ * custom role name (org_custom_roles) resolves to its base role's rights;
+ * unknown values degrade to plain member. Async because custom roles live in
+ * the TypeORM tables.
+ */
+export async function getOrgRole(
+  organizationId: string,
+  userId: string,
+): Promise<OrgRole | null> {
   const row = authDb
     .prepare(
       "SELECT role FROM member WHERE organizationId = ? AND userId = ?",
@@ -79,10 +88,18 @@ export function getOrgRole(organizationId: string, userId: string): OrgRole | nu
     case "admin":
     case "editor":
     case "viewer":
+    case "member":
       return row.role;
     default:
-      return "member"; // unknown/custom values degrade to plain member
+      break;
   }
+  // Custom role name → its base role.
+  const custom = await AppDataSource.getRepository(OrgCustomRole).findOneBy({
+    organizationId,
+    name: row.role,
+  });
+  if (custom) return custom.baseRole;
+  return "member";
 }
 
 /** The set of organization ids the user belongs to. */
@@ -138,7 +155,7 @@ export async function resolveCampaignRights(
       : NO_ACCESS;
   }
 
-  const role = getOrgRole(campaign.organizationId, user.id);
+  const role = await getOrgRole(campaign.organizationId, user.id);
   const collaborator = await isCollaborator(campaign.id, user.id);
   const isManager = campaign.userId === user.id;
 
@@ -203,6 +220,15 @@ export async function resolveCampaignRights(
     r.canUpload = uploadOpen;
   }
   return r;
+}
+
+/**
+ * Whether the campaign runs the two-step review flow (upload → submit →
+ * approve). Only confirmed org campaigns do; personal campaigns and unconfirmed
+ * (legacy) ones keep the direct review flow the current UI implements.
+ */
+export function usesSubmitFlow(campaign: Campaign): boolean {
+  return !!campaign.organizationId && campaign.visibilityConfirmed;
 }
 
 /**

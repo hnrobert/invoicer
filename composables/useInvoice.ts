@@ -1,4 +1,9 @@
-import type { CampaignPublic, InvoicePublic, InvoiceStatus } from "#shared/types";
+import type {
+  CampaignPublic,
+  CampaignRights,
+  InvoicePublic,
+  InvoiceStatus,
+} from "#shared/types";
 
 export interface MailConfigClient {
   smtpServer: string;
@@ -43,6 +48,10 @@ export function useInvoice() {
   const invoices = ref<InvoicePublic[]>([]);
   const totalAmount = ref(0);
   const hasPending = ref(false);
+  /** Server-computed rights + review flow + scoping for the active campaign. */
+  const rights = ref<CampaignRights | null>(null);
+  const flow = ref<"direct" | "submit">("direct");
+  const scopedToMe = ref(false);
   const filter = ref<FilterKey>("all");
   const search = ref("");
   let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -83,6 +92,9 @@ export function useInvoice() {
       invoices: InvoicePublic[];
       total_amount: number;
       has_pending: boolean;
+      rights: CampaignRights;
+      flow: "direct" | "submit";
+      scoped_to_me: boolean;
     }>(`/api/campaigns/${id}`);
     campaignId.value = id;
     organizationId.value = data.organization_id;
@@ -92,6 +104,9 @@ export function useInvoice() {
     invoices.value = data.invoices;
     totalAmount.value = data.total_amount;
     hasPending.value = data.has_pending;
+    rights.value = data.rights;
+    flow.value = data.flow;
+    scopedToMe.value = data.scoped_to_me;
     if (data.has_pending) startPolling();
     else stopPolling();
   }
@@ -102,10 +117,16 @@ export function useInvoice() {
       invoices: InvoicePublic[];
       total_amount: number;
       has_pending: boolean;
+      rights: CampaignRights;
+      flow: "direct" | "submit";
+      scoped_to_me: boolean;
     }>(`/api/campaigns/${campaignId.value}`);
     invoices.value = data.invoices;
     totalAmount.value = data.total_amount;
     hasPending.value = data.has_pending;
+    rights.value = data.rights;
+    flow.value = data.flow;
+    scopedToMe.value = data.scoped_to_me;
     if (!data.has_pending) stopPolling();
   }
 
@@ -168,6 +189,30 @@ export function useInvoice() {
     totalAmount.value = data.total_amount;
   }
 
+  /** Submit one of the caller's own draft invoices for review (submit flow). */
+  async function submitInvoice(id: number) {
+    if (!campaignId.value) return;
+    const data = await $fetch<{ ok: boolean; record: InvoicePublic }>(
+      `/api/campaigns/${campaignId.value}/invoices/${id}/submit`,
+      { method: "POST" },
+    );
+    if (!data.ok) throw new Error("提交失败");
+    const idx = invoices.value.findIndex((i) => i.id === id);
+    if (idx >= 0) invoices.value[idx] = data.record;
+  }
+
+  /** Submit all of the caller's own submittable drafts, then refresh. */
+  async function submitAll() {
+    if (!campaignId.value) return;
+    const data = await $fetch<{ ok: boolean; submitted: number }>(
+      `/api/campaigns/${campaignId.value}/submit-all`,
+      { method: "POST" },
+    );
+    if (!data.ok) throw new Error("提交失败");
+    await refresh();
+    return data.submitted;
+  }
+
   async function emailReport(to: string) {
     if (!campaignId.value) return;
     return await $fetch<{
@@ -219,6 +264,9 @@ export function useInvoice() {
     invoices,
     totalAmount,
     hasPending,
+    rights,
+    flow,
+    scopedToMe,
     filter,
     search,
     counts,
@@ -232,18 +280,26 @@ export function useInvoice() {
     upload,
     clearAll,
     review,
+    submitInvoice,
+    submitAll,
     emailReport,
   };
 }
 
-/** Fetch the caller's accessible campaigns, grouped personal vs org. */
+/** Fetch the caller's accessible campaigns: personal / org / collaborations. */
 export async function listCampaigns(): Promise<{
   personal: CampaignPublic[];
   organizations: CampaignPublic[];
+  collaborations: CampaignPublic[];
 }> {
   const data = await $fetch<{
     personal: CampaignPublic[];
     organizations: CampaignPublic[];
+    collaborations: CampaignPublic[];
   }>("/api/campaigns");
-  return { personal: data.personal, organizations: data.organizations };
+  return {
+    personal: data.personal,
+    organizations: data.organizations,
+    collaborations: data.collaborations,
+  };
 }

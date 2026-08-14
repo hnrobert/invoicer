@@ -21,9 +21,11 @@
     "@nuxtjs/i18n": "^10.6.0",
     "@tailwindcss/vite": "^4.1.0",
     "@vueuse/core": "^12.0.0",
+    "adm-zip": "^0.5.16",
     "better-auth": "^1.6.27",
     "better-sqlite3": "^13.0.0",
     "class-variance-authority": "^0.7.1",
+    "exceljs": "^4.4.0",
     "email-poster": "^0.3.4",
     "clsx": "^2.1.1",
     "lucide-vue-next": "^0.460.0",
@@ -42,6 +44,7 @@
     "vue-sonner": "^2.0.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^6.4.17",

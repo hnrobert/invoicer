@@ -9,6 +9,11 @@ import { CampaignCollaborator } from "#server/entities/campaignCollaborator.enti
 import { Invoice } from "#server/entities/invoice.entity";
 import { MailConfig } from "#server/entities/mailConfig.entity";
 import { AppSetting } from "#server/entities/appSetting.entity";
+import { OrgSetting } from "#server/entities/orgSetting.entity";
+import { AuditLog } from "#server/entities/auditLog.entity";
+import { Notification } from "#server/entities/notification.entity";
+import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
+import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 
 const dbPath = process.env.DB_PATH || "./data/app.db";
 
@@ -33,7 +38,18 @@ export const AppDataSource = new DataSource({
   database: dbPath,
   // Explicit class array — Nitro bundling doesn't play nicely with glob-based
   // entity discovery (`entities: ['dist/**/*.entity.js']`).
-  entities: [Campaign, Invoice, CampaignCollaborator, MailConfig, AppSetting],
+  entities: [
+    Campaign,
+    Invoice,
+    CampaignCollaborator,
+    MailConfig,
+    AppSetting,
+    OrgSetting,
+    AuditLog,
+    Notification,
+    CampaignTransfer,
+    OrgCustomRole,
+  ],
   // No migration files: the schema is derived from the entity classes on boot.
   synchronize: true,
   logging: ["schema", "error", "warn"],

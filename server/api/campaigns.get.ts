@@ -1,6 +1,7 @@
 import { In, IsNull, type FindOptionsWhere } from "typeorm";
 import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
+import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
 import { getSessionUser, getUserOrgIds } from "#server/utils/campaign";
 import type { CampaignPublic } from "#shared/types";
 
@@ -22,9 +23,10 @@ function toPublic(c: Campaign): CampaignPublic {
 
 /**
  * List every campaign the caller may access: their personal campaigns
- * (`organizationId` IS NULL AND owned by them) plus every campaign owned by an
- * organization they belong to. Personal and org campaigns are returned in
- * separate arrays so the client can group them.
+ * (`organizationId` IS NULL AND owned by them), every campaign owned by an
+ * organization they belong to, and every campaign they collaborate on
+ * (typically org outsiders). Personal and org campaigns are returned in
+ * separate arrays so the client can group them; collaborations get their own.
  */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
@@ -47,5 +49,21 @@ export default defineEventHandler(async (event) => {
   for (const c of all) {
     (c.organizationId ? byOrg : personal).push(toPublic(c));
   }
-  return { ok: true, personal, organizations: byOrg };
+
+  // Collaborations: campaigns the user was added to directly. Archived ones
+  // are hidden (requireCampaignAccess would 403 them anyway on open).
+  const collabRows = await AppDataSource.getRepository(
+    CampaignCollaborator,
+  ).find({ where: { userId: user.id } });
+  const collabIds = collabRows.map((r) => r.campaignId);
+  const collaborations = collabIds.length
+    ? (
+        await AppDataSource.getRepository(Campaign).find({
+          where: { id: In(collabIds), status: In(["active", "closed"]) },
+          order: { createdAt: "desc" },
+        })
+      ).map((c) => toPublic(c))
+    : [];
+
+  return { ok: true, personal, organizations: byOrg, collaborations };
 });

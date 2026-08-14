@@ -6,7 +6,7 @@ import type {
   OrgRole,
 } from "#shared/types";
 
-const ORG_ROLES = ["owner", "admin", "member"] as const;
+const ORG_ROLES = ["owner", "admin", "editor", "viewer", "member"] as const;
 
 // Reactive state + API calls for Better Auth organizations. All requests are
 // same-origin `$fetch`, so the browser sends the session cookie automatically.

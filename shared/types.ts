@@ -42,7 +42,7 @@ export interface OrgMember {
   id: string;
   organizationId: string;
   userId: string;
-  role: "owner" | "admin" | "member";
+  role: OrgRole;
   createdAt: string;
   user: Pick<AuthUser, "id" | "name" | "email" | "image">;
 }
@@ -53,7 +53,7 @@ export interface OrgInvitation {
   organizationId: string;
   organizationName?: string;
   email: string;
-  role: "owner" | "admin" | "member";
+  role: OrgRole;
   status: "pending" | "accepted" | "rejected" | "canceled";
   expiresAt: string;
   createdAt: string;

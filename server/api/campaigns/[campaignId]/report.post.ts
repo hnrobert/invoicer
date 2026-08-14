@@ -1,6 +1,6 @@
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
-import { requireCampaignAccess } from "#server/utils/campaign";
+import { requireCampaignAccess, usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal } from "#server/utils/serialize";
 import { renderEmail } from "#server/mail/render";
 import { sendMail } from "#server/utils/mail";
@@ -38,7 +38,8 @@ export default defineEventHandler(async (event) => {
     where: { campaignId },
     order: { id: "asc" },
   });
-  const total = await calcTotal(campaignId);
+  const flow = usesSubmitFlow(campaign) ? ("submit" as const) : ("direct" as const);
+  const total = await calcTotal(campaignId, { flow });
 
   const rows = invoices
     .map((i) => {

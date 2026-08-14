@@ -7,6 +7,7 @@ useHead({ title: () => t("home.title") });
 
 const inv = useInvoice();
 const { organizations, activeOrganization } = useOrgs();
+const { user } = useAuth();
 
 // ---------- step 1: scope + info + campaigns ----------
 // scope: null = personal, otherwise an org id the user belongs to. Defaults to
@@ -17,15 +18,18 @@ const taxId = ref("");
 const campaignName = ref("");
 const creating = ref(false);
 
-// Resumable campaigns accessible to the caller (personal + org-scoped).
+// Resumable campaigns accessible to the caller (personal + org + collaborations).
 const personalCampaigns = ref<CampaignPublic[]>([]);
 const orgCampaigns = ref<CampaignPublic[]>([]);
+const collabCampaigns = ref<CampaignPublic[]>([]);
 
 async function loadCampaigns() {
   try {
-    const { personal, organizations: orgs } = await listCampaigns();
+    const { personal, organizations: orgs, collaborations } =
+      await listCampaigns();
     personalCampaigns.value = personal;
     orgCampaigns.value = orgs;
+    collabCampaigns.value = collaborations;
   } catch {
     // Not fatal — the list just stays empty until refresh.
   }
@@ -136,6 +140,20 @@ function toggleExpand(id: number) {
   expanded.value = s;
 }
 
+/** Download an export (csv / xlsx / zip) — canExport (or legacy) only. */
+const canExport = computed(
+  () => !!inv.rights.value?.canExport || !!inv.rights.value?.legacy,
+);
+const exportOpen = ref(false);
+function doExport(fmt: "csv" | "xlsx" | "zip") {
+  exportOpen.value = false;
+  if (!inv.campaignId.value) return;
+  window.open(
+    `/api/campaigns/${inv.campaignId.value}/export?format=${fmt}`,
+    "_blank",
+  );
+}
+
 function fmtAmount(i: InvoicePublic): string {
   const amt = i.extractedAmount ?? i.manualAmount;
   return amt != null ? `¥${amt.toFixed(2)}` : t("common.dash");
@@ -171,6 +189,71 @@ function statusLabel(s: string): string {
       return t("home.status.processing");
     default:
       return t("home.status.error");
+  }
+}
+
+// ---------- submit/approve flow (platform-model org campaigns) ----------
+const TERMINAL = new Set(["qualified", "review", "unqualified"]);
+const submitFlow = computed(() => inv.flow.value === "submit");
+const canReview = computed(() => !!inv.rights.value?.canReview);
+
+/** Review-state badge (submit flow only). */
+const RSTATE_CLS: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  submitted: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  rejected: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
+};
+function rstateCls(s: string): string {
+  return RSTATE_CLS[s] ?? "bg-muted text-muted-foreground";
+}
+function rstateLabel(s: string): string {
+  switch (s) {
+    case "draft":
+      return t("home.reviewState.draft");
+    case "submitted":
+      return t("home.reviewState.submitted");
+    case "approved":
+      return t("home.reviewState.approved");
+    default:
+      return t("home.reviewState.rejected");
+  }
+}
+
+function isMine(i: InvoicePublic): boolean {
+  return inv.scopedToMe.value || i.uploaderId === user.value?.id;
+}
+function submittable(i: InvoicePublic): boolean {
+  return (
+    submitFlow.value &&
+    isMine(i) &&
+    i.reviewState === "draft" &&
+    TERMINAL.has(i.status)
+  );
+}
+/** Reviewable: submitted invoice (submit flow, needs rights) / review-status (direct flow). */
+function reviewable(i: InvoicePublic): boolean {
+  if (submitFlow.value) return canReview.value && i.reviewState === "submitted";
+  return i.status === "review";
+}
+const submittableCount = computed(
+  () => inv.invoices.value.filter(submittable).length,
+);
+
+async function doSubmit(i: InvoicePublic) {
+  try {
+    await inv.submitInvoice(i.id);
+    toast.success(t("home.action.submittedToast"));
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function doSubmitAll() {
+  try {
+    const n = await inv.submitAll();
+    toast.success(t("home.action.submittedAllToast", { n }));
+  } catch (e) {
+    toast.error((e as Error).message);
   }
 }
 
@@ -248,10 +331,140 @@ async function sendReport() {
   }
 }
 
+// ---------- campaign settings dialog (manager) ----------
+const settingsOpen = ref(false);
+const setVisibility = ref<"public" | "internal" | "private">("internal");
+const setSearchable = ref(false);
+const setStatus = ref<"active" | "closed" | "archived">("active");
+const setSaving = ref(false);
+const collaborators = ref<{ userId: string; name: string; email: string }[]>([]);
+const collabEmail = ref("");
+const collabBusy = ref(false);
+// cross-org transfer (org campaigns, manager-only)
+const transferOrgId = ref("");
+const transferBusy = ref(false);
+const otherOrgs = computed(() =>
+  organizations.value.filter((o) => o.id !== inv.organizationId.value),
+);
+async function initiateTransfer() {
+  if (!inv.campaignId.value || !transferOrgId.value) return;
+  transferBusy.value = true;
+  try {
+    await $fetch(`/api/campaigns/${inv.campaignId.value}/transfer`, {
+      method: "POST",
+      body: { target_org_id: transferOrgId.value },
+    });
+    toast.success(t("home.transfer.sent"));
+    transferOrgId.value = "";
+    settingsOpen.value = false;
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    transferBusy.value = false;
+  }
+}
+
+async function openSettings() {
+  if (!inv.campaignId.value) return;
+  settingsOpen.value = true;
+  try {
+    const data = await $fetch<{
+      visibility: "public" | "internal" | "private";
+      status: "active" | "closed" | "archived";
+      campaigns?: unknown;
+    } & Record<string, unknown>>(`/api/campaigns/${inv.campaignId.value}`);
+    setVisibility.value = data.visibility;
+    setStatus.value = data.status;
+    setSearchable.value = Boolean(
+      (data as { searchable?: boolean }).searchable,
+    );
+    await loadCollaborators();
+  } catch (e) {
+    toast.error((e as Error).message);
+    settingsOpen.value = false;
+  }
+}
+async function loadCollaborators() {
+  if (!inv.campaignId.value) return;
+  try {
+    const data = await $fetch<{ collaborators: typeof collaborators.value }>(
+      `/api/campaigns/${inv.campaignId.value}/collaborators`,
+    );
+    collaborators.value = data.collaborators;
+  } catch {
+    collaborators.value = [];
+  }
+}
+async function saveSettings() {
+  if (!inv.campaignId.value) return;
+  setSaving.value = true;
+  try {
+    await $fetch(`/api/campaigns/${inv.campaignId.value}`, {
+      method: "PUT",
+      body: {
+        visibility: setVisibility.value,
+        searchable: setVisibility.value === "public" && setSearchable.value,
+        status: setStatus.value,
+      },
+    });
+    toast.success(t("settings.saved"));
+    settingsOpen.value = false;
+    await inv.refresh();
+    void loadCampaigns();
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    setSaving.value = false;
+  }
+}
+async function addCollaborator() {
+  if (!inv.campaignId.value || !collabEmail.value.trim()) return;
+  collabBusy.value = true;
+  try {
+    await $fetch(`/api/campaigns/${inv.campaignId.value}/collaborators`, {
+      method: "POST",
+      body: { email: collabEmail.value.trim() },
+    });
+    collabEmail.value = "";
+    toast.success(t("home.collab.added"));
+    await loadCollaborators();
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    collabBusy.value = false;
+  }
+}
+async function removeCollaborator(userId: string) {
+  if (!inv.campaignId.value) return;
+  try {
+    await $fetch(
+      `/api/campaigns/${inv.campaignId.value}/collaborators/${userId}`,
+      { method: "DELETE" },
+    );
+    await loadCollaborators();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+
 // ---------- init ----------
-// Sync the scope default with the active org, then load accessible campaigns.
+// Sync the scope default with the active org, resume a deep-linked campaign
+// (?campaign=<id> — how plaza visitors and shared links open one), then load
+// accessible campaigns.
+const route = useRoute();
 onMounted(async () => {
   scope.value = activeOrganization.value?.id ?? null;
+  const cid = Number(route.query.campaign);
+  if (cid) {
+    try {
+      await inv.resume(cid);
+      scope.value = inv.organizationId.value;
+      step2.value = true;
+      step3.value = true;
+    } catch {
+      // Not accessible / not found — fall through to the normal landing.
+    }
+  }
   void loadCampaigns();
 });
 // If the user switches their active org on /organizations, reflect it here.
@@ -351,7 +564,9 @@ watch(activeOrganization, (o) => {
 
         <!-- resumable campaigns -->
         <div
-          v-if="personalCampaigns.length || orgCampaigns.length"
+          v-if="
+            personalCampaigns.length || orgCampaigns.length || collabCampaigns.length
+          "
           class="mt-2 flex flex-col gap-3"
         >
           <div class="text-xs font-medium text-muted-foreground">
@@ -388,6 +603,28 @@ watch(activeOrganization, (o) => {
                 @click="resumeCampaign(c)"
               >
                 <Icon spec="Building2" :size="14" class="text-muted-foreground" />
+                <span class="font-medium">{{ c.name || c.expectedTitle }}</span>
+                <span class="text-xs text-muted-foreground">·</span>
+                <span class="truncate text-xs text-muted-foreground">{{
+                  orgName(c.organizationId)
+                }}</span>
+                <span class="ml-auto text-xs text-muted-foreground">{{
+                  fmtDate(c.createdAt)
+                }}</span>
+              </button>
+            </div>
+            <div v-if="collabCampaigns.length" class="flex flex-col gap-1.5">
+              <div class="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {{ t("home.collab.section") }}
+              </div>
+              <button
+                v-for="c in collabCampaigns"
+                :key="c.id"
+                type="button"
+                class="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-left text-sm hover:bg-accent"
+                @click="resumeCampaign(c)"
+              >
+                <Icon spec="UserPlus" :size="14" class="text-muted-foreground" />
                 <span class="font-medium">{{ c.name || c.expectedTitle }}</span>
                 <span class="text-xs text-muted-foreground">·</span>
                 <span class="truncate text-xs text-muted-foreground">{{
@@ -480,10 +717,56 @@ watch(activeOrganization, (o) => {
             })
           }}</CardDescription>
         </div>
-        <Button variant="outline" size="sm" @click="reportModal = true">
-          <Icon spec="Send" :size="14" />
-          {{ t("home.step3.sendReport") }}
-        </Button>
+        <div class="flex shrink-0 gap-2">
+          <div v-if="canExport" class="relative">
+            <div
+              v-if="exportOpen"
+              class="fixed inset-0 z-10"
+              @click="exportOpen = false"
+            />
+            <Button variant="outline" size="sm" @click="exportOpen = !exportOpen">
+              <Icon spec="Download" :size="14" />
+              {{ t("home.export.button") }}
+              <Icon spec="ChevronDown" :size="12" />
+            </Button>
+            <div
+              v-if="exportOpen"
+              class="absolute right-0 z-20 mt-1 flex w-36 flex-col overflow-hidden rounded-md border bg-popover shadow-md"
+            >
+              <button
+                v-for="f in ['csv', 'xlsx', 'zip'] as const"
+                :key="f"
+                type="button"
+                class="px-3 py-2 text-left text-xs hover:bg-accent"
+                @click="doExport(f)"
+              >
+                {{ t(`home.export.${f}`) }}
+              </button>
+            </div>
+          </div>
+          <Button
+            v-if="submitFlow && submittableCount > 0"
+            variant="outline"
+            size="sm"
+            @click="doSubmitAll"
+          >
+            <Icon spec="Send" :size="14" />
+            {{ t("home.action.submitAll") }} ({{ submittableCount }})
+          </Button>
+          <Button
+            v-if="inv.rights.value?.canManage"
+            variant="outline"
+            size="sm"
+            @click="openSettings"
+          >
+            <Icon spec="Settings2" :size="14" />
+            {{ t("home.settings.title") }}
+          </Button>
+          <Button variant="outline" size="sm" @click="reportModal = true">
+            <Icon spec="Send" :size="14" />
+            {{ t("home.step3.sendReport") }}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent class="flex flex-col gap-4">
         <!-- summary -->
@@ -630,6 +913,12 @@ watch(activeOrganization, (o) => {
                         :class="statusCls(i.status)"
                         >{{ statusLabel(i.status) }}</span
                       >
+                      <span
+                        v-if="submitFlow"
+                        class="ml-1 inline-flex rounded px-2 py-0.5 text-xs font-medium"
+                        :class="rstateCls(i.reviewState)"
+                        >{{ rstateLabel(i.reviewState) }}</span
+                      >
                     </td>
                     <td
                       class="max-w-50 truncate px-3 py-2 text-xs text-muted-foreground"
@@ -639,7 +928,14 @@ watch(activeOrganization, (o) => {
                     </td>
                     <td class="px-3 py-2 text-right" @click.stop>
                       <Button
-                        v-if="i.status === 'review'"
+                        v-if="submittable(i)"
+                        variant="outline"
+                        size="sm"
+                        @click="doSubmit(i)"
+                        >{{ t("home.action.submit") }}</Button
+                      >
+                      <Button
+                        v-else-if="reviewable(i)"
                         variant="outline"
                         size="sm"
                         @click="openReview(i)"
@@ -750,11 +1046,165 @@ watch(activeOrganization, (o) => {
             t("common.cancel")
           }}</Button>
           <Button variant="destructive" @click="submitReview('unqualified')">{{
-            t("home.reviewModal.unqualify")
+            submitFlow
+              ? t("home.reviewModal.reject")
+              : t("home.reviewModal.unqualify")
           }}</Button>
           <Button @click="submitReview('qualified')">{{
-            t("home.reviewModal.qualify")
+            submitFlow
+              ? t("home.reviewModal.approve")
+              : t("home.reviewModal.qualify")
           }}</Button>
+        </CardFooter>
+      </Card>
+    </div>
+
+    <!-- campaign settings modal (manager) -->
+    <div
+      v-if="settingsOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      @click.self="settingsOpen = false"
+    >
+      <Card class="max-h-[85vh] w-full max-w-lg overflow-y-auto">
+        <CardHeader>
+          <CardTitle>{{ t("home.settings.title") }}</CardTitle>
+          <CardDescription>{{ t("home.settings.desc") }}</CardDescription>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-4 text-sm">
+          <!-- visibility -->
+          <div class="flex flex-col gap-1.5">
+            <Label>{{ t("home.settings.visibility") }}</Label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="v in ['public', 'internal', 'private'] as const"
+                :key="v"
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  setVisibility === v
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                "
+                @click="setVisibility = v"
+              >
+                {{ t(`home.settings.vis.${v}`) }}
+              </button>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ t(`home.settings.visDesc.${setVisibility}`) }}
+            </p>
+          </div>
+          <!-- searchable (public only) -->
+          <label
+            v-if="setVisibility === 'public'"
+            class="flex items-center gap-2"
+          >
+            <input
+              v-model="setSearchable"
+              type="checkbox"
+              class="size-4 accent-(--color-primary)"
+            />
+            <span>{{ t("home.settings.searchable") }}</span>
+          </label>
+          <!-- status -->
+          <div class="flex flex-col gap-1.5">
+            <Label>{{ t("home.settings.status") }}</Label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="s in ['active', 'closed', 'archived'] as const"
+                :key="s"
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  setStatus === s
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                "
+                @click="setStatus = s"
+              >
+                {{ t(`home.settings.st.${s}`) }}
+              </button>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ t(`home.settings.stDesc.${setStatus}`) }}
+            </p>
+          </div>
+
+          <!-- collaborators -->
+          <div class="flex flex-col gap-2 border-t pt-3">
+            <div class="text-xs font-medium text-muted-foreground">
+              {{ t("home.collab.title") }}
+            </div>
+            <div
+              v-for="c in collaborators"
+              :key="c.userId"
+              class="flex items-center gap-2 rounded-md border px-3 py-2"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-medium">{{ c.name }}</div>
+                <div class="truncate text-xs text-muted-foreground">
+                  {{ c.email }}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" @click="removeCollaborator(c.userId)">
+                {{ t("home.collab.remove") }}
+              </Button>
+            </div>
+            <p
+              v-if="!collaborators.length"
+              class="text-xs text-muted-foreground"
+            >
+              {{ t("home.collab.none") }}
+            </p>
+            <form class="flex gap-2" @submit.prevent="addCollaborator">
+              <Input
+                v-model="collabEmail"
+                type="email"
+                :placeholder="t('home.collab.emailPlaceholder')"
+                class="flex-1"
+              />
+              <Button type="submit" variant="outline" :disabled="collabBusy">
+                {{ t("home.collab.add") }}
+              </Button>
+            </form>
+          </div>
+
+          <!-- cross-org transfer (org campaigns only) -->
+          <div
+            v-if="inv.organizationId.value && otherOrgs.length"
+            class="flex flex-col gap-2 border-t pt-3"
+          >
+            <div class="text-xs font-medium text-muted-foreground">
+              {{ t("home.transfer.title") }}
+            </div>
+            <form class="flex gap-2" @submit.prevent="initiateTransfer">
+              <select
+                v-model="transferOrgId"
+                class="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="" disabled>
+                  {{ t("home.transfer.pick") }}
+                </option>
+                <option v-for="o in otherOrgs" :key="o.id" :value="o.id">
+                  {{ o.name }}
+                </option>
+              </select>
+              <Button type="submit" variant="outline" :disabled="transferBusy || !transferOrgId">
+                {{ t("home.transfer.send") }}
+              </Button>
+            </form>
+            <p class="text-xs text-muted-foreground">
+              {{ t("home.transfer.desc") }}
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter class="justify-end gap-2">
+          <Button variant="ghost" @click="settingsOpen = false">{{
+            t("common.cancel")
+          }}</Button>
+          <Button :disabled="setSaving" @click="saveSettings">
+            {{ setSaving ? t("settings.saving") : t("settings.save") }}
+          </Button>
         </CardFooter>
       </Card>
     </div>

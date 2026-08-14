@@ -48,6 +48,14 @@ const { user, signOut } = useAuth();
           >
             <Icon spec="LogIn" :size="18" />
           </NuxtLink>
+          <NotificationBell />
+          <NuxtLink
+            to="/explore"
+            :aria-label="t('explore.title')"
+            class="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Icon spec="Compass" :size="18" />
+          </NuxtLink>
           <NuxtLink
             to="/organizations"
             :aria-label="t('orgs.title')"
