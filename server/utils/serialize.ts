@@ -7,9 +7,11 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
   return {
     id: r.id,
     campaignId: r.campaignId,
+    uploaderId: r.uploaderId,
     filename: r.filename,
     fileType: r.fileType,
     status: r.status,
+    reviewState: r.reviewState,
     reason: r.reason,
     extractedTitle: r.extractedTitle,
     extractedTaxId: r.extractedTaxId,
@@ -23,10 +25,16 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
 /**
  * Sum the amounts of every invoice flagged `amountInTotal` in a campaign.
  * Uses the recognized amount, falling back to the operator-entered manual amount.
+ * Pass `uploaderId` to scope the sum to one uploader's invoices.
  */
-export async function calcTotal(campaignId: number): Promise<number> {
+export async function calcTotal(
+  campaignId: number,
+  uploaderId?: string,
+): Promise<number> {
   const rows = await AppDataSource.getRepository(Invoice).find({
-    where: { campaignId, amountInTotal: true },
+    where: uploaderId
+      ? { campaignId, uploaderId, amountInTotal: true }
+      : { campaignId, amountInTotal: true },
   });
   let total = 0;
   for (const r of rows) {

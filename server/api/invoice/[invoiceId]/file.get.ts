@@ -15,15 +15,19 @@ const MIME: Record<string, string> = {
   ".bmp": "image/bmp",
 };
 
-/** Stream the original uploaded file for inline preview (campaign access checked). */
+/** Stream the original uploaded file for inline preview (campaign + invoice access checked). */
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, "invoiceId"));
   const inv = await AppDataSource.getRepository(Invoice).findOneBy({ id });
   if (!inv)
     throw createError({ statusCode: 404, statusMessage: "未找到该发票" });
 
-  // Access control: the caller must own / be a member of the invoice's campaign.
-  await requireCampaignAccess(event, inv.campaignId);
+  // Access control: campaign access PLUS per-invoice isolation — the caller
+  // must be the uploader or hold view-all rights (IDs are enumerable).
+  const { user, rights } = await requireCampaignAccess(event, inv.campaignId);
+  if (!rights.canViewAll && inv.uploaderId !== user.id) {
+    throw createError({ statusCode: 403, statusMessage: "Forbidden" });
+  }
 
   try {
     const s = await stat(inv.savedPath);

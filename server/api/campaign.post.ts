@@ -42,6 +42,11 @@ export default defineEventHandler(async (event) => {
     name: name || title,
     expectedTitle: title,
     expectedTaxId: taxId || null,
+    // New campaigns run the platform model immediately (internal by default;
+    // the creator is its manager). Pre-existing unconfirmed campaigns keep the
+    // legacy semantics until the migration panel confirms them.
+    visibility: "internal",
+    visibilityConfirmed: true,
   });
   return { ok: true, campaign_id: campaign.id };
 });

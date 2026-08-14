@@ -6,11 +6,16 @@ import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 /**
  * Manual review of a "review"-status invoice. The operator decides qualified /
  * unqualified, optionally entering a manual amount when none was recognized.
+ * Requires review rights (org Editor+, the campaign manager, or legacy-mode
+ * access).
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const invoiceId = Number(getRouterParam(event, "invoiceId"));
-  await requireCampaignAccess(event, campaignId);
+  const { rights } = await requireCampaignAccess(event, campaignId);
+  if (!rights.canReview) {
+    throw createError({ statusCode: 403, statusMessage: "无审核权限" });
+  }
 
   const body = await readBody<{
     decision?: string;

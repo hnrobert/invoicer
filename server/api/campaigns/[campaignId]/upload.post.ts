@@ -22,11 +22,18 @@ const IMAGE_EXTS = new Set([
  * Upload one or more invoice files (PDF or image) to a campaign. Access is
  * verified first, then each file is saved, a pending record created, and
  * background processing kicked off per file. The frontend polls
- * GET /api/campaigns/:campaignId for live status.
+ * GET /api/campaigns/:campaignId for live status. Each invoice is attributed
+ * to the uploading user; non-privileged users only ever see their own.
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  await requireCampaignAccess(event, campaignId);
+  const { user, rights } = await requireCampaignAccess(event, campaignId);
+  if (!rights.canUpload) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "该活动当前不可上传（未开放或已截止/归档）",
+    });
+  }
 
   const form = await readMultipartFormData(event);
   if (!form)
@@ -53,6 +60,7 @@ export default defineEventHandler(async (event) => {
 
     const inv = await AppDataSource.getRepository(Invoice).save({
       campaignId,
+      uploaderId: user.id,
       filename: pureName,
       savedPath,
       fileType: isPdf ? "pdf" : "image",

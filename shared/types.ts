@@ -24,8 +24,8 @@ export interface AuthUser {
 // ── Organizations (Better Auth organization plugin) ──────────────────────
 // Wire shapes of the /api/auth/organization/* endpoints, shared by the client.
 
-/** Organization membership roles (Better Auth defaults). */
-export type OrgRole = "owner" | "admin" | "member";
+/** Organization membership roles. The five built-in tiers (GitHub-like). */
+export type OrgRole = "owner" | "admin" | "editor" | "viewer" | "member";
 
 /** A GitHub-style organization a user belongs to or owns. */
 export interface Organization {
@@ -74,6 +74,12 @@ export type InvoiceStatus =
   | "unqualified" // neither title nor tax id matches
   | "error"; // extraction failed
 
+/** Two-step review flow state (invoice submission lifecycle). */
+export type ReviewState = "draft" | "submitted" | "approved" | "rejected";
+
+export type CampaignVisibility = "public" | "internal" | "private";
+export type CampaignStatus = "active" | "closed" | "archived";
+
 /**
  * A reimbursement campaign as seen by the client. `organizationId` is null for a
  * personal campaign owned solely by `userId`, or an org id for an org-scoped one.
@@ -85,15 +91,39 @@ export interface CampaignPublic {
   name: string;
   expectedTitle: string;
   expectedTaxId: string | null;
+  visibility: CampaignVisibility;
+  searchable: boolean;
+  status: CampaignStatus;
+  visibilityConfirmed: boolean;
   createdAt: string;
+}
+
+/**
+ * The caller's effective rights on a campaign — the most permissive merge of
+ * their org role, campaign-manager status (creator), and collaborator grant.
+ * `legacy` marks not-yet-migrated org campaigns that keep the pre-platform
+ * semantics (every org member: view-all / upload / review).
+ */
+export interface CampaignRights {
+  legacy: boolean;
+  canViewCampaign: boolean;
+  /** See ALL invoices incl. others'; otherwise only the caller's own. */
+  canViewAll: boolean;
+  canUpload: boolean;
+  canReview: boolean;
+  canExport: boolean;
+  /** Change campaign settings / manage collaborators. */
+  canManage: boolean;
 }
 
 export interface InvoicePublic {
   id: number;
   campaignId: number;
+  uploaderId: string | null;
   filename: string;
   fileType: "pdf" | "image";
   status: InvoiceStatus;
+  reviewState: ReviewState;
   reason: string | null;
   extractedTitle: string | null;
   extractedTaxId: string | null;

@@ -12,6 +12,10 @@ function toPublic(c: Campaign): CampaignPublic {
     name: c.name,
     expectedTitle: c.expectedTitle,
     expectedTaxId: c.expectedTaxId,
+    visibility: c.visibility,
+    searchable: c.searchable,
+    status: c.status,
+    visibilityConfirmed: c.visibilityConfirmed,
     createdAt: c.createdAt.toISOString(),
   };
 }

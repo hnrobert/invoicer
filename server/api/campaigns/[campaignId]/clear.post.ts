@@ -3,14 +3,26 @@ import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
 
-/** Remove all uploaded files + records in a campaign, keeping the campaign itself. */
+/**
+ * Remove uploaded files + records in a campaign, keeping the campaign itself.
+ * Privileged users (canManage / canReview / legacy mode) clear the WHOLE
+ * campaign; everyone else (plain member / collaborator / public uploader)
+ * clears only their own uploads.
+ */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  await requireCampaignAccess(event, campaignId);
+  const { user, rights } = await requireCampaignAccess(event, campaignId);
+  const clearAll = rights.canManage || rights.canReview;
 
   const repo = AppDataSource.getRepository(Invoice);
-  const rows = await repo.find({ where: { campaignId } });
+  const where = clearAll
+    ? { campaignId }
+    : { campaignId, uploaderId: user.id };
+  const rows = await repo.find({ where });
   for (const r of rows) await unlink(r.savedPath).catch(() => {});
-  await repo.delete({ campaignId });
-  return { ok: true, msg: "已清除上传文件" };
+  await repo.delete(where);
+  return {
+    ok: true,
+    msg: clearAll ? "已清除全部上传文件" : "已清除你的上传文件",
+  };
 });

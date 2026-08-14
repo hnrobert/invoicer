@@ -24,7 +24,12 @@ const STATUS_LABEL: Record<string, string> = {
 /** Email a campaign's audit report (table + total) to a recipient. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { campaign } = await requireCampaignAccess(event, campaignId);
+  const { campaign, rights } = await requireCampaignAccess(event, campaignId);
+  // The report contains everyone's invoices — an export-grade action. Legacy
+  // campaigns keep the old behavior (any member may send it).
+  if (!rights.canExport && !rights.legacy) {
+    throw createError({ statusCode: 403, statusMessage: "无导出/报告权限" });
+  }
   const { to } = await readBody<{ to?: string }>(event);
   if (!to)
     throw createError({ statusCode: 400, statusMessage: "请填写收件人邮箱" });

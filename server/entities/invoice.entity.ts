@@ -1,15 +1,18 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
-import type { InvoiceStatus } from "#shared/types";
+import type { InvoiceStatus, ReviewState } from "#shared/types";
 
 /**
  * A single uploaded invoice file and its audit outcome. `campaignId` is a plain
  * integer FK into `campaigns` (no TypeORM relation decorator — same convention
  * as the reference project). The extracted text/OCR result is cached in
- * `rawText` for debugging.
+ * `rawText` for debugging. `uploaderId` owns the invoice — non-privileged
+ * users only ever see their own; legacy rows are backfilled to the campaign
+ * creator.
  */
 @Entity({ name: "invoices" })
 @Index("idx_invoices_campaign", ["campaignId"])
 @Index("idx_invoices_status", ["status"])
+@Index("idx_invoices_uploader", ["uploaderId"])
 export class Invoice {
   @PrimaryGeneratedColumn("increment", {
     type: "integer",
@@ -19,6 +22,10 @@ export class Invoice {
 
   @Column({ name: "campaign_id", type: "integer", nullable: false })
   campaignId!: number;
+
+  /** Who uploaded this invoice (FK into Better Auth `user`). */
+  @Column({ name: "uploader_id", type: "text", nullable: true })
+  uploaderId!: string | null;
 
   @Column({ type: "text", nullable: false })
   filename!: string;
@@ -33,6 +40,19 @@ export class Invoice {
 
   @Column({ type: "text", nullable: false, default: "pending" })
   status!: InvoiceStatus;
+
+  /**
+   * Two-step review flow: draft (uploader may re-upload/delete) → submitted
+   * (locked, awaiting review) → approved / rejected. Legacy rows are
+   * backfilled to `approved`. Not yet enforced — the flow lands in batch 2.
+   */
+  @Column({
+    name: "review_state",
+    type: "text",
+    nullable: false,
+    default: "draft",
+  })
+  reviewState!: ReviewState;
 
   @Column({ type: "text", nullable: true })
   reason!: string | null;
