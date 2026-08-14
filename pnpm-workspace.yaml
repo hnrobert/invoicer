@@ -2,7 +2,12 @@
 # native-build dependencies so pnpm doesn't prompt/skip their install scripts.
 # pnpm v11 reads `allowBuilds` (a map of package -> bool).
 allowBuilds:
-  better-sqlite3: true
+  # better-sqlite3 v13+ ships N-API prebuilds INSIDE the package
+  # (prebuilds/<platform>-<arch>.node, loaded at require time — no install
+  # script). Allowing its "build" makes pnpm run node-gyp on the bundled
+  # binding.gyp (npm legacy behavior), which needs python + a C toolchain and
+  # fails in slim images. False is correct: the prebuilds are the runtime path.
+  better-sqlite3: false
   esbuild: true
   "@parcel/watcher": true
   tesseract.js: true
