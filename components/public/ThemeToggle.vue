@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { useColorMode } from '@vueuse/core'
-import { Sun, Moon } from 'lucide-vue-next'
+import { useColorMode } from "@vueuse/core";
+import { Sun, Moon } from "lucide-vue-next";
+
+const { t } = useI18n();
 
 // Class-based dark mode on <html>, sharing the `vg.theme` storage key used by
 // the no-FOUC inline script in nuxt.config.ts.
-const mode = useColorMode({ storageKey: 'vg.theme' })
+const mode = useColorMode({ storageKey: "vg.theme" });
 
 function toggle() {
-  mode.value = mode.value === 'dark' ? 'light' : 'dark'
+  mode.value = mode.value === "dark" ? "light" : "dark";
 }
 </script>
 
 <template>
   <button
     type="button"
-    :aria-label="mode === 'dark' ? '切换到浅色' : '切换到深色'"
+    :aria-label="mode === 'dark' ? t('theme.toLight') : t('theme.toDark')"
     class="inline-flex size-9 items-center justify-center rounded-md border bg-background text-foreground transition-colors hover:bg-accent"
     @click="toggle"
   >

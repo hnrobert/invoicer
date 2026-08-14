@@ -4,7 +4,7 @@
 allowBuilds:
   better-sqlite3: true
   esbuild: true
-  '@parcel/watcher': true
+  "@parcel/watcher": true
   tesseract.js: true
   vue-demi: true
   # canvas is an optional transitive dep of tesseract.js (server-side image

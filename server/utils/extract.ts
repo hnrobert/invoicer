@@ -1,4 +1,4 @@
-import { extractText, getDocumentProxy } from 'unpdf'
+import { extractText, getDocumentProxy } from "unpdf";
 
 /**
  * Extract the embedded text layer from a PDF (Chinese e-invoices are text-based
@@ -6,7 +6,7 @@ import { extractText, getDocumentProxy } from 'unpdf'
  * caller leaves those for manual review (we deliberately do NOT OCR PDFs).
  */
 export async function extractPdfText(data: Uint8Array): Promise<string> {
-  const pdf = await getDocumentProxy(data)
-  const { text } = await extractText(pdf, { mergePages: true })
-  return text ?? ''
+  const pdf = await getDocumentProxy(data);
+  const { text } = await extractText(pdf, { mergePages: true });
+  return text ?? "";
 }

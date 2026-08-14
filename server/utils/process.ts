@@ -1,11 +1,11 @@
-import { readFile } from 'node:fs/promises'
-import { AppDataSource } from './database'
-import { Invoice } from '#server/entities/invoice.entity'
-import { ReviewSession } from '#server/entities/reviewSession.entity'
-import { extractPdfText } from './extract'
-import { ocrImage } from './ocr'
-import { extractInvoiceFields } from './fields'
-import { matchInvoice } from './match'
+import { readFile } from "node:fs/promises";
+import { AppDataSource } from "./database";
+import { Invoice } from "#server/entities/invoice.entity";
+import { Campaign } from "#server/entities/campaign.entity";
+import { extractPdfText } from "./extract";
+import { ocrImage } from "./ocr";
+import { extractInvoiceFields } from "./fields";
+import { matchInvoice } from "./match";
 
 /**
  * Process one invoice end-to-end: extract text (PDF text layer, or OCR for
@@ -16,38 +16,45 @@ import { matchInvoice } from './match'
  * than silently falling back to OCR (only image inputs use OCR, per the spec).
  */
 export async function processInvoice(invoiceId: number): Promise<void> {
-  const repo = AppDataSource.getRepository(Invoice)
-  const inv = await repo.findOneBy({ id: invoiceId })
-  if (!inv) return
+  const repo = AppDataSource.getRepository(Invoice);
+  const inv = await repo.findOneBy({ id: invoiceId });
+  if (!inv) return;
 
-  await repo.update({ id: invoiceId }, { status: 'processing', reason: '正在识别…' })
+  await repo.update(
+    { id: invoiceId },
+    { status: "processing", reason: "正在识别…" },
+  );
 
-  const session = await AppDataSource.getRepository(ReviewSession).findOneBy({
-    id: inv.sessionId,
-  })
+  const campaign = await AppDataSource.getRepository(Campaign).findOneBy({
+    id: inv.campaignId,
+  });
 
   try {
-    let text: string
-    if (inv.fileType === 'pdf') {
-      const buf = await readFile(inv.savedPath)
-      text = await extractPdfText(new Uint8Array(buf))
+    let text: string;
+    if (inv.fileType === "pdf") {
+      const buf = await readFile(inv.savedPath);
+      text = await extractPdfText(new Uint8Array(buf));
       if (!text.trim()) {
         await repo.update(
           { id: invoiceId },
           {
-            status: 'review',
-            reason: 'PDF 未提取到文本（可能为扫描件，请以图片上传或手动审核）',
+            status: "review",
+            reason: "PDF 未提取到文本（可能为扫描件，请以图片上传或手动审核）",
             processedAt: new Date(),
           },
-        )
-        return
+        );
+        return;
       }
     } else {
-      text = await ocrImage(inv.savedPath)
+      text = await ocrImage(inv.savedPath);
     }
 
-    const fields = extractInvoiceFields(text)
-    const m = matchInvoice(fields, session?.expectedTitle ?? '', session?.expectedTaxId ?? null)
+    const fields = extractInvoiceFields(text);
+    const m = matchInvoice(
+      fields,
+      campaign?.expectedTitle ?? "",
+      campaign?.expectedTaxId ?? null,
+    );
 
     await repo.update(
       { id: invoiceId },
@@ -61,17 +68,17 @@ export async function processInvoice(invoiceId: number): Promise<void> {
         rawText: text.slice(0, 20000),
         processedAt: new Date(),
       },
-    )
+    );
   } catch (e) {
     await repo.update(
       { id: invoiceId },
       {
-        status: 'error',
-        reason: '识别异常',
+        status: "error",
+        reason: "识别异常",
         error: e instanceof Error ? e.message : String(e),
         processedAt: new Date(),
       },
-    )
-    console.error(`[process] invoice ${invoiceId} failed:`, e)
+    );
+    console.error(`[process] invoice ${invoiceId} failed:`, e);
   }
 }

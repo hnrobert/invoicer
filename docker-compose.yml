@@ -14,5 +14,19 @@ services:
       DB_PATH: /app/data/app.db
       UPLOADS_DIR: /app/uploads
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      # Better Auth: ≥32-char secret (falls back to a dev-only value if unset).
+      # Reuse SESSION_SECRET when it is long enough, else set BETTER_AUTH_SECRET.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-${SESSION_SECRET:-invoicer-dev-better-auth-secret-replace-in-prod-0123456789}}
+      BETTER_AUTH_URL: ${SITE_URL:-http://localhost:3000}
       SITE_URL: ${SITE_URL:-}
+      # OAuth providers (optional — a provider is enabled only when both its
+      # credentials are present). Both are built-in Better Auth providers.
+      # GitHub OAuth App callback URL:
+      #   ${SITE_URL}/api/auth/callback/github
+      # WeChat Open Platform callback URL:
+      #   ${SITE_URL}/api/auth/callback/wechat
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
     restart: unless-stopped

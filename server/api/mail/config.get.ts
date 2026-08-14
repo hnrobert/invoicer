@@ -1,5 +1,5 @@
-import { getMailConfig, mailConfigToClient } from '#server/utils/mail'
+import { getMailConfig, mailConfigToClient } from "#server/utils/mail";
 
 export default defineEventHandler(async () => {
-  return { ok: true, config: mailConfigToClient(await getMailConfig()) }
-})
+  return { ok: true, config: mailConfigToClient(await getMailConfig()) };
+});

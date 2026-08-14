@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.13.0",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
@@ -16,8 +18,10 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@nuxtjs/i18n": "^10.6.0",
     "@tailwindcss/vite": "^4.1.0",
     "@vueuse/core": "^12.0.0",
+    "better-auth": "^1.6.27",
     "better-sqlite3": "^13.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

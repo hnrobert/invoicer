@@ -3,7 +3,7 @@
  * these are bundled (keeps the public verify page small); custom crests use the
  * image-upload path instead. Expanded as needed in Phase 9 (IconPicker).
  */
-import type { Component } from 'vue'
+import type { Component } from "vue";
 import {
   ArrowLeft,
   ArrowRight,
@@ -33,6 +33,7 @@ import {
   Fingerprint,
   Flag,
   Gift,
+  Github,
   Globe,
   GraduationCap,
   Heart,
@@ -67,6 +68,7 @@ import {
   RefreshCw,
   ReceiptText,
   CircleDollarSign,
+  FolderOpen,
   FolderUp,
   Filter,
   ScanLine,
@@ -91,9 +93,10 @@ import {
   User,
   UserCheck,
   UserPlus,
+  UserCircle,
   Users,
   X,
-} from 'lucide-vue-next'
+} from "lucide-vue-next";
 
 export const iconRegistry: Record<string, Component> = {
   ArrowLeft,
@@ -124,6 +127,7 @@ export const iconRegistry: Record<string, Component> = {
   Fingerprint,
   Flag,
   Gift,
+  Github,
   Globe,
   GraduationCap,
   Heart,
@@ -158,6 +162,7 @@ export const iconRegistry: Record<string, Component> = {
   RefreshCw,
   ReceiptText,
   CircleDollarSign,
+  FolderOpen,
   FolderUp,
   Filter,
   ScanLine,
@@ -182,6 +187,7 @@ export const iconRegistry: Record<string, Component> = {
   User,
   UserCheck,
   UserPlus,
+  UserCircle,
   Users,
   X,
-}
+};

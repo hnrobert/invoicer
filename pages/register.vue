@@ -1,0 +1,142 @@
+<script setup lang="ts">
+import type { ProviderId } from "~/composables/useAuth";
+
+definePageMeta({ layout: "auth", middleware: "guest" });
+
+const { t } = useI18n();
+const { signUpEmail, signInSocial } = useAuth();
+const { list: providerList } = useOAuthProviders();
+
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const confirm = ref("");
+const loading = ref(false);
+
+async function onSubmit() {
+  if (password.value !== confirm.value) {
+    toast.error(t("auth.register.passwordMismatch"));
+    return;
+  }
+  loading.value = true;
+  try {
+    await signUpEmail(
+      name.value.trim() || email.value.split("@")[0]!,
+      email.value.trim(),
+      password.value,
+    );
+    await navigateTo("/");
+  } catch (e) {
+    toast.error(messageFromError(e, t("auth.register.failed")));
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function onOAuth(provider: ProviderId) {
+  try {
+    await signInSocial(provider);
+  } catch (e) {
+    toast.error(messageFromError(e, t("auth.oauth.failed")));
+  }
+}
+</script>
+
+<template>
+  <Card>
+    <CardHeader>
+      <CardTitle>{{ t("auth.register.title") }}</CardTitle>
+      <CardDescription>{{ t("auth.register.desc") }}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
+        <div class="flex flex-col gap-2">
+          <Label for="name">{{ t("auth.register.nameLabel") }}</Label>
+          <Input
+            id="name"
+            v-model="name"
+            :placeholder="t('auth.register.namePlaceholder')"
+            autocomplete="name"
+            :disabled="loading"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <Label for="email">{{ t("auth.register.emailLabel") }}</Label>
+          <Input
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            :disabled="loading"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <Label for="password">{{ t("auth.register.passwordLabel") }}</Label>
+          <Input
+            id="password"
+            v-model="password"
+            type="password"
+            :placeholder="t('auth.register.passwordHint')"
+            autocomplete="new-password"
+            :disabled="loading"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <Label for="confirm">{{ t("auth.register.confirmLabel") }}</Label>
+          <Input
+            id="confirm"
+            v-model="confirm"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="new-password"
+            :disabled="loading"
+          />
+        </div>
+        <Button type="submit" :disabled="loading" class="mt-1">
+          {{
+            loading ? t("auth.register.submitting") : t("auth.register.submit")
+          }}
+        </Button>
+
+        <template v-if="providerList.length">
+          <div class="relative my-1">
+            <div class="absolute inset-0 flex items-center">
+              <span class="w-full border-t" />
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+              <span class="bg-card px-2 text-muted-foreground">{{
+                t("auth.oauth.or")
+              }}</span>
+            </div>
+          </div>
+          <Button
+            v-for="provider in providerList"
+            :key="provider"
+            type="button"
+            variant="outline"
+            @click="onOAuth(provider)"
+          >
+            <Icon
+              :spec="provider === 'github' ? 'Github' : 'MessageCircle'"
+              :size="16"
+            />
+            {{
+              provider === "github"
+                ? t("auth.oauth.github")
+                : t("auth.oauth.wechat")
+            }}
+          </Button>
+        </template>
+      </form>
+    </CardContent>
+    <CardFooter class="justify-center text-sm text-muted-foreground">
+      {{ t("auth.register.haveAccount") }}
+      <NuxtLink
+        to="/login"
+        class="ml-1 font-medium text-foreground underline hover:opacity-70"
+        >{{ t("auth.register.loginLink") }}</NuxtLink
+      >
+    </CardFooter>
+  </Card>
+</template>
