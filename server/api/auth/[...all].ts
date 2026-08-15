@@ -26,6 +26,17 @@ export default defineEventHandler(async (event) => {
   )) as Record<string, unknown> & { email?: unknown };
   const email = typeof raw.email === "string" ? raw.email.trim().toLowerCase() : "";
 
+  if (isSignUp) {
+    // Username policy: letters (both cases), digits, hyphen, underscore only.
+    const name = typeof raw.name === "string" ? raw.name.trim() : "";
+    if (!/^[A-Za-z0-9_-]{1,39}$/.test(name)) {
+      throw createError({
+        statusCode: 400,
+        message: "用户名仅可包含大小写字母、数字、- 和 _（1-39 个字符）。",
+      });
+    }
+  }
+
   if (isSignUp && email) {
     const owner = await findEmailOwner(email);
     if (owner) {

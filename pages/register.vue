@@ -13,18 +13,21 @@ const password = ref("");
 const confirm = ref("");
 const loading = ref(false);
 
+// Username charset: letters (both cases), digits, hyphen, underscore.
+const USERNAME_RE = /^[A-Za-z0-9_-]+$/;
+
 async function onSubmit() {
   if (password.value !== confirm.value) {
     toast.error(t("auth.register.passwordMismatch"));
     return;
   }
+  if (!USERNAME_RE.test(name.value.trim())) {
+    toast.error(t("auth.register.nameInvalid"));
+    return;
+  }
   loading.value = true;
   try {
-    await signUpEmail(
-      name.value.trim() || email.value.split("@")[0]!,
-      email.value.trim(),
-      password.value,
-    );
+    await signUpEmail(name.value.trim(), email.value.trim(), password.value);
     await navigateTo("/");
   } catch (e) {
     toast.error(messageFromError(e, t("auth.register.failed")));
@@ -56,9 +59,16 @@ async function onOAuth(provider: ProviderId) {
             id="name"
             v-model="name"
             :placeholder="t('auth.register.namePlaceholder')"
-            autocomplete="name"
+            autocomplete="username"
+            maxlength="39"
+            :pattern="'[A-Za-z0-9_-]+'"
+            :title="t('auth.register.nameHint')"
+            required
             :disabled="loading"
           />
+          <p class="text-xs text-muted-foreground">
+            {{ t("auth.register.nameHint") }}
+          </p>
         </div>
         <div class="flex flex-col gap-2">
           <Label for="email">{{ t("auth.register.emailLabel") }}</Label>

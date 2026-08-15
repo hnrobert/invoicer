@@ -44,8 +44,10 @@
     register: {
       title: "创建账号",
       desc: "注册后即可发起自己的发票审核会话。",
-      nameLabel: "姓名",
-      namePlaceholder: "你的名字",
+      nameLabel: "用户名",
+      namePlaceholder: "your-name",
+      nameHint: "仅限大小写字母、数字、- 和 _，1-39 个字符。",
+      nameInvalid: "用户名仅可包含大小写字母、数字、- 和 _",
       emailLabel: "邮箱",
       passwordLabel: "密码",
       passwordHint: "至少 8 位",

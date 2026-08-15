@@ -16,4 +16,4 @@ allowBuilds:
   # preprocessing); we don't need it, so skip its heavy native build.
   canvas: false
 minimumReleaseAgeExclude:
-  - email-poster@0.3.4
+  - email-poster@0.3.4 || 0.3.7

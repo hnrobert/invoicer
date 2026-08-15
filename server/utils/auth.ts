@@ -27,6 +27,34 @@ mkdirSync(dirname(dbPath), { recursive: true });
 export const authDb = new Database(dbPath);
 authDb.pragma("journal_mode = WAL");
 
+/**
+ * Startup self-check: better-auth does NOT auto-create its tables (unlike
+ * TypeORM's synchronize), so a fresh/rebuilt DB file makes every auth call die
+ * with "no such table: user". Ensure the schema exists — DDL is byte-identical
+ * to what `@better-auth/cli migrate` generates (incl. the organization plugin
+ * tables), kept idempotent via CREATE TABLE IF NOT EXISTS so upgrades should
+ * still run the CLI. Executed as one batch; better-sqlite3 exec() accepts
+ * multi-statement strings.
+ */
+function ensureAuthTables(): void {
+  const hasUser = authDb
+    .prepare("SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='user'")
+    .get() as { ok: number } | undefined;
+  if (hasUser) return;
+  console.log("[auth] better-auth tables missing — creating schema…");
+  authDb.exec(`
+    CREATE TABLE IF NOT EXISTS "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" integer not null, "image" text, "createdAt" date not null, "updatedAt" date not null);
+    CREATE TABLE IF NOT EXISTS "session" ("id" text not null primary key, "expiresAt" date not null, "token" text not null unique, "createdAt" date not null, "updatedAt" date not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade, "activeOrganizationId" text);
+    CREATE TABLE IF NOT EXISTS "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" date, "refreshTokenExpiresAt" date, "scope" text, "password" text, "createdAt" date not null, "updatedAt" date not null);
+    CREATE TABLE IF NOT EXISTS "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" date not null, "createdAt" date not null, "updatedAt" date not null);
+    CREATE TABLE IF NOT EXISTS "organization" ("id" text not null primary key, "name" text not null, "slug" text not null unique, "logo" text, "createdAt" date not null, "metadata" text);
+    CREATE TABLE IF NOT EXISTS "member" ("id" text not null primary key, "organizationId" text not null references "organization" ("id") on delete cascade, "userId" text not null references "user" ("id") on delete cascade, "role" text not null, "createdAt" date not null);
+    CREATE TABLE IF NOT EXISTS "invitation" ("id" text not null primary key, "organizationId" text not null references "organization" ("id") on delete cascade, "email" text not null, "role" text, "status" text not null, "expiresAt" date not null, "createdAt" date not null, "inviterId" text not null references "user" ("id") on delete cascade);
+  `);
+  console.log("[auth] better-auth schema created (7 tables)");
+}
+ensureAuthTables();
+
 export const auth = betterAuth({
   database: authDb,
   baseURL:

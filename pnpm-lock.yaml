@@ -33,8 +33,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       email-poster:
-        specifier: file:../email-poster
-        version: file:../email-poster(vue@3.5.41(typescript@5.9.2))
+        specifier: ^0.3.7
+        version: 0.3.7(vue@3.5.41(typescript@5.9.2))
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
@@ -2878,8 +2878,8 @@ packages:
   electron-to-chromium@1.5.405:
     resolution: {integrity: sha512-bNglH7lPH5l+yHOes7Zr4VqxhOy4BQ9ZBUX4VdoFgxMpzJk7W1ZoO3Vgd9Pxa9PyjQ76sfm2aKH/nzEcCNRlew==}
 
-  email-poster@file:../email-poster:
-    resolution: {directory: ../email-poster, type: directory}
+  email-poster@0.3.7:
+    resolution: {integrity: sha512-/MMyZxnMdiOowJ4MNakY0SyYg6Ytp/K8tUgJh0CSCq761bSmaWGxsMf46+U6ZFimPZTHINeCd2HyGyCP0jfhVA==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -8231,7 +8231,7 @@ snapshots:
 
   electron-to-chromium@1.5.405: {}
 
-  email-poster@file:../email-poster(vue@3.5.41(typescript@5.9.2)):
+  email-poster@0.3.7(vue@3.5.41(typescript@5.9.2)):
     dependencies:
       vue: 3.5.41(typescript@5.9.2)
       zod: 3.23.8

@@ -44,8 +44,10 @@
     register: {
       title: "Create account",
       desc: "Register to run your own invoice audit sessions.",
-      nameLabel: "Name",
-      namePlaceholder: "Your name",
+      nameLabel: "Username",
+      namePlaceholder: "your-name",
+      nameHint: "Letters (a-z, A-Z), digits, - and _ only; 1-39 characters.",
+      nameInvalid: "Username may only contain letters, digits, - and _",
       emailLabel: "Email",
       passwordLabel: "Password",
       passwordHint: "Minimum 8 characters",
