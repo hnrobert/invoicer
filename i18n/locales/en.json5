@@ -1,7 +1,7 @@
 {
   // ── site identity ──────────────────────────────────────────────
   site: {
-    title: "Invoice Audit",
+    title: "Invoicer",
     subtitle: "Server-side text extraction + OCR for invoice title / tax ID / amount verification",
   },
 
@@ -19,11 +19,13 @@
   },
   lang: {
     switch: "Switch language",
+    zh: "中文",
+    en: "English",
   },
 
   // ── footer ─────────────────────────────────────────────────────
   footer: {
-    note: "PDF / image only · amount taken from 价税合计 (total)",
+    note: "PDF / image only · amount taken from the tax-inclusive total",
   },
 
   // ── account (login / register) ─────────────────────────────────
@@ -198,7 +200,7 @@
 
   // ── home (3-step audit workflow) ───────────────────────────────
   home: {
-    title: "Invoice Audit",
+    title: "Invoicer",
     step1: {
       title: "New reimbursement campaign",
       desc: "Choose a scope, name the campaign, and provide the buyer title / tax ID to verify against. Uploaded invoices are matched to them.",

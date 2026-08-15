@@ -2,14 +2,12 @@ import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess, usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal } from "#server/utils/serialize";
-import { renderEmail } from "#server/mail/render";
+import { renderCardEmail, escapeHtml } from "email-poster/template";
+import { siteTheme } from "#server/mail/theme";
 import { sendMail } from "#server/utils/mail";
 
 function esc(s: string | null | undefined): string {
-  return (s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  return escapeHtml(s ?? "");
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -71,11 +69,14 @@ export default defineEventHandler(async (event) => {
     </table>
     <p style="margin:12px 0 0;color:#6b7280;font-size:12px;">抬头：${esc(campaign.expectedTitle)} · 税号：${esc(campaign.expectedTaxId)}</p>`;
 
-  const html = renderEmail({
-    title: "发票审核结果",
-    bodyHtml,
-    preheader: `合规金额 ¥${total.toFixed(2)} · 共 ${invoices.length} 张`,
-  });
+  const html = renderCardEmail(
+    {
+      title: "发票审核结果",
+      bodyHtml,
+      preheader: `合规金额 ¥${total.toFixed(2)} · 共 ${invoices.length} 张`,
+    },
+    siteTheme(),
+  );
 
   const messageId = await sendMail({
     to,

@@ -3,7 +3,6 @@ import type { CampaignPublic, InvoicePublic } from "#shared/types";
 
 definePageMeta({ layout: "default" });
 const { t } = useI18n();
-useHead({ title: () => t("home.title") });
 
 const inv = useInvoice();
 const { organizations, activeOrganization } = useOrgs();

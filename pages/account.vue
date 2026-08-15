@@ -231,7 +231,7 @@ onMounted(refreshEmails);
               "
               @click="setLocale(l.code)"
             >
-              {{ l.name }}
+              {{ t(`lang.${l.code}`) }}
             </button>
           </div>
         </div>

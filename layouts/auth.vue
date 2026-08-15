@@ -17,7 +17,11 @@ const { t } = useI18n();
         <div
           class="mb-6 flex items-center justify-center gap-2 text-base font-semibold sm:text-lg"
         >
-          <img src="/favicon.svg" alt="" class="size-9 shrink-0 rounded-xl" />
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-full border bg-background"
+          >
+            <img src="/favicon.svg" alt="" class="size-7" />
+          </span>
           <span class="whitespace-nowrap">{{ t("site.title") }}</span>
         </div>
         <slot />

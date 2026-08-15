@@ -2,13 +2,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 
-// The HTML email template is authored as a standalone file (email/template.html).
-// Read at config-eval time and shipped to the server via runtimeConfig so it
-// bundles reliably (Nitro serverAssets didn't). Edits require a dev restart.
-const emailTemplate = readFileSync(
-  fileURLToPath(new URL("./email/template.html", import.meta.url)),
-  "utf-8",
-);
+// The email body HTML comes from the email-poster preset templates
+// (server/mail/theme.ts). Only the site logo is baked here: read at
+// config-eval time and passed to the server via runtimeConfig as a base64
+// data URI so it renders in every client without external fetches.
 const emailLogo = `data:image/svg+xml;base64,${Buffer.from(
   readFileSync(fileURLToPath(new URL("./public/favicon.svg", import.meta.url))),
 ).toString("base64")}`;
@@ -35,6 +32,14 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      rolldownOptions: {
+        // PLUGIN_TIMINGS is informational only — Nuxt's resolveId hooks and
+        // Tailwind's CSS generation legitimately dominate a build this size,
+        // so the warning is noise rather than an actionable signal.
+        checks: { pluginTimings: false },
+      },
+    },
     optimizeDeps: {
       include: [
         "@vueuse/core",
@@ -63,7 +68,10 @@ export default defineNuxtConfig({
     strategy: "no_prefix",
     defaultLocale: "zh",
     locales: [
-      { code: "zh", language: "zh-CN", name: "中文", file: "zh.json5" },
+      // `name` is serialized into the client payload (never displayed — the
+      // account page renders labels via the lang.* i18n keys), so keep it
+      // ASCII to satisfy "no Chinese anywhere in the English payload".
+      { code: "zh", language: "zh-CN", name: "Chinese", file: "zh.json5" },
       { code: "en", language: "en-US", name: "English", file: "en.json5" },
     ],
     detectBrowserLanguage: {
@@ -79,7 +87,6 @@ export default defineNuxtConfig({
     dbPath: process.env.DB_PATH || "./data/app.db",
     uploadsDir: process.env.UPLOADS_DIR || "./uploads",
     siteUrl: process.env.SITE_URL || "",
-    emailTemplate,
     emailLogo,
   },
 
