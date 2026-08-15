@@ -110,11 +110,14 @@
     notFound: "Organization not found, or you are not a member.",
     tabs: { campaigns: "Campaigns", members: "Members", settings: "Settings" },
     settings: {
+      general: "General",
       visibility: "Organization visibility",
       visibilityDesc: "Private orgs stay off the plaza/search; their public campaigns remain reachable by link.",
       ownersOnly: "Only Owner / Admin can access organization settings.",
     },
     migration: {
+      nav: "Campaign migration",
+      none: "No campaigns awaiting migration.",
       badge: "Legacy",
       title: "Campaigns awaiting visibility decision",
       desc: "These campaigns still run the legacy model (all org members see every invoice). Choosing a visibility migrates them to the new permission model.",
@@ -156,6 +159,8 @@
       empty: "No entries",
     },
     transfer: {
+      nav: "Campaign transfers",
+      none: "No pending transfers.",
       title: "Pending transfers",
       accept: "Accept",
       reject: "Reject / cancel",
@@ -181,6 +186,20 @@
     rejected: "Invitation declined",
     activeOrg: "Active organization",
     selectOrg: "Select",
+  },
+
+  // ── site admin (superadmin) ─────────────────────────────────
+  admin: {
+    title: "Site admin",
+    denied: "Site admin access denied",
+    deniedDesc: "This page is restricted to site admins (SUPERADMIN_EMAILS).",
+    sections: { mail: "Mail delivery", users: "Users" },
+    users: {
+      verified: "Verified",
+      verifiedYes: "Verified",
+      verifiedNo: "Unverified",
+      joined: "Joined",
+    },
   },
 
   // ── in-app notifications ────────────────────────────────────
@@ -363,6 +382,8 @@
       emailPlaceholder: "Collaborator email (must be registered)",
     },
     transfer: {
+      noTarget: "You have no other organizations to transfer to.",
+      personalNone: "Personal campaigns cannot be transferred.",
       title: "Cross-org transfer",
       pick: "Pick a target org…",
       send: "Request transfer",

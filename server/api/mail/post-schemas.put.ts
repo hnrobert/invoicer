@@ -9,6 +9,7 @@ import { FieldMapSchema } from "email-poster";
  * server-side — shared, not per-browser.
  */
 export default defineEventHandler(async (event) => {
+  await requireSuperAdmin(event);
   const body = await readBody<Record<string, unknown>>(event);
   const raw = Array.isArray(body?.schemas) ? body.schemas : [];
 

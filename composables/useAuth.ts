@@ -34,6 +34,8 @@ export interface LinkedAccount {
 /** Reactive auth state + auth actions backed by Better Auth. */
 export function useAuth() {
   const user = useState<AuthUser | null>("auth:user", () => null);
+  /** Superadmin flag (SUPERADMIN_EMAILS) — gates the /admin surfaces. */
+  const isAdmin = useState<boolean>("auth:isAdmin", () => false);
 
   async function signInEmail(email: string, password: string): Promise<void> {
     const { data, error } = await authClient().signIn.email({
@@ -144,6 +146,7 @@ export function useAuth() {
 
   return {
     user,
+    isAdmin,
     signInEmail,
     signUpEmail,
     signOut,

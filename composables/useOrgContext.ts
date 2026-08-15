@@ -7,7 +7,7 @@ import type { OrgFull, OrgRole } from "#shared/types";
  * invitations), the caller's role, and the org's platform visibility.
  */
 export function useOrgContext(slug: string) {
-  const { organizations, getFull } = useOrgs();
+  const { organizations, getFull, refresh: refreshOrgs } = useOrgs();
   const { user } = useAuth();
 
   const org = computed(() =>
@@ -33,6 +33,9 @@ export function useOrgContext(slug: string) {
     loading.value = true;
     notFound.value = false;
     try {
+      // Direct navigation: the org list may not be populated yet — refresh it
+      // before concluding the org is unknown.
+      if (!org.value) await refreshOrgs().catch(() => {});
       if (!org.value) {
         notFound.value = true;
         return;

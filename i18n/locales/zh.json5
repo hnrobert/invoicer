@@ -110,11 +110,14 @@
     notFound: "组织不存在或你不是其成员。",
     tabs: { campaigns: "活动", members: "成员", settings: "设置" },
     settings: {
+      general: "通用",
       visibility: "组织可见性",
       visibilityDesc: "私密组织不进入广场/搜索；其公开活动仍可通过链接访问。",
       ownersOnly: "仅 Owner / Admin 可访问组织设置。",
     },
     migration: {
+      nav: "活动迁移",
+      none: "没有待迁移的活动。",
       badge: "待迁移",
       title: "待确认可见性的活动",
       desc: "以下活动仍沿用旧权限模型（组织全员可见全部发票）。为每个活动选择可见性后即迁移到新权限模型。",
@@ -157,6 +160,8 @@
       empty: "暂无记录",
     },
     transfer: {
+      nav: "活动转让",
+      none: "暂无待处理的转让。",
       title: "待处理的转让",
       accept: "接受",
       reject: "拒绝/取消",
@@ -182,6 +187,20 @@
     rejected: "已拒绝邀请",
     activeOrg: "当前组织",
     selectOrg: "选择",
+  },
+
+  // ── 站点管理（superadmin）───────────────────────────────────
+  admin: {
+    title: "站点管理",
+    denied: "无权访问站点管理",
+    deniedDesc: "该页面仅站点管理员（SUPERADMIN_EMAILS）可访问。",
+    sections: { mail: "邮件发送", users: "用户" },
+    users: {
+      verified: "邮箱验证",
+      verifiedYes: "已验证",
+      verifiedNo: "未验证",
+      joined: "注册时间",
+    },
   },
 
   // ── 站内通知 ─────────────────────────────────────────────────
@@ -364,6 +383,8 @@
       emailPlaceholder: "协作者邮箱（需已注册）",
     },
     transfer: {
+      noTarget: "你没有其他组织可作为转让目标。",
+      personalNone: "个人活动不支持跨组织转让。",
       title: "跨组织转让",
       pick: "选择目标组织…",
       send: "发起转让",

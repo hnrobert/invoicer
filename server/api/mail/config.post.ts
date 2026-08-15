@@ -4,6 +4,7 @@ import {
   type MailConfigInput,
 } from "#server/utils/mail";
 import { FieldMapSchema } from "email-poster";
+import { requireSuperAdmin } from "#server/utils/superadmin";
 
 const clampInt = (
   v: unknown,
@@ -20,6 +21,7 @@ const PROVIDERS = ["smtp", "post"] as const;
 const SCHEMAS = ["smtogo", "powerautomate"] as const;
 
 export default defineEventHandler(async (event) => {
+  await requireSuperAdmin(event);
   const body = await readBody<Record<string, unknown>>(event);
 
   const provider =

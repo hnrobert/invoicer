@@ -3,7 +3,7 @@
 // the right the "+" create dropdown, the notification bell, and an avatar
 // menu (account / mail settings / sign out). Themed (follows light/dark).
 const { t } = useI18n();
-const { user, signOut } = useAuth();
+const { user, isAdmin, signOut } = useAuth();
 const route = useRoute();
 
 const searchQ = ref((route.query.q as string) ?? "");
@@ -36,8 +36,9 @@ const userOpen = ref(false);
           }}</span>
         </NuxtLink>
 
-        <!-- search -->
-        <form class="relative ml-2 hidden max-w-md flex-1 sm:block" @submit.prevent="submitSearch">
+        <!-- search (right-aligned, before the action icons) -->
+        <div class="ml-auto flex items-center gap-1.5">
+        <form class="relative hidden w-64 sm:block md:w-72" @submit.prevent="submitSearch">
           <Icon
             spec="Search"
             :size="14"
@@ -51,7 +52,6 @@ const userOpen = ref(false);
           />
         </form>
 
-        <div class="ml-auto flex items-center gap-1.5">
           <template v-if="user">
             <!-- "+" create dropdown -->
             <div class="relative">
@@ -126,6 +126,15 @@ const userOpen = ref(false);
                 >
                   <Icon spec="UserCircle" :size="14" />
                   {{ t("account.title") }}
+                </NuxtLink>
+                <NuxtLink
+                  v-if="isAdmin"
+                  to="/admin/mail"
+                  class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+                  @click="userOpen = false"
+                >
+                  <Icon spec="ShieldCheck" :size="14" />
+                  {{ t("admin.title") }}
                 </NuxtLink>
                 <NuxtLink
                   to="/settings"

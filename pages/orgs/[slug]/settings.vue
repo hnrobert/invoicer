@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// GitHub org → Settings tab: visibility, custom roles, the legacy-campaign
-// migration panel, pending transfers, the audit log, and a danger zone
-// (leave / delete). Ported from the old /organizations page.
+// GitHub org → Settings: left section nav (General / Roles / Migration /
+// Transfers / Audit / Danger zone) + right content, driven by ?section=.
+// Owner/Admin only (server enforces every endpoint used here).
 import type { CampaignPublic } from "#shared/types";
 
 definePageMeta({ layout: "default" });
@@ -10,11 +10,20 @@ const route = useRoute();
 const slug = route.params.slug as string;
 useHead({ title: () => `${t("orgs.tabs.settings")} · ${slug}` });
 
+const section = computed(() =>
+  ["general", "roles", "migration", "transfers", "audit", "danger"].includes(
+    String(route.query.section),
+  )
+    ? (route.query.section as string)
+    : "general",
+);
+const secUrl = (key: string) => ({ path: route.path, query: { section: key } });
+
 const { org, full, loading, notFound, isPrivileged, myRole, visibility, load } =
   useOrgContext(slug);
 const { leave, remove } = useOrgs();
 
-// ---------- visibility ----------
+// ---------- general: visibility ----------
 async function setVisibility(v: "public" | "private") {
   if (!org.value) return;
   try {
@@ -29,7 +38,7 @@ async function setVisibility(v: "public" | "private") {
   }
 }
 
-// ---------- migration panel ----------
+// ---------- migration ----------
 const unconfirmed = ref<CampaignPublic[]>([]);
 async function loadUnconfirmed() {
   if (!org.value) return;
@@ -58,7 +67,7 @@ async function confirmCampaign(
   }
 }
 
-// ---------- custom roles ----------
+// ---------- roles ----------
 const customRoles = ref<{ name: string; baseRole: string }[]>([]);
 const newRoleName = ref("");
 const newRoleBase = ref("editor");
@@ -115,13 +124,7 @@ function roleLabel(r: string): string {
 
 // ---------- transfers ----------
 const transfers = ref<
-  {
-    id: number;
-    campaign: string;
-    incoming: boolean;
-    fromOrg: string;
-    toOrg: string;
-  }[]
+  { id: number; campaign: string; incoming: boolean; fromOrg: string; toOrg: string }[]
 >([]);
 async function loadTransfers() {
   if (!org.value) return;
@@ -153,29 +156,26 @@ async function cancelTransfer(id: number) {
 }
 
 // ---------- audit ----------
-const auditOpen = ref(false);
 const auditLogs = ref<
   { id: number; action: string; target: string; actorName: string; createdAt: string }[]
 >([]);
 const auditLoading = ref(false);
-async function openAudit() {
+async function loadAudit() {
   if (!org.value) return;
-  auditOpen.value = true;
   auditLoading.value = true;
   try {
     const data = await $fetch<{ logs: typeof auditLogs.value }>("/api/audit", {
       query: { orgId: org.value.id },
     });
     auditLogs.value = data.logs;
-  } catch (e) {
-    toast.error((e as Error).message);
+  } catch {
     auditLogs.value = [];
   } finally {
     auditLoading.value = false;
   }
 }
 
-// ---------- danger zone ----------
+// ---------- danger ----------
 async function onLeave() {
   if (!confirm(t("orgs.leaveConfirm"))) return;
   try {
@@ -195,10 +195,19 @@ async function onDelete() {
   }
 }
 
+const sections = computed(() => [
+  { key: "general", label: t("orgs.settings.general"), to: secUrl("general") },
+  { key: "roles", label: t("orgs.customRoles.title"), to: secUrl("roles") },
+  { key: "migration", label: t("orgs.migration.nav"), to: secUrl("migration") },
+  { key: "transfers", label: t("orgs.transfer.nav"), to: secUrl("transfers") },
+  { key: "audit", label: t("orgs.audit.title"), to: secUrl("audit") },
+  { key: "danger", label: t("orgs.danger.title"), to: secUrl("danger") },
+]);
+
 onMounted(async () => {
   await load();
   if (notFound.value || !isPrivileged.value) return;
-  await Promise.all([loadUnconfirmed(), loadRoles(), loadTransfers()]);
+  await Promise.all([loadUnconfirmed(), loadRoles(), loadTransfers(), loadAudit()]);
 });
 </script>
 
@@ -212,49 +221,77 @@ onMounted(async () => {
   <div v-else-if="org && full && isPrivileged" class="flex flex-col gap-6">
     <OrgHeader :slug="org.slug" :name="org.name" :visibility="visibility" show-settings />
 
-    <!-- visibility -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("orgs.settings.visibility") }}</CardTitle>
-        <CardDescription>{{ t("orgs.settings.visibilityDesc") }}</CardDescription>
-      </CardHeader>
-      <CardContent class="flex flex-wrap gap-2">
-        <Button
-          :variant="visibility === 'public' ? 'default' : 'outline'"
-          size="sm"
-          @click="setVisibility('public')"
-          >{{ t("orgs.vis.public") }}</Button
-        >
-        <Button
-          :variant="visibility === 'private' ? 'default' : 'outline'"
-          size="sm"
-          @click="setVisibility('private')"
-          >{{ t("orgs.vis.private") }}</Button
-        >
-        <Button variant="outline" size="sm" class="ml-auto" @click="openAudit">
-          <Icon spec="ScrollText" :size="14" />
-          {{ t("orgs.audit.title") }}
-        </Button>
-      </CardContent>
-    </Card>
+    <SettingsShell :title="t('orgs.tabs.settings')" :active="section" :sections="sections">
+      <!-- general -->
+      <div v-if="section === 'general'" class="flex flex-col gap-4">
+        <h3 class="text-base font-semibold">{{ t("orgs.settings.visibility") }}</h3>
+        <p class="text-sm text-muted-foreground">{{ t("orgs.settings.visibilityDesc") }}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button
+            :variant="visibility === 'public' ? 'default' : 'outline'"
+            size="sm"
+            @click="setVisibility('public')"
+            >{{ t("orgs.vis.public") }}</Button
+          >
+          <Button
+            :variant="visibility === 'private' ? 'default' : 'outline'"
+            size="sm"
+            @click="setVisibility('private')"
+            >{{ t("orgs.vis.private") }}</Button
+          >
+        </div>
+      </div>
 
-    <!-- migration panel -->
-    <Card v-if="unconfirmed.length">
-      <CardHeader>
-        <CardTitle class="text-amber-700 dark:text-amber-400">
+      <!-- roles -->
+      <div v-else-if="section === 'roles'" class="flex flex-col gap-3">
+        <h3 class="text-base font-semibold">{{ t("orgs.customRoles.title") }}</h3>
+        <p class="text-sm text-muted-foreground">{{ t("orgs.customRoles.desc") }}</p>
+        <div
+          v-for="r in customRoles"
+          :key="r.name"
+          class="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
+        >
+          <span class="font-medium">{{ r.name }}</span>
+          <span class="text-xs text-muted-foreground">· {{ roleLabel(r.baseRole) }}</span>
+          <Button variant="ghost" size="sm" class="ml-auto" @click="deleteRole(r.name)">
+            {{ t("orgs.remove") }}
+          </Button>
+        </div>
+        <p v-if="!customRoles.length" class="text-xs text-muted-foreground">
+          {{ t("orgs.customRoles.none") }}
+        </p>
+        <form class="flex flex-wrap gap-2" @submit.prevent="addRole">
+          <Input
+            v-model="newRoleName"
+            :placeholder="t('orgs.customRoles.namePlaceholder')"
+            class="w-40"
+          />
+          <select v-model="newRoleBase" class="h-9 rounded-md border bg-background px-3 text-sm">
+            <option v-for="b in ['admin', 'editor', 'viewer', 'member']" :key="b" :value="b">
+              {{ roleLabel(b) }}
+            </option>
+          </select>
+          <Button type="submit" variant="outline" :disabled="!newRoleName.trim()">
+            {{ t("home.collab.add") }}
+          </Button>
+        </form>
+      </div>
+
+      <!-- migration -->
+      <div v-else-if="section === 'migration'" class="flex flex-col gap-3">
+        <h3 class="text-base font-semibold">
           {{ t("orgs.migration.title") }} ({{ unconfirmed.length }})
-        </CardTitle>
-        <CardDescription>{{ t("orgs.migration.desc") }}</CardDescription>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-2">
+        </h3>
+        <p class="text-sm text-muted-foreground">{{ t("orgs.migration.desc") }}</p>
+        <p v-if="!unconfirmed.length" class="text-sm text-muted-foreground">
+          {{ t("orgs.migration.none") }}
+        </p>
         <div
           v-for="c in unconfirmed"
           :key="c.id"
           class="flex flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
         >
-          <span class="min-w-0 flex-1 truncate font-medium">{{
-            c.name || c.expectedTitle
-          }}</span>
+          <span class="min-w-0 flex-1 truncate font-medium">{{ c.name || c.expectedTitle }}</span>
           <div class="flex gap-1">
             <Button
               v-for="v in ['internal', 'public', 'private'] as const"
@@ -267,65 +304,14 @@ onMounted(async () => {
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
 
-    <!-- custom roles -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("orgs.customRoles.title") }}</CardTitle>
-        <CardDescription>{{ t("orgs.customRoles.desc") }}</CardDescription>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-3">
-        <div
-          v-for="r in customRoles"
-          :key="r.name"
-          class="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          <span class="font-medium">{{ r.name }}</span>
-          <span class="text-xs text-muted-foreground">· {{ roleLabel(r.baseRole) }}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            class="ml-auto"
-            @click="deleteRole(r.name)"
-            >{{ t("orgs.remove") }}</Button
-          >
-        </div>
-        <p v-if="!customRoles.length" class="text-xs text-muted-foreground">
-          {{ t("orgs.customRoles.none") }}
+      <!-- transfers -->
+      <div v-else-if="section === 'transfers'" class="flex flex-col gap-3">
+        <h3 class="text-base font-semibold">{{ t("orgs.transfer.title") }}</h3>
+        <p v-if="!transfers.length" class="text-sm text-muted-foreground">
+          {{ t("orgs.transfer.none") }}
         </p>
-        <form class="flex flex-wrap gap-2" @submit.prevent="addRole">
-          <Input
-            v-model="newRoleName"
-            :placeholder="t('orgs.customRoles.namePlaceholder')"
-            class="w-40"
-          />
-          <select
-            v-model="newRoleBase"
-            class="h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option
-              v-for="b in ['admin', 'editor', 'viewer', 'member']"
-              :key="b"
-              :value="b"
-            >
-              {{ roleLabel(b) }}
-            </option>
-          </select>
-          <Button type="submit" variant="outline" :disabled="!newRoleName.trim()">
-            {{ t("home.collab.add") }}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-
-    <!-- pending transfers -->
-    <Card v-if="transfers.length">
-      <CardHeader>
-        <CardTitle>{{ t("orgs.transfer.title") }}</CardTitle>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-2">
         <div
           v-for="tr in transfers"
           :key="tr.id"
@@ -337,72 +323,56 @@ onMounted(async () => {
             class="text-muted-foreground"
           />
           <span class="min-w-0 flex-1 truncate font-medium">{{ tr.campaign }}</span>
-          <span class="text-xs text-muted-foreground">
-            {{ tr.fromOrg }} → {{ tr.toOrg }}
-          </span>
-          <Button v-if="tr.incoming" size="sm" @click="acceptTransfer(tr.id)">{{
-            t("orgs.transfer.accept")
-          }}</Button>
-          <Button variant="ghost" size="sm" @click="cancelTransfer(tr.id)">{{
-            t("orgs.transfer.reject")
-          }}</Button>
+          <span class="text-xs text-muted-foreground">{{ tr.fromOrg }} → {{ tr.toOrg }}</span>
+          <Button v-if="tr.incoming" size="sm" @click="acceptTransfer(tr.id)">
+            {{ t("orgs.transfer.accept") }}
+          </Button>
+          <Button variant="ghost" size="sm" @click="cancelTransfer(tr.id)">
+            {{ t("orgs.transfer.reject") }}
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
 
-    <!-- danger zone -->
-    <Card class="border-destructive/40">
-      <CardHeader>
-        <CardTitle class="text-destructive">{{ t("orgs.danger.title") }}</CardTitle>
-      </CardHeader>
-      <CardContent class="flex flex-wrap gap-2">
-        <Button v-if="myRole !== 'owner'" variant="outline" size="sm" @click="onLeave">
-          {{ t("orgs.leave") }}
-        </Button>
-        <Button variant="destructive" size="sm" @click="onDelete">
-          {{ t("orgs.delete") }}
-        </Button>
-      </CardContent>
-    </Card>
+      <!-- audit -->
+      <div v-else-if="section === 'audit'" class="flex flex-col gap-1">
+        <h3 class="mb-2 text-base font-semibold">{{ t("orgs.audit.title") }}</h3>
+        <div v-if="auditLoading" class="py-8 text-center text-sm text-muted-foreground">
+          {{ t("settings.loading") }}
+        </div>
+        <div
+          v-for="l in auditLogs"
+          :key="l.id"
+          class="flex flex-wrap items-baseline gap-x-2 border-b py-2 text-xs"
+        >
+          <span class="w-36 shrink-0 text-muted-foreground">
+            {{ new Date(l.createdAt).toLocaleString() }}
+          </span>
+          <span class="font-mono font-medium">{{ l.action }}</span>
+          <span v-if="l.target" class="text-muted-foreground">· {{ l.target }}</span>
+          <span class="ml-auto text-muted-foreground">{{ l.actorName }}</span>
+        </div>
+        <p
+          v-if="!auditLoading && !auditLogs.length"
+          class="py-8 text-center text-sm text-muted-foreground"
+        >
+          {{ t("orgs.audit.empty") }}
+        </p>
+      </div>
 
-    <!-- audit modal -->
-    <div
-      v-if="auditOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      @click.self="auditOpen = false"
-    >
-      <Card class="max-h-[80vh] w-full max-w-xl overflow-y-auto">
-        <CardHeader>
-          <CardTitle>{{ t("orgs.audit.title") }}</CardTitle>
-          <CardDescription>{{ t("orgs.audit.desc") }}</CardDescription>
-        </CardHeader>
-        <CardContent class="flex flex-col gap-1 text-sm">
-          <div v-if="auditLoading" class="py-8 text-center text-muted-foreground">
-            {{ t("settings.loading") }}
-          </div>
-          <div
-            v-for="l in auditLogs"
-            :key="l.id"
-            class="flex flex-wrap items-baseline gap-x-2 border-b py-2 text-xs last:border-0"
-          >
-            <span class="w-32 shrink-0 text-muted-foreground">{{
-              new Date(l.createdAt).toLocaleString()
-            }}</span>
-            <span class="font-mono font-medium">{{ l.action }}</span>
-            <span v-if="l.target" class="text-muted-foreground">· {{ l.target }}</span>
-            <span class="ml-auto text-muted-foreground">{{ l.actorName }}</span>
-          </div>
-          <p
-            v-if="!auditLoading && !auditLogs.length"
-            class="py-8 text-center text-muted-foreground"
-          >
-            {{ t("orgs.audit.empty") }}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+      <!-- danger -->
+      <div v-else-if="section === 'danger'" class="flex flex-col gap-4 rounded-lg border border-destructive/40 p-4">
+        <h3 class="text-base font-semibold text-destructive">{{ t("orgs.danger.title") }}</h3>
+        <div class="flex flex-wrap gap-2">
+          <Button v-if="myRole !== 'owner'" variant="outline" size="sm" @click="onLeave">
+            {{ t("orgs.leave") }}
+          </Button>
+          <Button variant="destructive" size="sm" @click="onDelete">
+            {{ t("orgs.delete") }}
+          </Button>
+        </div>
+      </div>
+    </SettingsShell>
   </div>
-  <!-- non-privileged members get bounced to the org page -->
   <div v-else-if="org" class="py-16 text-center text-sm text-muted-foreground">
     {{ t("orgs.settings.ownersOnly") }}
   </div>

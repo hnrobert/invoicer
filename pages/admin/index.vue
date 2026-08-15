@@ -1,7 +1,6 @@
 <script setup lang="ts">
-// Site mail settings moved to /admin/mail (superadmin only). Redirect there —
-// non-admins will see the guard message.
-definePageMeta({ layout: "default" });
+// /admin → default to the mail section.
+definePageMeta({ layout: "default", middleware: "superadmin" });
 onMounted(() => navigateTo("/admin/mail", { replace: true }));
 </script>
 

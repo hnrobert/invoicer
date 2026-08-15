@@ -266,6 +266,7 @@ async function sendReport() {
 }
 
 // ---------- settings tab ----------
+const setSection = ref<"general" | "collab" | "transfer">("general");
 const setVisibility = ref<"public" | "internal" | "private">("internal");
 const setSearchable = ref(false);
 const setStatus = ref<"active" | "closed" | "archived">("active");
@@ -684,8 +685,35 @@ async function loadAudit() {
       </div>
     </div>
 
-    <!-- ============ settings tab ============ -->
-    <div v-else-if="tab === 'settings' && canManage" class="flex max-w-2xl flex-col gap-6">
+    <!-- ============ settings tab (sectioned, GitHub-style) ============ -->
+    <div
+      v-else-if="tab === 'settings' && canManage"
+      class="flex flex-col gap-6 lg:flex-row lg:gap-10"
+    >
+      <aside class="w-full shrink-0 lg:w-40">
+        <nav class="flex flex-col gap-0.5">
+          <button
+            v-for="ss in [
+              { key: 'general', label: t('orgs.settings.general') },
+              { key: 'collab', label: t('home.collab.title') },
+              { key: 'transfer', label: t('home.transfer.title') },
+            ]"
+            :key="ss.key"
+            type="button"
+            class="rounded-md px-2 py-1.5 text-left text-sm transition-colors"
+            :class="
+              setSection === ss.key
+                ? 'bg-accent font-medium text-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            "
+            @click="setSection = ss.key"
+          >
+            {{ ss.label }}
+          </button>
+        </nav>
+      </aside>
+
+      <div v-if="setSection === 'general'" class="flex min-w-0 max-w-2xl flex-1 flex-col gap-6">
       <div class="flex flex-col gap-1.5">
         <Label>{{ t("home.settings.visibility") }}</Label>
         <div class="flex flex-wrap gap-2">
@@ -725,9 +753,10 @@ async function loadAudit() {
       <Button :disabled="setSaving" class="self-start" @click="saveSettings">
         {{ setSaving ? t("settings.saving") : t("settings.save") }}
       </Button>
+      </div>
 
       <!-- collaborators -->
-      <div class="flex flex-col gap-2 border-t pt-4">
+      <div v-else-if="setSection === 'collab'" class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2">
         <h3 class="text-sm font-medium">{{ t("home.collab.title") }}</h3>
         <div v-for="c in collaborators" :key="c.userId" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
           <div class="min-w-0 flex-1">
@@ -755,9 +784,12 @@ async function loadAudit() {
       </div>
 
       <!-- transfer -->
-      <div v-if="inv.organizationId.value && otherOrgs.length" class="flex flex-col gap-2 border-t pt-4">
+      <div
+        v-else-if="setSection === 'transfer' && inv.organizationId.value"
+        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2"
+      >
         <h3 class="text-sm font-medium">{{ t("home.transfer.title") }}</h3>
-        <form class="flex gap-2" @submit.prevent="initiateTransfer">
+        <form v-if="otherOrgs.length" class="flex gap-2" @submit.prevent="initiateTransfer">
           <select v-model="transferOrgId" class="h-9 flex-1 rounded-md border bg-background px-3 text-sm">
             <option value="" disabled>{{ t("home.transfer.pick") }}</option>
             <option v-for="o in otherOrgs" :key="o.id" :value="o.id">{{ o.name }}</option>
@@ -766,7 +798,11 @@ async function loadAudit() {
             {{ t("home.transfer.send") }}
           </Button>
         </form>
+        <p v-else class="text-sm text-muted-foreground">{{ t("home.transfer.noTarget") }}</p>
         <p class="text-xs text-muted-foreground">{{ t("home.transfer.desc") }}</p>
+      </div>
+      <div v-else-if="setSection === 'transfer'" class="flex-1">
+        <p class="text-sm text-muted-foreground">{{ t("home.transfer.personalNone") }}</p>
       </div>
     </div>
 

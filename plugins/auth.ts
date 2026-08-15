@@ -12,21 +12,28 @@ import type { AuthUser } from "#shared/types";
 // the query param so it doesn't linger in the URL.
 export default defineNuxtPlugin(async (nuxtApp) => {
   const user = useState<AuthUser | null>("auth:user", () => null);
+  // Superadmin flag (SUPERADMIN_EMAILS) — gates the /admin surfaces.
+  const isAdmin = useState<boolean>("auth:isAdmin", () => false);
   // Read the request context before the first await: Nuxt's active instance
   // isn't guaranteed to survive an await, and on the client this plugin only
   // runs once (initial load — exactly when an OAuth `?error=` query lands).
   const headers = useRequestHeaders(["cookie"]);
   const route = useRoute();
   try {
-    const res = await $fetch<{ user: AuthUser | null }>("/api/me", {
-      headers:
-        import.meta.server && headers.cookie
-          ? { cookie: headers.cookie }
-          : undefined,
-    });
+    const res = await $fetch<{ user: AuthUser | null; isAdmin?: boolean }>(
+      "/api/me",
+      {
+        headers:
+          import.meta.server && headers.cookie
+            ? { cookie: headers.cookie }
+            : undefined,
+      },
+    );
     user.value = res.user;
+    isAdmin.value = !!res.isAdmin;
   } catch {
     user.value = null;
+    isAdmin.value = false;
   }
 
   if (import.meta.client) {

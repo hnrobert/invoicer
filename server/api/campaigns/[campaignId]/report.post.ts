@@ -5,6 +5,7 @@ import { calcTotal } from "#server/utils/serialize";
 import { renderCardEmail, escapeHtml } from "email-poster/template";
 import { siteTheme } from "#server/mail/theme";
 import { sendMail } from "#server/utils/mail";
+import { checkAccountSend, checkEmailSend, emailLimitError } from "#server/utils/emailLimit";
 
 function esc(s: string | null | undefined): string {
   return escapeHtml(s ?? "");
@@ -22,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 /** Email a campaign's audit report (table + total) to a recipient. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { campaign, rights, user } = await requireCampaignAccess(event, campaignId);
   // The report contains everyone's invoices — an export-grade action. Legacy
   // campaigns keep the old behavior (any member may send it).
   if (!rights.canExport && !rights.legacy) {
@@ -31,6 +32,12 @@ export default defineEventHandler(async (event) => {
   const { to } = await readBody<{ to?: string }>(event);
   if (!to)
     throw createError({ statusCode: 400, statusMessage: "请填写收件人邮箱" });
+
+  // Rate limits: per sender (aggregated across their sends) and per recipient.
+  const accountLimit = checkAccountSend(user.id);
+  if (!accountLimit.allowed) throw createError(emailLimitError(accountLimit));
+  const targetLimit = checkEmailSend("report", to);
+  if (!targetLimit.allowed) throw createError(emailLimitError(targetLimit));
 
   const invoices = await AppDataSource.getRepository(Invoice).find({
     where: { campaignId },
@@ -84,5 +91,5 @@ export default defineEventHandler(async (event) => {
     body: html,
     html: true,
   });
-  return { ok: true, messageId, total, count: invoices.length };
+  return { ok: true, messageId, total, count: invoices.length, warning: targetLimit.warning };
 });
