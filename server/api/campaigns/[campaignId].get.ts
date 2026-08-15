@@ -1,6 +1,7 @@
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess, usesSubmitFlow } from "#server/utils/campaign";
+import { authDb } from "#server/utils/auth";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 
 /**
@@ -22,12 +23,22 @@ export default defineEventHandler(async (event) => {
     order: { id: "asc" },
   });
 
+  const orgSlug = campaign.organizationId
+    ? (
+        authDb
+          .prepare("SELECT slug FROM organization WHERE id = ?")
+          .get(campaign.organizationId) as { slug: string } | undefined
+      )?.slug ?? null
+    : null;
+
   return {
     ok: true,
     name: campaign.name,
     expected_title: campaign.expectedTitle,
     expected_tax_id: campaign.expectedTaxId,
     organization_id: campaign.organizationId,
+    org_slug: orgSlug,
+    campaign_user_id: campaign.userId,
     visibility: campaign.visibility,
     status: campaign.status,
     rights,

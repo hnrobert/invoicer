@@ -107,7 +107,21 @@
   // ── 组织 ───────────────────────────────────────────────────────
   orgs: {
     title: "组织",
+    notFound: "组织不存在或你不是其成员。",
+    tabs: { campaigns: "活动", members: "成员", settings: "设置" },
+    settings: {
+      visibility: "组织可见性",
+      visibilityDesc: "私密组织不进入广场/搜索；其公开活动仍可通过链接访问。",
+      ownersOnly: "仅 Owner / Admin 可访问组织设置。",
+    },
+    migration: {
+      badge: "待迁移",
+      title: "待确认可见性的活动",
+      desc: "以下活动仍沿用旧权限模型（组织全员可见全部发票）。为每个活动选择可见性后即迁移到新权限模型。",
+      done: "已确认并迁移",
+    },
     desc: "创建组织以邀请协作者、共同发起报销征集活动；你也可以在个人范围内独立使用。",
+    // desc above belongs to the org itself; kept after migration for readability.
     yourOrgs: "你的组织",
     noOrgs: "你还没有任何组织。",
     new: "新建组织",
@@ -137,11 +151,6 @@
       member: "成员",
     },
     vis: { public: "公开组织", private: "私密组织" },
-    migration: {
-      title: "待确认可见性的活动",
-      desc: "以下活动仍沿用旧权限模型（组织全员可见全部发票）。为每个活动选择可见性后即迁移到新权限模型。",
-      done: "已确认并迁移",
-    },
     audit: {
       title: "审计日志",
       desc: "导出、审核、权限变更等关键操作记录（最近 200 条）。",
@@ -154,6 +163,7 @@
       accepted: "已接受转让，活动已移入本组织",
     },
     customRoles: {
+      none: "暂无自定义角色。",
       title: "自定义角色",
       desc: "在五个内置角色基础上创建命名角色（继承所选基础角色的全部权限），邀请或调整成员时可选。",
       namePlaceholder: "如：财务审阅",
@@ -163,6 +173,7 @@
     delete: "删除组织",
     leaveConfirm: "确定退出该组织吗？",
     deleteConfirm: "确定永久删除该组织吗？此操作不可恢复。",
+    danger: { title: "危险区" },
     invitations: "待处理邀请",
     noInvitations: "暂无待处理邀请。",
     accept: "接受",
@@ -187,6 +198,20 @@
     transferCanceled: "「{campaign}」的转让被取消",
   },
 
+  // ── 全局导航 ─────────────────────────────────────────────────
+  dashboard: {
+    title: "我的活动",
+    count: "个活动",
+    empty: "还没有活动。创建一个，或在广场发现公开活动。",
+    myOrgs: "我的组织",
+  },
+  nav: {
+    searchPlaceholder: "搜索活动…",
+    new: "新建",
+    newCampaign: "新建活动",
+    newOrg: "新建组织",
+  },
+
   // ── 广场（public + searchable 活动）────────────────────────
   explore: {
     title: "发现活动",
@@ -196,6 +221,12 @@
     closed: "已截止",
     empty: "没有找到符合条件的公开活动",
     loadFailed: "加载失败：",
+  },
+
+  // ── 活动详情页（仓库式）──────────────────────────────────────
+  campaign: {
+    notFound: "活动不存在或无权访问。",
+    tabs: { invoices: "发票", settings: "设置", audit: "审计" },
   },
 
   // ── 首页（三步审核流程）──────────────────────────────────────

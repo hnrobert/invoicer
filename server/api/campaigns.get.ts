@@ -3,13 +3,24 @@ import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
 import { getSessionUser, getUserOrgIds } from "#server/utils/campaign";
+import { authDb } from "#server/utils/auth";
 import type { CampaignPublic } from "#shared/types";
+
+/** org slug lookup (for client-side /orgs/[slug]/campaigns/[id] links). */
+function orgSlug(organizationId: string | null): string | null {
+  if (!organizationId) return null;
+  const row = authDb
+    .prepare("SELECT slug FROM organization WHERE id = ?")
+    .get(organizationId) as { slug: string } | undefined;
+  return row?.slug ?? null;
+}
 
 function toPublic(c: Campaign): CampaignPublic {
   return {
     id: c.id,
     userId: c.userId,
     organizationId: c.organizationId,
+    orgSlug: orgSlug(c.organizationId),
     name: c.name,
     expectedTitle: c.expectedTitle,
     expectedTaxId: c.expectedTaxId,

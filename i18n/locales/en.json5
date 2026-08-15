@@ -19,7 +19,7 @@
   },
   lang: {
     switch: "Switch language",
-    zh: "中文",
+    zh: "Chinese",
     en: "English",
   },
 
@@ -107,6 +107,19 @@
   // ── organizations ──────────────────────────────────────────────
   orgs: {
     title: "Organizations",
+    notFound: "Organization not found, or you are not a member.",
+    tabs: { campaigns: "Campaigns", members: "Members", settings: "Settings" },
+    settings: {
+      visibility: "Organization visibility",
+      visibilityDesc: "Private orgs stay off the plaza/search; their public campaigns remain reachable by link.",
+      ownersOnly: "Only Owner / Admin can access organization settings.",
+    },
+    migration: {
+      badge: "Legacy",
+      title: "Campaigns awaiting visibility decision",
+      desc: "These campaigns still run the legacy model (all org members see every invoice). Choosing a visibility migrates them to the new permission model.",
+      done: "Confirmed & migrated",
+    },
     desc: "Create organizations to invite collaborators and run reimbursement campaigns together. You can also work in your personal scope.",
     yourOrgs: "Your organizations",
     noOrgs: "You have no organizations yet.",
@@ -137,11 +150,6 @@
       member: "Member",
     },
     vis: { public: "Public org", private: "Private org" },
-    migration: {
-      title: "Campaigns awaiting visibility decision",
-      desc: "These campaigns still run the legacy model (all org members see every invoice). Choosing a visibility migrates them to the new permission model.",
-      done: "Confirmed & migrated",
-    },
     audit: {
       title: "Audit log",
       desc: "Key actions: exports, reviews, permission changes (latest 200).",
@@ -154,6 +162,7 @@
       accepted: "Transfer accepted — the campaign moved into this org",
     },
     customRoles: {
+      none: "No custom roles yet.",
       title: "Custom roles",
       desc: "Create named roles on top of the five built-in tiers (inheriting the chosen base role's full rights); selectable when inviting or editing members.",
       namePlaceholder: "e.g. Finance Reviewer",
@@ -163,6 +172,7 @@
     delete: "Delete organization",
     leaveConfirm: "Leave this organization?",
     deleteConfirm: "Permanently delete this organization? This cannot be undone.",
+    danger: { title: "Danger zone" },
     invitations: "Pending invitations",
     noInvitations: "No pending invitations.",
     accept: "Accept",
@@ -187,6 +197,20 @@
     transferCanceled: "The transfer of \"{campaign}\" was canceled",
   },
 
+  // ── global navigation ────────────────────────────────────────
+  dashboard: {
+    title: "My campaigns",
+    count: "campaign(s)",
+    empty: "No campaigns yet. Create one, or explore public ones.",
+    myOrgs: "My organizations",
+  },
+  nav: {
+    searchPlaceholder: "Search campaigns…",
+    new: "New",
+    newCampaign: "New campaign",
+    newOrg: "New organization",
+  },
+
   // ── explore plaza (public + searchable campaigns) ──────────
   explore: {
     title: "Explore",
@@ -196,6 +220,12 @@
     closed: "Closed",
     empty: "No public campaigns matched",
     loadFailed: "Failed to load: ",
+  },
+
+  // ── campaign detail (repo-style) ─────────────────────────────
+  campaign: {
+    notFound: "Campaign not found or not accessible.",
+    tabs: { invoices: "Invoices", settings: "Settings", audit: "Audit" },
   },
 
   // ── home (3-step audit workflow) ───────────────────────────────

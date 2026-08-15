@@ -88,6 +88,8 @@ export interface CampaignPublic {
   id: number;
   userId: string;
   organizationId: string | null;
+  /** Org slug for /orgs/[slug]/campaigns/[id] links (null for personal). */
+  orgSlug: string | null;
   name: string;
   expectedTitle: string;
   expectedTaxId: string | null;

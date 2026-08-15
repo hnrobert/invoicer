@@ -6,13 +6,16 @@ import { getSessionUser } from "#server/utils/campaign";
 import { authDb } from "#server/utils/auth";
 import type { CampaignPublic } from "#shared/types";
 
-function toPublic(c: Campaign, orgName: string | null): CampaignPublic & {
-  orgName: string | null;
-} {
+function toPublic(
+  c: Campaign,
+  orgName: string | null,
+  orgSlug: string | null,
+): CampaignPublic & { orgName: string | null; orgSlug: string | null } {
   return {
     id: c.id,
     userId: c.userId,
     organizationId: c.organizationId,
+    orgSlug,
     name: c.name,
     expectedTitle: c.expectedTitle,
     expectedTaxId: c.expectedTaxId,
@@ -71,19 +74,25 @@ export default defineEventHandler(async (event) => {
         c.expectedTitle.toLowerCase().includes(qLower)),
   );
 
-  // Resolve org names from Better Auth's organization table for display.
+  // Resolve org names + slugs from Better Auth's organization table for display.
   const orgIds = [...new Set(filtered.map((c) => c.organizationId!))];
   const nameRows = orgIds.length
     ? (authDb
         .prepare(
-          `SELECT id, name FROM organization WHERE id IN (${orgIds.map(() => "?").join(",")})`,
+          `SELECT id, name, slug FROM organization WHERE id IN (${orgIds.map(() => "?").join(",")})`,
         )
-        .all(...orgIds) as { id: string; name: string }[])
+        .all(...orgIds) as { id: string; name: string; slug: string }[])
     : [];
-  const names = new Map(nameRows.map((r) => [r.id, r.name]));
+  const names = new Map(nameRows.map((r) => [r.id, r]));
 
   return {
     ok: true,
-    campaigns: filtered.map((c) => toPublic(c, names.get(c.organizationId!) ?? null)),
+    campaigns: filtered.map((c) =>
+      toPublic(
+        c,
+        names.get(c.organizationId!)?.name ?? null,
+        names.get(c.organizationId!)?.slug ?? null,
+      ),
+    ),
   };
 });

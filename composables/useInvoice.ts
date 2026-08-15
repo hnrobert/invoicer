@@ -1,6 +1,8 @@
 import type {
   CampaignPublic,
   CampaignRights,
+  CampaignStatus,
+  CampaignVisibility,
   InvoicePublic,
   InvoiceStatus,
 } from "#shared/types";
@@ -52,12 +54,18 @@ export function useInvoice() {
   const rights = ref<CampaignRights | null>(null);
   const flow = ref<"direct" | "submit">("direct");
   const scopedToMe = ref(false);
+  const visibility = ref<CampaignVisibility>("internal");
+  const status = ref<CampaignStatus>("active");
   const filter = ref<FilterKey>("all");
   const search = ref("");
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Create a new campaign under the current scope (personal or active org). */
-  async function createCampaign(title: string, taxId: string, opts: CreateCampaignOptions = {}) {
+  /** Create a new campaign under the current scope (personal or active org). Returns its id. */
+  async function createCampaign(
+    title: string,
+    taxId: string,
+    opts: CreateCampaignOptions = {},
+  ): Promise<number> {
     const data = await $fetch<{
       ok: boolean;
       campaign_id: number;
@@ -80,6 +88,7 @@ export function useInvoice() {
     invoices.value = [];
     totalAmount.value = 0;
     hasPending.value = false;
+    return data.campaign_id;
   }
 
   /** Resume an existing campaign by id (loads its header + invoices). */
@@ -95,6 +104,8 @@ export function useInvoice() {
       rights: CampaignRights;
       flow: "direct" | "submit";
       scoped_to_me: boolean;
+      visibility: CampaignVisibility;
+      status: CampaignStatus;
     }>(`/api/campaigns/${id}`);
     campaignId.value = id;
     organizationId.value = data.organization_id;
@@ -107,6 +118,8 @@ export function useInvoice() {
     rights.value = data.rights;
     flow.value = data.flow;
     scopedToMe.value = data.scoped_to_me;
+    visibility.value = data.visibility;
+    status.value = data.status;
     if (data.has_pending) startPolling();
     else stopPolling();
   }
@@ -120,6 +133,8 @@ export function useInvoice() {
       rights: CampaignRights;
       flow: "direct" | "submit";
       scoped_to_me: boolean;
+      visibility: CampaignVisibility;
+      status: CampaignStatus;
     }>(`/api/campaigns/${campaignId.value}`);
     invoices.value = data.invoices;
     totalAmount.value = data.total_amount;
@@ -127,6 +142,8 @@ export function useInvoice() {
     rights.value = data.rights;
     flow.value = data.flow;
     scopedToMe.value = data.scoped_to_me;
+    visibility.value = data.visibility;
+    status.value = data.status;
     if (!data.has_pending) stopPolling();
   }
 
@@ -267,6 +284,8 @@ export function useInvoice() {
     rights,
     flow,
     scopedToMe,
+    visibility,
+    status,
     filter,
     search,
     counts,
