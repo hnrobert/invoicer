@@ -23,6 +23,6 @@ export default defineEventHandler(async (event) => {
   await repo.delete(where);
   return {
     ok: true,
-    msg: clearAll ? "已清除全部上传文件" : "已清除你的上传文件",
+    msg: clearAll ? "All uploaded files cleared" : "Your uploaded files cleared",
   };
 });

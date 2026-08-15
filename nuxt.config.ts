@@ -14,7 +14,15 @@ const emailLogo = `data:image/svg+xml;base64,${Buffer.from(
 // uploads, OCR/extraction and mail run as Nitro server routes.
 export default defineNuxtConfig({
   compatibilityDate: "2026-07-13",
-  devtools: { enabled: true },
+  devtools: {
+    enabled: true,
+    // vite-plugin-vue-tracer (the component inspector's source-mapping probe)
+    // mutates every rendered vnode (`props ||= {}`), dirtying SSR fragments
+    // and causing hydration mismatches — which crash Safari with
+    // "null is not an object (evaluating 'currentRenderingInstance.ce')".
+    // The inspector is a dev nicety; disable it.
+    componentInspector: false,
+  },
   ssr: true,
   // Flat (Nuxt 3-style) layout: pages/components/layouts/… live at the project
   // root alongside app.vue, not under an app/ dir.

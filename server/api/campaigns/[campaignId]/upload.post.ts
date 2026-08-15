@@ -31,17 +31,17 @@ export default defineEventHandler(async (event) => {
   if (!rights.canUpload) {
     throw createError({
       statusCode: 403,
-      statusMessage: "该活动当前不可上传（未开放或已截止/归档）",
+      statusMessage: "Uploads are currently closed for this campaign (not open, closed, or archived)",
     });
   }
 
   const form = await readMultipartFormData(event);
   if (!form)
-    throw createError({ statusCode: 400, statusMessage: "未收到上传内容" });
+    throw createError({ statusCode: 400, statusMessage: "No upload content received" });
 
   const files = form.filter((f) => !!f.filename);
   if (files.length === 0)
-    throw createError({ statusCode: 400, statusMessage: "未上传任何文件" });
+    throw createError({ statusCode: 400, statusMessage: "No files uploaded" });
 
   const uploadsDir = useRuntimeConfig().uploadsDir;
   await mkdir(uploadsDir, { recursive: true });
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
       savedPath,
       fileType: isPdf ? "pdf" : "image",
       status: "pending",
-      reason: "等待识别",
+      reason: "Waiting for recognition",
       amountInTotal: false,
     });
     created.push(inv);
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
   if (created.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: "未检测到 PDF 或图片文件",
+      statusMessage: "No PDF or image files detected",
     });
   }
   return { ok: true, results: created.map(invoiceToPublic) };

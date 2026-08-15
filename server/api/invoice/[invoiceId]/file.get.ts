@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, "invoiceId"));
   const inv = await AppDataSource.getRepository(Invoice).findOneBy({ id });
   if (!inv)
-    throw createError({ statusCode: 404, statusMessage: "未找到该发票" });
+    throw createError({ statusCode: 404, statusMessage: "Invoice not found" });
 
   // Access control: campaign access PLUS per-invoice isolation — the caller
   // must be the uploader or hold view-all rights (IDs are enumerable).
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     );
     setHeader(event, "Content-Length", s.size);
   } catch {
-    throw createError({ statusCode: 404, statusMessage: "文件不存在" });
+    throw createError({ statusCode: 404, statusMessage: "File not found" });
   }
 
   return sendStream(event, createReadStream(inv.savedPath));

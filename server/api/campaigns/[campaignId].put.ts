@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "仅组织管理者/活动创建者可修改设置" });
+    throw createError({ statusCode: 403, statusMessage: "Only org owners/admins or the campaign manager can change settings" });
   }
   const body = await readBody<{
     visibility?: string;
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
   const patch: Partial<Campaign> = {};
   if (typeof body?.visibility === "string") {
     if (!(VISIBILITIES as readonly string[]).includes(body.visibility)) {
-      throw createError({ statusCode: 400, statusMessage: "无效的可见性" });
+      throw createError({ statusCode: 400, statusMessage: "Invalid visibility" });
     }
     patch.visibility = body.visibility as Campaign["visibility"];
     // Any explicit visibility choice confirms the platform model.
@@ -41,21 +41,21 @@ export default defineEventHandler(async (event) => {
     if (campaign.visibility !== "public" && body.searchable) {
       throw createError({
         statusCode: 400,
-        statusMessage: "仅 public 活动可设置可搜索",
+        statusMessage: "Only public campaigns can be searchable",
       });
     }
     patch.searchable = body.searchable;
   }
   if (typeof body?.status === "string") {
     if (!(STATUSES as readonly string[]).includes(body.status)) {
-      throw createError({ statusCode: 400, statusMessage: "无效的活动状态" });
+      throw createError({ statusCode: 400, statusMessage: "Invalid campaign status" });
     }
     patch.status = body.status as Campaign["status"];
   }
   if (body?.deadline === null || typeof body?.deadline === "string") {
     const d = body.deadline === null ? null : new Date(body.deadline);
     if (d && Number.isNaN(d.getTime())) {
-      throw createError({ statusCode: 400, statusMessage: "截止时间格式错误" });
+      throw createError({ statusCode: 400, statusMessage: "Invalid deadline format" });
     }
     patch.deadline = d;
   }
@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (Object.keys(patch).length === 0) {
-    throw createError({ statusCode: 400, statusMessage: "没有需要更新的字段" });
+    throw createError({ statusCode: 400, statusMessage: "No fields to update" });
   }
   logAudit({
     organizationId: campaign.organizationId,

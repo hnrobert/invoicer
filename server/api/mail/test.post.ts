@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const user = await requireSuperAdmin(event);
   const { to } = await readBody<{ to?: string }>(event);
   if (!to)
-    throw createError({ statusCode: 400, statusMessage: "请填写收件人邮箱" });
+    throw createError({ statusCode: 400, statusMessage: "Recipient email is required" });
 
   // Rate limits: per sender (aggregated across their sends) and per recipient.
   const accountLimit = checkAccountSend(user.id);
@@ -19,16 +19,16 @@ export default defineEventHandler(async (event) => {
 
   const html = renderCardEmail(
     {
-      title: "测试邮件",
+      title: "Test email",
       bodyHtml:
-        "<p>这是一封来自发票审核系统的测试邮件，收到即代表 SMTP 配置正常。</p>",
-      preheader: "发票审核系统测试邮件",
+        "<p>This is a test email from Invoicer — receiving it means the mail delivery configuration works.</p>",
+      preheader: "Invoicer test email",
     },
     siteTheme(),
   );
   const messageId = await sendMail({
     to,
-    subject: "发票审核系统 · 测试邮件",
+    subject: "Invoicer · Test email",
     body: html,
     html: true,
   });

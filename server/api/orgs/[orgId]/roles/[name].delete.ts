@@ -14,12 +14,12 @@ export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const role = await getOrgRole(orgId, user.id);
   if (role !== "owner") {
-    throw createError({ statusCode: 403, statusMessage: "仅 Owner 可管理自定义角色" });
+    throw createError({ statusCode: 403, statusMessage: "Only the organization owner can manage custom roles" });
   }
   const repo = AppDataSource.getRepository(OrgCustomRole);
   const existing = await repo.findOneBy({ organizationId: orgId, name });
   if (!existing) {
-    throw createError({ statusCode: 404, statusMessage: "角色不存在" });
+    throw createError({ statusCode: 404, statusMessage: "Role not found" });
   }
   await repo.delete({ organizationId: orgId, name });
   // Demote anyone still assigned the deleted name (Better Auth member table).

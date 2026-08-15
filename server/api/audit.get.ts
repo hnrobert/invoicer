@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const campaignId = q.campaignId ? Number(q.campaignId) : null;
   const orgId = typeof q.orgId === "string" ? q.orgId : null;
   if (!campaignId && !orgId) {
-    throw createError({ statusCode: 400, statusMessage: "需要 campaignId 或 orgId" });
+    throw createError({ statusCode: 400, statusMessage: "campaignId or orgId is required" });
   }
 
   if (campaignId) {

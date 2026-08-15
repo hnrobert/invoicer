@@ -7,7 +7,7 @@ const TERMINAL = ["qualified", "review", "unqualified"] as const;
 
 /**
  * Submit every one of the caller's own submittable draft invoices in one go
- * (the "提交全部" button). Same rules as the single-invoice submit endpoint;
+ * (the "Submit all" button). Same rules as the single-invoice submit endpoint;
  * returns the number actually submitted.
  */
 export default defineEventHandler(async (event) => {
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
       reviewState: "draft",
       status: In(TERMINAL as unknown as string[]),
     },
-    { reviewState: "submitted", reason: "已提交，等待审核" },
+    { reviewState: "submitted", reason: "Submitted — awaiting review" },
   );
   return { ok: true, submitted: res.affected ?? 0 };
 });

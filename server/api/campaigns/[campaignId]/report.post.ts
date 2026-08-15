@@ -12,12 +12,12 @@ function esc(s: string | null | undefined): string {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  qualified: "合格",
-  review: "二次审核",
-  unqualified: "不合格",
-  pending: "等待",
-  processing: "识别中",
-  error: "失败",
+  qualified: "Qualified",
+  review: "Needs review",
+  unqualified: "Unqualified",
+  pending: "Pending",
+  processing: "Processing",
+  error: "Error",
 };
 
 /** Email a campaign's audit report (table + total) to a recipient. */
@@ -27,11 +27,11 @@ export default defineEventHandler(async (event) => {
   // The report contains everyone's invoices — an export-grade action. Legacy
   // campaigns keep the old behavior (any member may send it).
   if (!rights.canExport && !rights.legacy) {
-    throw createError({ statusCode: 403, statusMessage: "无导出/报告权限" });
+    throw createError({ statusCode: 403, statusMessage: "No export/report permission" });
   }
   const { to } = await readBody<{ to?: string }>(event);
   if (!to)
-    throw createError({ statusCode: 400, statusMessage: "请填写收件人邮箱" });
+    throw createError({ statusCode: 400, statusMessage: "Recipient email is required" });
 
   // Rate limits: per sender (aggregated across their sends) and per recipient.
   const accountLimit = checkAccountSend(user.id);
@@ -60,27 +60,27 @@ export default defineEventHandler(async (event) => {
     .join("");
 
   const subject = campaign.name
-    ? `发票审核结果 · ${campaign.name} · 合规金额 ¥${total.toFixed(2)}`
-    : `发票审核结果 · 合规金额 ¥${total.toFixed(2)}`;
+    ? `Invoice audit report · ${campaign.name} · compliant ¥${total.toFixed(2)}`
+    : `Invoice audit report · compliant ¥${total.toFixed(2)}`;
   const bodyHtml = `
-    <p style="margin:0 0 12px;">本次共审核 <b>${invoices.length}</b> 张发票，合规金额合计 <b style="color:#1c1917;">¥${total.toFixed(2)}</b>。</p>
+    <p style="margin:0 0 12px;">Audited <b>${invoices.length}</b> invoice(s); compliant total <b style="color:#1c1917;">¥${total.toFixed(2)}</b>.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;width:100%;">
       <thead><tr style="background:#f9fafb;">
-        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">文件名</th>
-        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">抬头</th>
-        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">税号</th>
-        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">金额</th>
-        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">状态</th>
+        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">Filename</th>
+        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">Title</th>
+        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">Tax ID</th>
+        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">Amount</th>
+        <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">Status</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p style="margin:12px 0 0;color:#6b7280;font-size:12px;">抬头：${esc(campaign.expectedTitle)} · 税号：${esc(campaign.expectedTaxId)}</p>`;
+    <p style="margin:12px 0 0;color:#6b7280;font-size:12px;">Title: ${esc(campaign.expectedTitle)} · Tax ID: ${esc(campaign.expectedTaxId)}</p>`;
 
   const html = renderCardEmail(
     {
-      title: "发票审核结果",
+      title: "Invoice audit report",
       bodyHtml,
-      preheader: `合规金额 ¥${total.toFixed(2)} · 共 ${invoices.length} 张`,
+      preheader: `Compliant ¥${total.toFixed(2)} · ${invoices.length} invoice(s)`,
     },
     siteTheme(),
   );

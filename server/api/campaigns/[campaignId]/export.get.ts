@@ -10,18 +10,18 @@ import { authDb } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 
 const STATUS_LABEL: Record<string, string> = {
-  qualified: "合格",
-  review: "二次审核",
-  unqualified: "不合格",
-  pending: "等待",
-  processing: "识别中",
-  error: "失败",
+  qualified: "Qualified",
+  review: "Needs review",
+  unqualified: "Unqualified",
+  pending: "Pending",
+  processing: "Processing",
+  error: "Error",
 };
 const RSTATE_LABEL: Record<string, string> = {
-  draft: "草稿",
-  submitted: "待审核",
-  approved: "已通过",
-  rejected: "已驳回",
+  draft: "Draft",
+  submitted: "Submitted",
+  approved: "Approved",
+  rejected: "Rejected",
 };
 
 function csvEscape(v: string | number | null | undefined): string {
@@ -44,11 +44,11 @@ export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const format = (getQuery(event).format ?? "csv").toString();
   if (!["csv", "xlsx", "zip"].includes(format)) {
-    throw createError({ statusCode: 400, statusMessage: "format 必须为 csv / xlsx / zip" });
+    throw createError({ statusCode: 400, statusMessage: "format must be csv / xlsx / zip" });
   }
   const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
   if (!rights.canExport && !rights.legacy) {
-    throw createError({ statusCode: 403, statusMessage: "无导出权限" });
+    throw createError({ statusCode: 403, statusMessage: "No export permission" });
   }
 
   const invoices = await AppDataSource.getRepository(Invoice).find({
@@ -98,8 +98,8 @@ export default defineEventHandler(async (event) => {
 
   if (format === "csv") {
     const header = [
-      "ID", "文件名", "上传人", "抬头", "税号", "金额",
-      "识别状态", "审核状态", "原因", "上传时间",
+      "ID", "Filename", "Uploader", "Title", "Tax ID", "Amount",
+      "Recognition", "Review", "Reason", "Uploaded at",
     ];
     const lines = [header.map(csvEscape).join(",")];
     for (const i of invoices) {
@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
       );
     }
     lines.push("");
-    lines.push([`合规总额（${flow === "submit" ? "已审核通过" : "判定合格"}）`, total.toFixed(2)].map(csvEscape).join(","));
+    lines.push([`Compliant total (${flow === "submit" ? "approved" : "qualified"})`, total.toFixed(2)].map(csvEscape).join(","));
     // BOM so Excel opens UTF-8 Chinese correctly.
     return download(
       "﻿" + lines.join("\r\n"),
@@ -132,15 +132,15 @@ export default defineEventHandler(async (event) => {
 
   if (format === "xlsx") {
     const wb = new ExcelJS.Workbook();
-    const summary = wb.addWorksheet("汇总");
+    const summary = wb.addWorksheet("Summary");
     summary.columns = [
-      { header: "活动", key: "a", width: 28 },
-      { header: "发票抬头", key: "b", width: 30 },
-      { header: "税号", key: "c", width: 22 },
-      { header: "发票数", key: "d", width: 10 },
-      { header: "合规总额", key: "e", width: 14 },
-      { header: "导出人", key: "f", width: 24 },
-      { header: "导出时间", key: "g", width: 22 },
+      { header: "Campaign", key: "a", width: 28 },
+      { header: "Buyer title", key: "b", width: 30 },
+      { header: "Tax ID", key: "c", width: 22 },
+      { header: "Invoices", key: "d", width: 10 },
+      { header: "Compliant total", key: "e", width: 14 },
+      { header: "Exported by", key: "f", width: 24 },
+      { header: "Exported at", key: "g", width: 22 },
     ];
     summary.addRow({
       a: campaign.name || campaign.expectedTitle,
@@ -152,18 +152,18 @@ export default defineEventHandler(async (event) => {
       g: new Date().toISOString(),
     });
 
-    const detail = wb.addWorksheet("明细");
+    const detail = wb.addWorksheet("Detail");
     detail.columns = [
       { header: "ID", key: "id", width: 8 },
-      { header: "文件名", key: "fn", width: 36 },
-      { header: "上传人", key: "up", width: 24 },
-      { header: "抬头", key: "t", width: 30 },
-      { header: "税号", key: "x", width: 22 },
-      { header: "金额", key: "amt", width: 12 },
-      { header: "识别状态", key: "s", width: 12 },
-      { header: "审核状态", key: "r", width: 12 },
-      { header: "原因", key: "reason", width: 24 },
-      { header: "上传时间", key: "at", width: 22 },
+      { header: "Filename", key: "fn", width: 36 },
+      { header: "Uploader", key: "up", width: 24 },
+      { header: "Title", key: "t", width: 30 },
+      { header: "Tax ID", key: "x", width: 22 },
+      { header: "Amount", key: "amt", width: 12 },
+      { header: "Recognition", key: "s", width: 12 },
+      { header: "Review", key: "r", width: 12 },
+      { header: "Reason", key: "reason", width: 24 },
+      { header: "Uploaded at", key: "at", width: 22 },
     ];
     for (const i of invoices) {
       detail.addRow({

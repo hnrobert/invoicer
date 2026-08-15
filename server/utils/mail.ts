@@ -113,12 +113,12 @@ function fromAddress(c: MailConfig): string {
 }
 
 function validate(c: MailConfig, input: SendMailInput): void {
-  if (!EMAIL_RE.test(input.to)) throw new Error("收件人邮箱格式不正确");
+  if (!EMAIL_RE.test(input.to)) throw new Error("Invalid recipient email address");
   if (input.to.length > c.maxLenRecipientEmail) {
-    throw new Error(`收件人邮箱长度超限（${c.maxLenRecipientEmail}）`);
+    throw new Error(`Recipient email exceeds max length (${c.maxLenRecipientEmail})`);
   }
   if (input.subject.length > c.maxLenSubject) {
-    throw new Error(`主题长度超限（${c.maxLenSubject}）`);
+    throw new Error(`Subject exceeds max length (${c.maxLenSubject})`);
   }
 }
 
@@ -153,7 +153,7 @@ async function sendViaPost(
   c: MailConfig,
   input: SendMailInput,
 ): Promise<string> {
-  if (!c.postUrl) throw new Error("POST Webhook 地址未配置");
+  if (!c.postUrl) throw new Error("POST webhook URL is not configured");
   validate(c, input);
   const poster = new EmailPoster({
     postUrl: c.postUrl,
@@ -178,7 +178,7 @@ async function sendViaPost(
   } catch (e) {
     // email-poster already formats HTTP failures as "Webhook returned <status>:
     // <detail>"; surface that message verbatim, fall back for non-Error throws.
-    throw new Error(e instanceof Error ? e.message : "Webhook 发送失败");
+    throw new Error(e instanceof Error ? e.message : "Webhook send failed");
   }
 }
 
@@ -188,7 +188,7 @@ export async function sendMailWithConfig(
   input: SendMailInput,
 ): Promise<string> {
   if (c.provider === "post") return sendViaPost(c, input);
-  if (!c.smtpServer) throw new Error("SMTP 服务器未配置");
+  if (!c.smtpServer) throw new Error("SMTP server is not configured");
   validate(c, input);
   const transporter = nodemailer.createTransport({
     host: c.smtpServer,
@@ -218,6 +218,6 @@ export async function sendMailWithConfig(
 /** Send using the site mail config. Returns the message id. */
 export async function sendMail(input: SendMailInput): Promise<string> {
   const cfg = await getMailConfig();
-  if (!cfg) throw new Error("邮件尚未配置");
+  if (!cfg) throw new Error("Mail is not configured");
   return sendMailWithConfig(cfg, input);
 }

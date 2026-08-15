@@ -20,24 +20,24 @@ export default defineEventHandler(async (event) => {
   const repo = AppDataSource.getRepository(Invoice);
   const inv = await repo.findOneBy({ id: invoiceId, campaignId });
   if (!inv)
-    throw createError({ statusCode: 404, statusMessage: "发票记录不存在" });
+    throw createError({ statusCode: 404, statusMessage: "Invoice record not found" });
   const owns = inv.uploaderId === user.id || rights.canManage;
   if (!owns) {
-    throw createError({ statusCode: 403, statusMessage: "只能提交自己的发票" });
+    throw createError({ statusCode: 403, statusMessage: "You can only submit your own invoices" });
   }
   if (inv.reviewState !== "draft") {
-    throw createError({ statusCode: 400, statusMessage: "该发票不在草稿状态" });
+    throw createError({ statusCode: 400, statusMessage: "This invoice is not in draft state" });
   }
   if (!TERMINAL.has(inv.status)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "识别未完成（或失败），暂不能提交",
+      statusMessage: "Recognition is not finished (or failed) — cannot submit yet",
     });
   }
 
   await repo.update(
     { id: invoiceId },
-    { reviewState: "submitted", reason: "已提交，等待审核" },
+    { reviewState: "submitted", reason: "Submitted — awaiting review" },
   );
   const updated = (await repo.findOneBy({ id: invoiceId }))!;
   return { ok: true, record: invoiceToPublic(updated) };

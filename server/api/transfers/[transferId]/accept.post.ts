@@ -17,19 +17,19 @@ export default defineEventHandler(async (event) => {
 
   const repo = AppDataSource.getRepository(CampaignTransfer);
   const tr = await repo.findOneBy({ id: transferId });
-  if (!tr) throw createError({ statusCode: 404, statusMessage: "转让请求不存在" });
+  if (!tr) throw createError({ statusCode: 404, statusMessage: "Transfer request not found" });
   if (tr.status !== "pending") {
-    throw createError({ statusCode: 400, statusMessage: "该请求已处理" });
+    throw createError({ statusCode: 400, statusMessage: "This request has already been processed" });
   }
   const role = await getOrgRole(tr.toOrganizationId, user.id);
   if (role !== "owner" && role !== "admin") {
-    throw createError({ statusCode: 403, statusMessage: "仅目标组织 Owner/Admin 可接受" });
+    throw createError({ statusCode: 403, statusMessage: "Only the target org's Owner/Admin can accept" });
   }
 
   const campaignRepo = AppDataSource.getRepository(Campaign);
   const campaign = await campaignRepo.findOneBy({ id: tr.campaignId });
   if (!campaign) {
-    throw createError({ statusCode: 404, statusMessage: "活动不存在" });
+    throw createError({ statusCode: 404, statusMessage: "Campaign not found" });
   }
 
   await campaignRepo.update(

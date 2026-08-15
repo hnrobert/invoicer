@@ -16,24 +16,24 @@ export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
   if (!campaign.organizationId) {
-    throw createError({ statusCode: 400, statusMessage: "个人活动不能转让" });
+    throw createError({ statusCode: 400, statusMessage: "Personal campaigns cannot be transferred" });
   }
   const role = await getOrgRole(campaign.organizationId, user.id);
   if (!rights.canManage && role !== "owner" && role !== "admin") {
-    throw createError({ statusCode: 403, statusMessage: "仅 Owner/Admin/活动管理者可发起转让" });
+    throw createError({ statusCode: 403, statusMessage: "Only Owner/Admin or the campaign manager can initiate a transfer" });
   }
 
   const { target_org_id: targetOrgId } = await readBody<{
     target_org_id?: string;
   }>(event);
   if (!targetOrgId || targetOrgId === campaign.organizationId) {
-    throw createError({ statusCode: 400, statusMessage: "无效的目标组织" });
+    throw createError({ statusCode: 400, statusMessage: "Invalid target organization" });
   }
   const targetOrg = authDb
     .prepare("SELECT id, name FROM organization WHERE id = ?")
     .get(targetOrgId) as { id: string; name: string } | undefined;
   if (!targetOrg) {
-    throw createError({ statusCode: 404, statusMessage: "目标组织不存在" });
+    throw createError({ statusCode: 404, statusMessage: "Target organization not found" });
   }
 
   const repo = AppDataSource.getRepository(CampaignTransfer);
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
     status: "pending",
   });
   if (dup) {
-    throw createError({ statusCode: 400, statusMessage: "该活动已有待处理的转让请求" });
+    throw createError({ statusCode: 400, statusMessage: "This campaign already has a pending transfer request" });
   }
 
   const tr = await repo.save({

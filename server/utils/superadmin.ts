@@ -37,7 +37,7 @@ export async function requireSuperAdmin(
 ): Promise<SessionUser> {
   const user = await getSessionUser(event);
   if (!(await isSuperAdmin(user.id))) {
-    throw createError({ statusCode: 403, statusMessage: "仅站点管理员可访问" });
+    throw createError({ statusCode: 403, statusMessage: "Superadmin access only" });
   }
   return user;
 }

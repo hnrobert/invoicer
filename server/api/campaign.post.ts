@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   if (!title && !taxId) {
     throw createError({
       statusCode: 400,
-      statusMessage: "请至少填写发票抬头或税号",
+      statusMessage: "Please provide at least a buyer title or tax ID",
     });
   }
 

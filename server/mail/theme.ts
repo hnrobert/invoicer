@@ -7,7 +7,7 @@
 
 import type { EmailTheme } from "email-poster/template";
 
-export const SITE_BRAND_TITLE = "发票审核系统";
+export const SITE_BRAND_TITLE = "Invoicer";
 
 /** The site theme for site-level emails (test mail, audit reports). */
 export function siteTheme(): EmailTheme {

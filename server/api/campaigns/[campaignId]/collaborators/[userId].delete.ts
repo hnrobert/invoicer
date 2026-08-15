@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const userId = getRouterParam(event, "userId")!;
   const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "仅活动管理者可移除协作者" });
+    throw createError({ statusCode: 403, statusMessage: "Only campaign managers can remove collaborators" });
   }
   await AppDataSource.getRepository(CampaignCollaborator).delete({
     campaignId,

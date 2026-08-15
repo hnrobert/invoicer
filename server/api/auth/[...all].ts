@@ -4,7 +4,7 @@ import { findEmailOwner, primaryForLogin } from "#server/utils/emails";
 // Mounts the Better Auth handler under /api/auth/* (sign-in, sign-up, sign-out,
 // get-session, OAuth callbacks). better-auth owns all sub-paths — except the
 // two credential endpoints we intercept for the multi-email model:
-//   - sign-up/email: the "已注册提醒" step — if the email is already linked to
+//   - sign-up/email: the "already-registered reminder" step — if the email is already linked to
 //     ANY account (primary or secondary), reject with guidance instead of a raw
 //     duplicate error (mirrors the OAuth account_not_linked flow).
 //   - sign-in/email: signing in with a linked SECONDARY email maps to the
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     if (!/^[A-Za-z0-9_-]{1,39}$/.test(name)) {
       throw createError({
         statusCode: 400,
-        message: "用户名仅可包含大小写字母、数字、- 和 _（1-39 个字符）。",
+        message: "Username may only contain letters (a-z, A-Z), digits, - and _ (1-39 characters).",
       });
     }
   }
@@ -40,13 +40,13 @@ export default defineEventHandler(async (event) => {
   if (isSignUp && email) {
     const owner = await findEmailOwner(email);
     if (owner) {
-      // 提醒注册环节: guide to the existing account instead of a raw
+      // Reminder step: guide to the existing account instead of a raw
       // duplicate error. `message` (not statusMessage) — h3 sanitizes long
       // statusMessages, and the client's messageFromError reads it.
       throw createError({
         statusCode: 409,
         message:
-          "该邮箱已被账号绑定。请直接使用该账号登录；若忘记密码可重置；如需新账号请更换邮箱。",
+          "This email is already linked to an account. Sign in to that account (reset the password if needed), or use a different email for a new account.",
       });
     }
   }

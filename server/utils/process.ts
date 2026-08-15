@@ -22,7 +22,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
 
   await repo.update(
     { id: invoiceId },
-    { status: "processing", reason: "正在识别…" },
+    { status: "processing", reason: "Recognizing…" },
   );
 
   const campaign = await AppDataSource.getRepository(Campaign).findOneBy({
@@ -39,7 +39,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
           { id: invoiceId },
           {
             status: "review",
-            reason: "PDF 未提取到文本（可能为扫描件，请以图片上传或手动审核）",
+            reason: "No text extracted from the PDF (likely a scan — upload as an image or review manually)",
             processedAt: new Date(),
           },
         );
@@ -74,7 +74,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       { id: invoiceId },
       {
         status: "error",
-        reason: "识别异常",
+        reason: "Recognition error",
         error: e instanceof Error ? e.message : String(e),
         processedAt: new Date(),
       },

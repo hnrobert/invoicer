@@ -71,10 +71,10 @@ export async function listEmails(userId: string): Promise<AccountEmail[]> {
 export async function addEmail(userId: string, email: string): Promise<void> {
   const e = norm(email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
-    throw new Error("邮箱格式不正确");
+    throw new Error("Invalid email address");
   }
   if (await findEmailOwner(e)) {
-    throw new Error("该邮箱已绑定到其他账号");
+    throw new Error("This email is already linked to another account");
   }
   await AppDataSource.getRepository(UserEmail).save({ userId, email: e });
 }
@@ -86,7 +86,7 @@ export async function removeEmail(userId: string, email: string): Promise<void> 
     .prepare("SELECT email FROM user WHERE id = ?")
     .get(userId) as { email: string } | undefined;
   if (user?.email?.toLowerCase() === e) {
-    throw new Error("主邮箱不能移除，可先切换主邮箱");
+    throw new Error("The primary email cannot be removed — switch primary first");
   }
   await AppDataSource.getRepository(UserEmail).delete({ userId, email: e });
 }
@@ -104,12 +104,12 @@ export async function setPrimaryEmail(
   const user = authDb
     .prepare("SELECT email FROM user WHERE id = ?")
     .get(userId) as { email: string } | undefined;
-  if (!user) throw new Error("用户不存在");
+  if (!user) throw new Error("User not found");
   if (user.email.toLowerCase() === e) return; // already primary
 
   const repo = AppDataSource.getRepository(UserEmail);
   const target = await repo.findOneBy({ userId, email: e });
-  if (!target) throw new Error("该邮箱未绑定到当前账号");
+  if (!target) throw new Error("That email is not linked to this account");
 
   const oldPrimary = user.email;
   authDb

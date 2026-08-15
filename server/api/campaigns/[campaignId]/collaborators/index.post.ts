@@ -14,30 +14,30 @@ export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "仅活动管理者可添加协作者" });
+    throw createError({ statusCode: 403, statusMessage: "Only campaign managers can add collaborators" });
   }
   const { email } = await readBody<{ email?: string }>(event);
   const norm = (email ?? "").trim().toLowerCase();
   if (!norm) {
-    throw createError({ statusCode: 400, statusMessage: "请填写邮箱" });
+    throw createError({ statusCode: 400, statusMessage: "Email is required" });
   }
   const u = authDb
     .prepare("SELECT id, name, email FROM user WHERE lower(email) = ?")
     .get(norm) as { id: string; name: string; email: string } | undefined;
   if (!u) {
-    throw createError({ statusCode: 404, statusMessage: "未找到该邮箱的注册用户" });
+    throw createError({ statusCode: 404, statusMessage: "No registered user with that email" });
   }
   if (
     campaign.organizationId &&
     (await getOrgRole(campaign.organizationId, u.id))
   ) {
-    throw createError({ statusCode: 400, statusMessage: "该用户已是组织成员，无需添加为协作者" });
+    throw createError({ statusCode: 400, statusMessage: "This user is already an org member — no collaborator entry needed" });
   }
 
   const repo = AppDataSource.getRepository(CampaignCollaborator);
   const existing = await repo.findOneBy({ campaignId, userId: u.id });
   if (existing) {
-    throw createError({ statusCode: 400, statusMessage: "该用户已是协作者" });
+    throw createError({ statusCode: 400, statusMessage: "This user is already a collaborator" });
   }
   await repo.save({ campaignId, userId: u.id });
   logAudit({

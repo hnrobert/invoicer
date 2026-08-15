@@ -55,9 +55,9 @@ export function emailLimitError(r: EmailLimitResult): {
 } {
   const statusMessage =
     r.reason === "minute"
-      ? `发送过于频繁，请 ${r.retryInSeconds ?? 60} 秒后再试`
+      ? `Sending too frequently — retry in ${r.retryInSeconds ?? 60}s`
       : r.scope === "address"
-        ? `该邮箱已达每日发送上限（${r.dailyLimit} 封/天）`
-        : `你的账号已达每日发送上限（${r.dailyLimit} 封/天）`;
+        ? `This email has hit its daily send limit (${r.dailyLimit}/day)`
+        : `Your account has hit its daily send limit (${r.dailyLimit}/day)`;
   return { statusCode: 429, statusMessage };
 }

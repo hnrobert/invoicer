@@ -43,19 +43,19 @@ export function matchInvoice(
   if (titleOk && taxOk) {
     if (amount == null) {
       status = "review";
-      reason = "抬头与税号匹配，但未识别到金额，请手动输入";
+      reason = "Title and tax ID matched, but no amount recognized — enter it manually";
     } else {
       status = "qualified";
-      reason = "抬头与税号均匹配";
+      reason = "Title and tax ID both matched";
     }
   } else if (titleOk || taxOk) {
     status = "review";
-    if (titleOk && !taxOk) reason = "抬头匹配，税号不符";
-    else if (taxOk && !titleOk) reason = "税号匹配，抬头不符";
-    else reason = "部分信息匹配";
+    if (titleOk && !taxOk) reason = "Title matched, tax ID mismatched";
+    else if (taxOk && !titleOk) reason = "Tax ID matched, title mismatched";
+    else reason = "Partial match";
   } else {
     status = "unqualified";
-    reason = "抬头与税号均不匹配";
+    reason = "Neither title nor tax ID matched";
   }
 
   return {
