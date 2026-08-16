@@ -15,7 +15,7 @@ const ALL = [
   "profile",
   "emails",
   "preferences",
-  "providers",
+  "security",
   "mail",
   "users",
 ] as const;
@@ -27,9 +27,41 @@ const section = computed<(typeof ALL)[number]>(
 );
 const secUrl = (key: string) => ({ path: "/settings", query: { section: key } });
 
-const { user, isAdmin, linkProvider, unlinkProvider, listAccounts, refreshUser } =
+const { user, isAdmin, linkProvider, unlinkProvider, listAccounts, refreshUser, changePassword } =
   useAuth();
 const { list: enabledList } = useOAuthProviders();
+
+// ---------- security: change password ----------
+const currentPw = ref("");
+const newPw = ref("");
+const confirmPw = ref("");
+const pwBusy = ref(false);
+/** True when the account has an email+password credential (OAuth-only accounts can't change a password). */
+const hasPasswordAccount = computed(() =>
+  accounts.value.some((a) => a.providerId === "credential"),
+);
+async function submitChangePassword() {
+  if (newPw.value.length < 8) {
+    toast.error(t("auth.register.passwordHint"));
+    return;
+  }
+  if (newPw.value !== confirmPw.value) {
+    toast.error(t("auth.register.passwordMismatch"));
+    return;
+  }
+  pwBusy.value = true;
+  try {
+    await changePassword(currentPw.value, newPw.value);
+    currentPw.value = "";
+    newPw.value = "";
+    confirmPw.value = "";
+    toast.success(t("settings.security.pwChanged"));
+  } catch (e) {
+    toast.error(messageFromError(e, t("settings.security.pwFailed")));
+  } finally {
+    pwBusy.value = false;
+  }
+}
 
 // ---------- profile ----------
 // The username is chosen at sign-up; the primary email is managed under Emails.
@@ -151,15 +183,30 @@ function fmtDate(iso: string): string {
 }
 
 const sections = computed(() => [
-  { key: "profile", label: t("settings.sections.profile"), to: secUrl("profile") },
-  { key: "emails", label: t("account.emails.title"), to: secUrl("emails") },
-  { key: "preferences", label: t("account.prefsTitle"), to: secUrl("preferences") },
-  { key: "providers", label: t("account.linkedTitle"), to: secUrl("providers") },
+  {
+    key: "profile",
+    label: t("settings.sections.profile"),
+    to: secUrl("profile"),
+    icon: "IdCard",
+  },
+  { key: "emails", label: t("account.emails.title"), to: secUrl("emails"), icon: "Mail" },
+  {
+    key: "preferences",
+    label: t("account.prefsTitle"),
+    to: secUrl("preferences"),
+    icon: "SlidersHorizontal",
+  },
+  {
+    key: "security",
+    label: t("settings.sections.security"),
+    to: secUrl("security"),
+    icon: "ShieldCheck",
+  },
   ...(isAdmin.value
     ? [
         { key: "adminGroup", label: t("settings.sections.admin"), to: null },
-        { key: "mail", label: t("admin.sections.mail"), to: secUrl("mail") },
-        { key: "users", label: t("admin.sections.users"), to: secUrl("users") },
+        { key: "mail", label: t("admin.sections.mail"), to: secUrl("mail"), icon: "Send" },
+        { key: "users", label: t("admin.sections.users"), to: secUrl("users"), icon: "Users" },
       ]
     : []),
 ]);
@@ -290,48 +337,89 @@ watch(section, (v) => {
       </div>
     </div>
 
-    <!-- ============ linked providers ============ -->
-    <div v-else-if="section === 'providers'" class="flex flex-col gap-3">
-      <h3 class="text-base font-semibold">{{ t("account.linkedTitle") }}</h3>
-      <p class="text-sm text-muted-foreground">{{ t("account.linkedDesc") }}</p>
-      <div class="flex items-center gap-3 rounded-lg border p-3">
-        <Icon spec="Mail" :size="18" class="text-muted-foreground" />
-        <span class="text-sm font-medium">{{ t("account.emailPassword") }}</span>
-        <span
-          class="ml-auto rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
-          >{{ t("settings.sections.profile") }}</span
+    <!-- ============ security: password + linked providers ============ -->
+    <div v-else-if="section === 'security'" class="flex flex-col gap-6">
+      <!-- change password -->
+      <div class="flex flex-col gap-3">
+        <h3 class="text-base font-semibold">{{ t("settings.security.title") }}</h3>
+        <p class="text-sm text-muted-foreground">{{ t("settings.security.desc") }}</p>
+        <p
+          v-if="!hasPasswordAccount"
+          class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground"
         >
-      </div>
-      <div
-        v-for="provider in linkable"
-        :key="provider"
-        class="flex items-center gap-3 rounded-lg border p-3"
-      >
-        <Icon
-          :spec="provider === 'github' ? 'Github' : 'MessageCircle'"
-          :size="18"
-          class="text-muted-foreground"
-        />
-        <span class="text-sm font-medium">
-          {{ provider === "github" ? t("auth.oauth.github") : t("auth.oauth.wechat") }}
-        </span>
-        <Button
-          v-if="isLinked(provider)"
-          type="button"
-          variant="outline"
-          size="sm"
-          class="ml-auto"
-          @click="onDisconnect(provider)"
+          {{ t("settings.security.noPassword") }}
+        </p>
+        <form
+          v-else
+          class="flex max-w-md flex-col gap-3"
+          @submit.prevent="submitChangePassword"
         >
-          {{ t("account.disconnect") }}
-        </Button>
-        <Button v-else type="button" size="sm" class="ml-auto" @click="onConnect(provider)">
-          {{ t("account.connect") }}
-        </Button>
+          <div class="flex flex-col gap-2">
+            <Label>{{ t("settings.security.currentPw") }}</Label>
+            <Input v-model="currentPw" type="password" required autocomplete="current-password" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <Label>{{ t("settings.security.newPw") }}</Label>
+            <Input v-model="newPw" type="password" required minlength="8" autocomplete="new-password" />
+            <p class="text-xs text-muted-foreground">{{ t("auth.register.passwordHint") }}</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <Label>{{ t("auth.register.confirmLabel") }}</Label>
+            <Input v-model="confirmPw" type="password" required minlength="8" autocomplete="new-password" />
+          </div>
+          <Button type="submit" :disabled="pwBusy" class="self-start">
+            <Icon spec="KeyRound" :size="14" />
+            {{ pwBusy ? t("settings.saving") : t("settings.security.submit") }}
+          </Button>
+        </form>
       </div>
-      <p v-if="!linkable.length" class="py-2 text-center text-sm text-muted-foreground">
-        {{ t("account.noLinks") }}
-      </p>
+
+      <!-- linked providers -->
+      <div class="flex flex-col gap-3 border-t pt-5">
+        <h3 class="text-base font-semibold">{{ t("account.linkedTitle") }}</h3>
+        <p class="text-sm text-muted-foreground">{{ t("account.linkedDesc") }}</p>
+        <div
+          v-if="hasPasswordAccount"
+          class="flex items-center gap-3 rounded-lg border p-3"
+        >
+          <Icon spec="Mail" :size="18" class="text-muted-foreground" />
+          <span class="text-sm font-medium">{{ t("account.emailPassword") }}</span>
+          <span
+            class="ml-auto rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
+            >{{ t("settings.security.linkedTag") }}</span
+          >
+        </div>
+        <div
+          v-for="provider in linkable"
+          :key="provider"
+          class="flex items-center gap-3 rounded-lg border p-3"
+        >
+          <Icon
+            :spec="provider === 'github' ? 'Github' : 'MessageCircle'"
+            :size="18"
+            class="text-muted-foreground"
+          />
+          <span class="text-sm font-medium">
+            {{ provider === "github" ? t("auth.oauth.github") : t("auth.oauth.wechat") }}
+          </span>
+          <Button
+            v-if="isLinked(provider)"
+            type="button"
+            variant="outline"
+            size="sm"
+            class="ml-auto"
+            @click="onDisconnect(provider)"
+          >
+            {{ t("account.disconnect") }}
+          </Button>
+          <Button v-else type="button" size="sm" class="ml-auto" @click="onConnect(provider)">
+            {{ t("account.connect") }}
+          </Button>
+        </div>
+        <p v-if="!linkable.length && !hasPasswordAccount" class="py-2 text-center text-sm text-muted-foreground">
+          {{ t("account.noLinks") }}
+        </p>
+      </div>
     </div>
 
     <!-- ============ admin: mail ============ -->

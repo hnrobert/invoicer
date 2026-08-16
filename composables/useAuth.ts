@@ -67,6 +67,21 @@ export function useAuth() {
   }
 
   /**
+   * Change the account password (requires the current one; email/password
+   * accounts only — pure OAuth accounts have no password credential).
+   */
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const { error } = await authClient().changePassword({
+      currentPassword,
+      newPassword,
+    });
+    if (error) throw new Error(error.message || "Password change failed");
+  }
+
+  /**
    * Start an OAuth sign-in (redirects to the provider). After the Better Auth
    * callback, the browser lands back on `callbackURL`; the auth plugin then
    * hydrates the session on SSR load. For a trusted provider (github) whose
@@ -127,13 +142,19 @@ export function useAuth() {
     const res = await (
       authClient() as unknown as {
         listAccounts: () => Promise<{
-          data?: Array<{ id: string; provider: string; accountId: string }>;
+          data?: Array<{
+            id: string;
+            provider?: string;
+            providerId?: string;
+            accountId: string;
+          }>;
         }>;
       }
     ).listAccounts();
+    // The wire shape uses `providerId` ("credential" for email+password).
     return (res.data ?? []).map((a) => ({
       id: a.id,
-      providerId: a.provider,
+      providerId: a.providerId ?? a.provider ?? "",
       accountId: a.accountId,
     }));
   }
@@ -150,6 +171,7 @@ export function useAuth() {
     signInEmail,
     signUpEmail,
     signOut,
+    changePassword,
     signInSocial,
     linkProvider,
     unlinkProvider,

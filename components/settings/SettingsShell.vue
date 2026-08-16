@@ -2,14 +2,19 @@
 import type { RouteLocationRaw } from "vue-router";
 
 // GitHub settings layout: a title, then a two-column body — left section nav
-// (NuxtLinks) + right content. Used by /admin, org settings, and the campaign
-// settings tab. The parent decides which section is active (`active` prop) so
-// both sub-route and ?section= navigation styles work.
+// (NuxtLinks, each with an optional icon) + right content. The parent decides
+// which section is active (`active` prop) so both sub-route and ?section=
+// navigation styles work.
 defineProps<{
   title: string;
   active: string;
-  /** { key, label, to } — to=null renders a plain group heading row. */
-  sections: { key: string; label: string; to?: RouteLocationRaw | null }[];
+  /** { key, label, to, icon } — to=null renders a plain group heading row. */
+  sections: {
+    key: string;
+    label: string;
+    to?: RouteLocationRaw | null;
+    icon?: string;
+  }[];
 }>();
 </script>
 
@@ -28,13 +33,14 @@ defineProps<{
           <NuxtLink
             v-else
             :to="s.to"
-            class="rounded-md px-2 py-1.5 text-sm transition-colors"
+            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
             :class="
               active === s.key
                 ? 'bg-accent font-medium text-foreground'
                 : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
             "
           >
+            <Icon v-if="s.icon" :spec="s.icon" :size="15" class="shrink-0" />
             {{ s.label }}
           </NuxtLink>
         </template>
