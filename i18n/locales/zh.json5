@@ -409,8 +409,13 @@
 
   // ── 设置页（邮件发送：SMTP / POST Webhook）────────────────
   settings: {
-    title: "邮件设置",
+    title: "设置",
     back: "返回",
+    sections: {
+      profile: "个人资料",
+      profileHint: "用户名在注册时确定；主邮箱请在「邮箱」中管理。",
+      admin: "站点管理",
+    },
     desc: "用于发送审核报告的邮件发送配置。密码 / 令牌仅在重新输入时覆盖，留空则保留原值。",
     provider: { smtp: "SMTP", post: "POST Webhook" },
     smtpDesc: "直接连接 SMTP 邮件服务器发送。",

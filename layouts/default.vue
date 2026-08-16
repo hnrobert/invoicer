@@ -120,21 +120,12 @@ const userOpen = ref(false);
                   </p>
                 </div>
                 <NuxtLink
-                  to="/account"
+                  to="/settings?section=profile"
                   class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
                   @click="userOpen = false"
                 >
                   <Icon spec="UserCircle" :size="14" />
-                  {{ t("account.title") }}
-                </NuxtLink>
-                <NuxtLink
-                  v-if="isAdmin"
-                  to="/admin/mail"
-                  class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
-                  @click="userOpen = false"
-                >
-                  <Icon spec="ShieldCheck" :size="14" />
-                  {{ t("admin.title") }}
+                  {{ t("settings.sections.profile") }}
                 </NuxtLink>
                 <NuxtLink
                   to="/settings"

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// /admin → default to the mail section.
-definePageMeta({ layout: "default", middleware: "superadmin" });
-onMounted(() => navigateTo("/admin/mail", { replace: true }));
+// Site admin moved into the unified Settings hub (/settings, Admin group).
+definePageMeta({ layout: "default" });
+onMounted(() =>
+  navigateTo({ path: "/settings", query: { section: "mail" } }, { replace: true }),
+);
 </script>
 
 <template>

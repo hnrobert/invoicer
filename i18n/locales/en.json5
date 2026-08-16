@@ -408,8 +408,13 @@
 
   // ── settings (mail delivery: SMTP / POST webhook) ─────────────
   settings: {
-    title: "Mail Settings",
+    title: "Settings",
     back: "Back",
+    sections: {
+      profile: "Profile",
+      profileHint: "The username is fixed at sign-up; manage the primary email under Emails.",
+      admin: "Site admin",
+    },
     desc: "Delivery configuration for audit-report emails. Passwords / tokens are overwritten only when re-entered; leave them blank to keep the current values.",
     provider: { smtp: "SMTP", post: "POST Webhook" },
     smtpDesc: "Send through an SMTP mail server directly.",
