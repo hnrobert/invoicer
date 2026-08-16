@@ -1,5 +1,6 @@
 import { auth } from "#server/utils/auth";
 import { findEmailOwner, primaryForLogin } from "#server/utils/emails";
+import { ensureBootstrapAdmin } from "#server/utils/superadmin";
 
 // Mounts the Better Auth handler under /api/auth/* (sign-in, sign-up, sign-out,
 // get-session, OAuth callbacks). better-auth owns all sub-paths — except the
@@ -61,5 +62,9 @@ export default defineEventHandler(async (event) => {
     headers,
     body: JSON.stringify(raw),
   });
-  return auth.handler(req);
+  const res = await auth.handler(req);
+  // The site's first sign-up decides the bootstrap superadmin — grant at
+  // registration time rather than on the first permission check.
+  if (isSignUp && res.ok) void ensureBootstrapAdmin();
+  return res;
 });
