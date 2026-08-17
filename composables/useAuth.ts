@@ -89,10 +89,15 @@ export function useAuth() {
    * blocked link redirects with `?error=account_not_linked`. WeChat (no email)
    * is matched by unionid/openid and creates/links accordingly.
    */
-  async function signInSocial(
-    provider: ProviderId,
-    callbackURL: string = window.location.origin + "/",
-  ): Promise<void> {
+  /**
+   * Start a social sign-in. The provider returns to OUR landing page
+   * (/oauth/callback) which refreshes the session, greets the user and
+   * continues to `redirect` (a relative app path) — every OAuth outcome,
+   * success or error, is visible there.
+   */
+  async function signInSocial(provider: ProviderId, redirect = "/"): Promise<void> {
+    const target = redirect.startsWith("/") ? redirect : "/";
+    const callbackURL = `${window.location.origin}/oauth/callback?redirect=${encodeURIComponent(target)}`;
     // Both github and wechat are built-in providers, so signIn.social accepts
     // them; cast because the client's provider union isn't widened from server
     // config.
@@ -113,7 +118,7 @@ export function useAuth() {
    */
   async function linkProvider(
     provider: ProviderId,
-    callbackURL: string = window.location.origin + "/account",
+    callbackURL: string = window.location.origin + "/oauth/callback?redirect=%2Fsettings%3Fsection%3Dsecurity",
   ): Promise<void> {
     await (
       authClient() as unknown as {

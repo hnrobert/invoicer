@@ -204,6 +204,22 @@
     },
   },
 
+  // ── OAuth return page ────────────────────────────────────────
+  oauthCallback: {
+    title: "Signing in",
+    working: "Finishing sign-in…",
+    welcome: "Welcome, {name}",
+    failed: "Social sign-in failed",
+    notLinkedHint: "That provider is already linked to another account: sign in to it first, then connect the provider under Settings → Security to merge.",
+    errors: {
+      notLinked: "The email on that GitHub / WeChat account already belongs to another account and cannot be auto-merged.",
+      stateMismatch: "Sign-in state validation failed (stale page or duplicate attempt) — please retry.",
+      expired: "The authorization is expired or invalid — please retry.",
+      denied: "Authorization was denied at the provider.",
+      generic: "Sign-in did not complete — please retry; if it keeps failing, check the OAuth configuration.",
+    },
+  },
+
   // ── in-app notifications ────────────────────────────────────
   notify: {
     title: "Notifications",

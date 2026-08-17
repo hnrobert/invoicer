@@ -26,7 +26,12 @@ async function onSubmit() {
 
 async function onOAuth(provider: ProviderId) {
   try {
-    await signInSocial(provider);
+    // Continue to the originally requested page after the OAuth round-trip.
+    const redirect = route.query.redirect;
+    await signInSocial(
+      provider,
+      typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/",
+    );
   } catch (e) {
     toast.error(messageFromError(e, t("auth.oauth.failed")));
   }

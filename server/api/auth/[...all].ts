@@ -14,9 +14,18 @@ import { ensureBootstrapAdmin } from "#server/utils/superadmin";
 // reading the body here drains the original stream, so toWebRequest(event)
 // must NOT be used afterwards on these paths.
 export default defineEventHandler(async (event) => {
-  const path = event.path.replace(/^.*\/api\/auth/, "");
+  // NOTE: event.path includes the query string — strip it before matching.
+  const path = event.path.replace(/^.*\/api\/auth/, "").split("?")[0];
   const isSignUp = event.method === "POST" && path === "/sign-up/email";
   const isSignIn = event.method === "POST" && path === "/sign-in/email";
+
+  // Better Auth's OAuth failures land on its own bare HTML page at
+  // /api/auth/error — invisible to the app. Redirect them to our friendly
+  // OAuth return page instead so the user sees a proper message.
+  if (event.method === "GET" && path === "/error") {
+    const code = getQuery(event).error?.toString() || "unknown";
+    return sendRedirect(event, `/oauth/callback?error=${encodeURIComponent(code)}`);
+  }
 
   if (!isSignUp && !isSignIn) {
     return auth.handler(toWebRequest(event));
