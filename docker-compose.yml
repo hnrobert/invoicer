@@ -1,6 +1,10 @@
 services:
   app:
-    build: .
+    # Prebuilt image from GHCR (built by .github/workflows/docker.yml on every
+    # push to main; `main-<sha>` tags pin exact versions).
+    # To build locally instead, swap for:
+    #   build: .
+    image: ghcr.io/hnrobert/invoicer:latest
     ports:
       # External port: edit HERE (container port stays 10752 — it also feeds
       # PADDLEOCR_URL / BETTER_AUTH_URL defaults).
