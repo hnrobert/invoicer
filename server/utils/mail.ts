@@ -142,9 +142,12 @@ function resolveFieldMapFromConfig(c: MailConfig): FieldMap {
       // fall through to legacy migration
     }
   }
-  return c.postSchema === "powerautomate"
-    ? PRESETS.custom_example
-    : PRESETS.smtogo;
+  // Legacy values: 'powerautomate' → custom_example; anything unrecognized
+  // falls back to smtogo (email-poster's own default preset).
+  if (c.postSchema === "powerautomate") return PRESETS.custom_example;
+  if (c.postSchema === "generic") return PRESETS.generic;
+  if (c.postSchema === "custom_example") return PRESETS.custom_example;
+  return PRESETS.smtogo;
 }
 
 /**

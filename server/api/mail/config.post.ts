@@ -18,7 +18,15 @@ const clampInt = (
 };
 
 const PROVIDERS = ["smtp", "post"] as const;
-const SCHEMAS = ["smtogo", "powerautomate"] as const;
+// email-poster preset names + the legacy powerautomate alias (migrates to
+// custom_example at send time). '' is allowed — the stored postFieldMap is
+// authoritative and the legacy fallback then defaults to smtogo.
+const SCHEMAS = [
+  "smtogo",
+  "generic",
+  "custom_example",
+  "powerautomate",
+] as const;
 
 export default defineEventHandler(async (event) => {
   await requireSuperAdmin(event);
