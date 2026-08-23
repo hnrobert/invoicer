@@ -58,6 +58,18 @@ function isSecure(ctx: CtxLike): boolean {
   return false;
 }
 
+/** SITE_URL-derived origin + registrable domain ("" when unset/unparseable). */
+function fromSiteUrl(): { origin: string; rpID: string } {
+  const raw = (process.env.SITE_URL || "").trim();
+  if (!raw) return { origin: "", rpID: "" };
+  try {
+    const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
+    return { origin: url.origin, rpID: url.hostname };
+  } catch {
+    return { origin: "", rpID: "" };
+  }
+}
+
 export function getRelyingParty(ctx: CtxLike): RelyingParty {
   const xfh = header(ctx, "x-forwarded-host").split(",")[0]?.trim();
   const hostHeader = header(ctx, "host");
@@ -65,9 +77,14 @@ export function getRelyingParty(ctx: CtxLike): RelyingParty {
   // include the port (e.g. http://localhost:10752) — it's compared verbatim
   // against the authenticator response — while the RP ID is always port-less.
   const fullHost = xfh || hostHeader || "localhost";
-  const rpID = process.env.WEBAUTHN_RP_ID || fullHost.replace(/:\d+$/, "");
+  const site = fromSiteUrl();
+  // Priority: explicit WEBAUTHN_* overrides > SITE_URL (the canonical public
+  // origin) > per-request host (works in dev without any env).
+  const rpID =
+    process.env.WEBAUTHN_RP_ID || site.rpID || fullHost.replace(/:\d+$/, "");
   const origin =
     process.env.WEBAUTHN_ORIGIN ||
+    site.origin ||
     `${isSecure(ctx) ? "https" : "http"}://${fullHost}`;
   return { rpID, rpName: RP_NAME, origin };
 }

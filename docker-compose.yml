@@ -2,7 +2,9 @@ services:
   app:
     build: .
     ports:
-      - "${PORT:-10752}:10752"
+      # External port: edit HERE (container port stays 10752 — it also feeds
+      # PADDLEOCR_URL / BETTER_AUTH_URL defaults).
+      - "10752:10752"
     volumes:
       # Persist the SQLite database and uploaded invoices across container rebuilds.
       - ./data:/app/data
