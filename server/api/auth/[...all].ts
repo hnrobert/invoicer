@@ -78,7 +78,8 @@ export default defineEventHandler(async (event) => {
   });
   const res = await auth.handler(req);
   // The site's first sign-up decides the bootstrap superadmin — grant at
-  // registration time rather than on the first permission check.
-  if (isSignUp && res.ok) void ensureBootstrapAdmin();
+  // registration time, AWAITED so the row is committed before the response
+  // returns (the client's immediate /api/me must already see it).
+  if (isSignUp && res.ok) await ensureBootstrapAdmin();
   return res;
 });

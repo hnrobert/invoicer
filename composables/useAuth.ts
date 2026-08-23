@@ -14,16 +14,6 @@ export function authClient() {
   return _client;
 }
 
-/**
- * The Better Auth session user arrives as JSON whose shape matches `AuthUser`
- * (id/name/email/emailVerified/image + ISO-string timestamps). Better Auth's own
- * types mark the timestamps as `Date`; we cast through `unknown` because the wire
- * payload is already serialized strings.
- */
-function toAuthUser(u: unknown): AuthUser {
-  return u as unknown as AuthUser;
-}
-
 /** A linked provider account (from Better Auth listAccounts). */
 export interface LinkedAccount {
   id: string;
@@ -46,12 +36,14 @@ export function useAuth() {
   const isAdmin = useState<boolean>("auth:isAdmin", () => false);
 
   async function signInEmail(email: string, password: string): Promise<void> {
-    const { data, error } = await authClient().signIn.email({
+    const { error } = await authClient().signIn.email({
       email,
       password,
     });
     if (error) throw new Error(error.message);
-    if (data?.user) user.value = toAuthUser(data.user);
+    // Re-read /api/me so user AND the superadmin flag are fresh (better-auth's
+    // response knows nothing about isAdmin).
+    await refreshUser();
   }
 
   async function signUpEmail(
@@ -59,13 +51,16 @@ export function useAuth() {
     email: string,
     password: string,
   ): Promise<void> {
-    const { data, error } = await authClient().signUp.email({
+    const { error } = await authClient().signUp.email({
       name,
       email,
       password,
     });
     if (error) throw new Error(error.message);
-    if (data?.user) user.value = toAuthUser(data.user);
+    // The FIRST user to sign up is granted superadmin server-side before the
+    // response returns — refresh immediately so isAdmin is live, not stale
+    // until the next full page load.
+    await refreshUser();
   }
 
   async function signOut(): Promise<void> {
@@ -178,8 +173,11 @@ export function useAuth() {
 
   /** Re-read the session from the server (e.g. after an OAuth callback). */
   async function refreshUser(): Promise<void> {
-    const res = await $fetch<{ user: AuthUser | null }>("/api/me");
+    const res = await $fetch<{ user: AuthUser | null; isAdmin?: boolean }>(
+      "/api/me",
+    );
     user.value = res.user;
+    isAdmin.value = !!res.isAdmin;
   }
 
   // ---------- passkey (WebAuthn) ----------
