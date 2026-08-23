@@ -31,6 +31,14 @@ export interface LinkedAccount {
   accountId: string;
 }
 
+/** A registered passkey as shown in Settings → Security (safe fields only). */
+export interface PasskeyInfo {
+  id: number;
+  deviceType: string | null;
+  backedUp: boolean;
+  createdAt: string;
+}
+
 /** Reactive auth state + auth actions backed by Better Auth. */
 export function useAuth() {
   const user = useState<AuthUser | null>("auth:user", () => null);
@@ -174,9 +182,60 @@ export function useAuth() {
     user.value = res.user;
   }
 
+  // ---------- passkey (WebAuthn) ----------
+  /** List the signed-in user's registered passkeys. */
+  async function listPasskeys(): Promise<PasskeyInfo[]> {
+    const res = await $fetch<{ passkeys: PasskeyInfo[] }>(
+      "/api/auth/passkey/list",
+    );
+    return res.passkeys;
+  }
+
+  /** Register a new passkey for the signed-in account (browser prompt). */
+  async function addPasskey(): Promise<PasskeyInfo[]> {
+    const { startRegistration } = await import("@simplewebauthn/browser");
+    const options = await $fetch<
+      Parameters<typeof startRegistration>[0]["optionsJSON"]
+    >("/api/auth/passkey/register-options");
+    const response = await startRegistration({ optionsJSON: options });
+    await $fetch("/api/auth/passkey/register-verify", {
+      method: "POST",
+      body: response,
+    });
+    return listPasskeys();
+  }
+
+  /** Remove one of the signed-in user's passkeys by id. */
+  async function removePasskey(id: number): Promise<PasskeyInfo[]> {
+    await $fetch("/api/auth/passkey/remove", {
+      method: "POST",
+      body: { id },
+    });
+    return listPasskeys();
+  }
+
+  /** Passwordless discoverable login (browser prompt) — refreshes the session. */
+  async function loginWithPasskey(): Promise<void> {
+    const { startAuthentication } = await import("@simplewebauthn/browser");
+    const options = await $fetch<
+      Parameters<typeof startAuthentication>[0]["optionsJSON"]
+    >("/api/auth/passkey/login-options");
+    const response = await startAuthentication({ optionsJSON: options });
+    await $fetch("/api/auth/passkey/login-verify", {
+      method: "POST",
+      body: response,
+    });
+    // The verify call sets the better-auth session cookie; re-read it.
+    await refreshUser();
+  }
+
   return {
     user,
     isAdmin,
+    listPasskeys,
+    addPasskey,
+    removePasskey,
+    loginWithPasskey,
     signInEmail,
     signUpEmail,
     signOut,

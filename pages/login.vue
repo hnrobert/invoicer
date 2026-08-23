@@ -5,7 +5,7 @@ definePageMeta({ layout: "auth", middleware: "guest" });
 
 const { t } = useI18n();
 const route = useRoute();
-const { signInEmail, signInSocial } = useAuth();
+const { signInEmail, signInSocial, loginWithPasskey } = useAuth();
 const { list: providerList } = useOAuthProviders();
 
 const email = ref("");
@@ -34,6 +34,21 @@ async function onOAuth(provider: ProviderId) {
     );
   } catch (e) {
     toast.error(messageFromError(e, t("auth.oauth.failed")));
+  }
+}
+
+async function onPasskey() {
+  try {
+    await loginWithPasskey();
+    const redirect = route.query.redirect;
+    navigateTo(
+      typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/",
+      { replace: true },
+    );
+  } catch (e) {
+    // WebAuthn requires a secure context (https or localhost) and browser
+    // support — surface the browser/lib message directly.
+    toast.error(messageFromError(e, t("auth.passkey.failed")));
   }
 }
 </script>
@@ -101,6 +116,11 @@ async function onOAuth(provider: ProviderId) {
             }}
           </Button>
         </template>
+
+        <Button type="button" variant="outline" @click="onPasskey">
+          <Icon spec="Fingerprint" :size="16" />
+          {{ t("auth.passkey.login") }}
+        </Button>
       </form>
     </CardContent>
     <CardFooter class="justify-center text-sm text-muted-foreground">

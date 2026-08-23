@@ -63,6 +63,10 @@
       login: "登录",
       logout: "退出登录",
     },
+    passkey: {
+      login: "使用 Passkey 登录",
+      failed: "Passkey 登录失败：",
+    },
     oauth: {
       or: "或",
       github: "使用 GitHub 登录",
@@ -435,6 +439,18 @@
       profileHint: "用户名在注册时确定；主邮箱请在「邮箱」中管理。",
       security: "安全",
       admin: "站点管理",
+    },
+    passkey: {
+      title: "Passkey / 通行密钥",
+      desc: "用指纹、面容或硬件密钥免密登录。可绑定多台设备。",
+      add: "添加 Passkey",
+      added: "Passkey 已添加",
+      failed: "添加失败：",
+      removeFailed: "移除失败：",
+      none: "尚未绑定任何 Passkey。",
+      multiDevice: "多设备通行密钥",
+      singleDevice: "单设备通行密钥",
+      synced: "已云同步",
     },
     security: {
       title: "修改密码",

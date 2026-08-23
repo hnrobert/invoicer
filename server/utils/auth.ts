@@ -8,6 +8,7 @@ import {
   ownerAc,
 } from "better-auth/plugins/organization/access";
 import Database from "better-sqlite3";
+import { passkeyPlugin } from "./passkeyPlugin";
 
 const githubId = process.env.GITHUB_CLIENT_ID;
 const githubSecret = process.env.GITHUB_CLIENT_SECRET;
@@ -157,6 +158,7 @@ export const auth = betterAuth({
         viewer: memberAc,
       },
     }),
+    passkeyPlugin(),
   ],
   // We deliberately do not run an email-verification loop. To keep the trust
   // model consistent and unblock email-gated Better Auth features (notably the

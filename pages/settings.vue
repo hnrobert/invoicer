@@ -3,7 +3,7 @@
 // Preferences / Linked providers for every user, plus an Admin group
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
-import type { ProviderId } from "~/composables/useAuth";
+import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
 import { useColorMode } from "@vueuse/core";
 
 definePageMeta({ layout: "default" });
@@ -37,6 +37,9 @@ const {
   listAccounts,
   refreshUser,
   changePassword,
+  listPasskeys,
+  addPasskey,
+  removePasskey,
 } = useAuth();
 const { list: enabledList } = useOAuthProviders();
 
@@ -137,6 +140,45 @@ const { locale, locales, setLocale } = useI18n();
 const localeList = computed(
   () => locales.value as { code: "zh" | "en"; name?: string }[],
 );
+
+// ---------- security: passkeys ----------
+const passkeys = ref<PasskeyInfo[]>([]);
+const pkBusy = ref(false);
+async function refreshPasskeys() {
+  try {
+    passkeys.value = await listPasskeys();
+  } catch {
+    passkeys.value = [];
+  }
+}
+async function onAddPasskey() {
+  pkBusy.value = true;
+  try {
+    passkeys.value = await addPasskey();
+    toast.success(t("settings.passkey.added"));
+  } catch (e) {
+    toast.error(messageFromError(e, t("settings.passkey.failed")));
+  } finally {
+    pkBusy.value = false;
+  }
+}
+async function onRemovePasskey(id: number) {
+  try {
+    passkeys.value = await removePasskey(id);
+  } catch (e) {
+    toast.error(messageFromError(e, t("settings.passkey.removeFailed")));
+  }
+}
+function fmtPkDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+}
 
 // ---------- linked providers ----------
 const accounts = ref<
@@ -250,6 +292,7 @@ const sections = computed(() => [
 ]);
 
 onMounted(() => {
+  void refreshPasskeys();
   void refreshEmails();
   void refreshAccounts();
   if (section.value === "users" && isAdmin.value) void loadUsers();
@@ -447,6 +490,57 @@ watch(section, (v) => {
             {{ pwBusy ? t("settings.saving") : t("settings.security.submit") }}
           </Button>
         </form>
+      </div>
+
+      <!-- passkeys -->
+      <div class="flex flex-col gap-3 border-t pt-5">
+        <h3 class="text-base font-semibold">
+          {{ t("settings.passkey.title") }}
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ t("settings.passkey.desc") }}
+        </p>
+        <div
+          v-for="pk in passkeys"
+          :key="pk.id"
+          class="flex items-center gap-3 rounded-lg border p-3"
+        >
+          <Icon spec="Fingerprint" :size="18" class="text-muted-foreground" />
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium">
+              {{
+                pk.deviceType === "multiDevice"
+                  ? t("settings.passkey.multiDevice")
+                  : t("settings.passkey.singleDevice")
+              }}
+              <span
+                v-if="pk.backedUp"
+                class="ml-1 text-xs text-muted-foreground"
+              >
+                · {{ t("settings.passkey.synced") }}
+              </span>
+            </div>
+            <div class="text-xs text-muted-foreground">
+              {{ fmtPkDate(pk.createdAt) }}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" @click="onRemovePasskey(pk.id)">
+            {{ t("account.emails.remove") }}
+          </Button>
+        </div>
+        <p v-if="!passkeys.length" class="text-xs text-muted-foreground">
+          {{ t("settings.passkey.none") }}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="pkBusy"
+          class="self-start"
+          @click="onAddPasskey"
+        >
+          <Icon spec="KeyRound" :size="14" />
+          {{ pkBusy ? t("settings.loading") : t("settings.passkey.add") }}
+        </Button>
       </div>
 
       <!-- linked providers -->

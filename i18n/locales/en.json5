@@ -63,6 +63,10 @@
       login: "Log in",
       logout: "Log out",
     },
+    passkey: {
+      login: "Sign in with a passkey",
+      failed: "Passkey sign-in failed: ",
+    },
     oauth: {
       or: "or",
       github: "Sign in with GitHub",
@@ -434,6 +438,18 @@
       profileHint: "The username is fixed at sign-up; manage the primary email under Emails.",
       security: "Security",
       admin: "Site admin",
+    },
+    passkey: {
+      title: "Passkeys",
+      desc: "Sign in passwordlessly with fingerprint, face, or a hardware key. One per device.",
+      add: "Add passkey",
+      added: "Passkey added",
+      failed: "Failed to add: ",
+      removeFailed: "Failed to remove: ",
+      none: "No passkeys registered yet.",
+      multiDevice: "Multi-device passkey",
+      singleDevice: "Single-device passkey",
+      synced: "synced",
     },
     security: {
       title: "Change password",

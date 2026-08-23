@@ -16,6 +16,7 @@ import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 import { UserEmail } from "#server/entities/userEmail.entity";
 import { SiteAdmin } from "#server/entities/siteAdmin.entity";
+import { Passkey } from "#server/entities/passkey.entity";
 
 const dbPath = process.env.DB_PATH || "./data/app.db";
 
@@ -53,6 +54,7 @@ export const AppDataSource = new DataSource({
     OrgCustomRole,
     UserEmail,
     SiteAdmin,
+    Passkey,
   ],
   // No migration files: the schema is derived from the entity classes on boot.
   synchronize: true,
