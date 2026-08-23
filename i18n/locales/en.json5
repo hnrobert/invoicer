@@ -262,6 +262,8 @@
   // ── campaign detail (repo-style) ─────────────────────────────
   campaign: {
     notFound: "Campaign not found or not accessible.",
+    einvoice: "Digital-invoice structured file (XML / OFD) — fields parsed directly, no OCR.",
+    viewSource: "View parsed source",
     tabs: { invoices: "Invoices", settings: "Settings", audit: "Audit" },
   },
 

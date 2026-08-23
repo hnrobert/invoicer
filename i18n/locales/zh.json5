@@ -263,6 +263,8 @@
   // ── 活动详情页（仓库式）──────────────────────────────────────
   campaign: {
     notFound: "活动不存在或无权访问。",
+    einvoice: "数电票结构化文件（XML / OFD）——字段直接解析，无需 OCR。",
+    viewSource: "查看解析原文",
     tabs: { invoices: "发票", settings: "设置", audit: "审计" },
   },
 

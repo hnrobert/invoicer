@@ -29,4 +29,26 @@ services:
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       WECHAT_APP_ID: ${WECHAT_APP_ID:-}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
+      # PaddleOCR sidecar address ON THE COMPOSE NETWORK (see the `paddleocr`
+      # service below — no host port is published). Enable with:
+      #   docker compose --profile ocr up -d
+      # and the app picks it up automatically (unreachable → tesseract fallback).
+      PADDLEOCR_URL: ${PADDLEOCR_URL:-http://paddleocr:8080}
     restart: unless-stopped
+
+  # PP-OCR sidecar (optional, profile "ocr" so the default stack stays light).
+  # Reachable only over the compose-internal network — no host port exposed;
+  # the app calls http://paddleocr:8080 (service-name DNS).
+  # Official PaddleX serving image — POST /ocr with {file: <base64>, fileType: 1}.
+  # Check https://github.com/PaddlePaddle/PaddleX/blob/release/3.x/docs/ for the
+  # current image tag; this one tracks PaddleX 3.x.
+  paddleocr:
+    image: registry.baidubce.com/paddlex/paddlex-api:paddlex-3.2.1
+    environment:
+      # CPU-only PP-OCRv5 mobile models (small + fast); swap to server models
+      # on a GPU host for the best accuracy.
+      PADDLE_PDX_SERVER_HOST_PORT: 8080
+      PADDLE_PDX_PIPELINE: OCR
+      PADDLE_PDX_DEVICE: cpu
+    restart: unless-stopped
+    profiles: ["ocr"]

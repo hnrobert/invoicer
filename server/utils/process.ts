@@ -6,11 +6,14 @@ import { extractPdfText } from "./extract";
 import { ocrImage } from "./ocr";
 import { extractInvoiceFields } from "./fields";
 import { matchInvoice } from "./match";
+import { parseElectronicInvoice } from "./einvoice";
 
 /**
- * Process one invoice end-to-end: extract text (PDF text layer, or OCR for
- * images), pull out title/tax id/amount, match against the session's expected
- * values, and persist the outcome. Updates status pending → processing → final.
+ * Process one invoice end-to-end: extract fields — 数电票 XML/OFD are parsed
+ * structurally (no OCR), PDFs via the text layer, images via OCR (PaddleOCR
+ * sidecar when configured, tesseract.js otherwise) — then match against the
+ * campaign's expected values and persist the outcome. Status goes
+ * pending → processing → final.
  *
  * PDFs are NOT OCR'd: a PDF with no text layer is left for manual review rather
  * than silently falling back to OCR (only image inputs use OCR, per the spec).
@@ -31,7 +34,26 @@ export async function processInvoice(invoiceId: number): Promise<void> {
 
   try {
     let text: string;
-    if (inv.fileType === "pdf") {
+    let directFields: ReturnType<typeof extractInvoiceFields> | null = null;
+    if (inv.fileType === "xml" || inv.fileType === "ofd") {
+      const parsed = parseElectronicInvoice(
+        await readFile(inv.savedPath),
+        inv.fileType,
+      );
+      if (!parsed) {
+        await repo.update(
+          { id: invoiceId },
+          {
+            status: "review",
+            reason: "Digital-invoice file recognized, but no invoice fields found — review manually",
+            processedAt: new Date(),
+          },
+        );
+        return;
+      }
+      directFields = parsed.fields;
+      text = parsed.rawText;
+    } else if (inv.fileType === "pdf") {
       const buf = await readFile(inv.savedPath);
       text = await extractPdfText(new Uint8Array(buf));
       if (!text.trim()) {
@@ -49,7 +71,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       text = await ocrImage(inv.savedPath);
     }
 
-    const fields = extractInvoiceFields(text);
+    const fields = directFields ?? extractInvoiceFields(text);
     const m = matchInvoice(
       fields,
       campaign?.expectedTitle ?? "",

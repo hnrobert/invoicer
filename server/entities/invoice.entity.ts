@@ -34,9 +34,9 @@ export class Invoice {
   @Column({ name: "saved_path", type: "text", nullable: false })
   savedPath!: string;
 
-  /** 'pdf' (text-extracted) or 'image' (OCR'd) — decides the recognition path. */
+  /** 'pdf' (text-extracted), 'image' (OCR'd), 'xml'/'ofd' (数电票 structured parse). */
   @Column({ name: "file_type", type: "text", nullable: false })
-  fileType!: "pdf" | "image";
+  fileType!: "pdf" | "image" | "xml" | "ofd";
 
   @Column({ type: "text", nullable: false, default: "pending" })
   status!: InvoiceStatus;

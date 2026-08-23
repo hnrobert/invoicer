@@ -123,7 +123,7 @@ export interface InvoicePublic {
   campaignId: number;
   uploaderId: string | null;
   filename: string;
-  fileType: "pdf" | "image";
+  fileType: "pdf" | "image" | "xml" | "ofd";
   status: InvoiceStatus;
   reviewState: ReviewState;
   reason: string | null;

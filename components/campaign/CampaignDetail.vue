@@ -54,7 +54,7 @@ const uploading = ref(false);
 function pickFiles(list: FileList | null) {
   if (!list) return;
   selectedFiles.value = Array.from(list).filter((f) =>
-    /\.(pdf|jpe?g|png|webp|bmp|gif|tiff?)$/i.test(f.name),
+    /\.(pdf|jpe?g|png|webp|bmp|gif|tiff?|xml|ofd)$/i.test(f.name),
   );
 }
 function onDrop(e: DragEvent) {
@@ -519,7 +519,7 @@ async function loadAudit() {
           multiple
           webkitdirectory
           directory
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.bmp,.gif,.tif,.tiff"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.bmp,.gif,.tif,.tiff,.xml,.ofd"
           class="hidden"
           @change="pickFiles(($event.target as HTMLInputElement).files)"
         />
@@ -670,7 +670,22 @@ async function loadAudit() {
                       type="application/pdf"
                       class="h-120 w-full rounded border"
                     />
-                    <img v-else :src="`/api/invoice/${i.id}/file`" class="mx-auto max-h-120 rounded border" />
+                    <img
+                      v-else-if="i.fileType === 'image'"
+                      :src="`/api/invoice/${i.id}/file`"
+                      class="mx-auto max-h-120 rounded border"
+                    />
+                    <!-- 数电票 structured files: no visual render — link the parsed source -->
+                    <div v-else class="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
+                      <Icon spec="FileText" :size="24" class="text-muted-foreground" />
+                      <span>{{ t("campaign.einvoice") }}</span>
+                      <a
+                        :href="`/api/invoice/${i.id}/text`"
+                        target="_blank"
+                        class="underline underline-offset-2 hover:text-foreground"
+                        >{{ t("campaign.viewSource") }}</a
+                      >
+                    </div>
                   </td>
                 </tr>
               </template>

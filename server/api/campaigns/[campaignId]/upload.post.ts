@@ -17,9 +17,11 @@ const IMAGE_EXTS = new Set([
   ".tif",
   ".tiff",
 ]);
+/** China digital-invoice structured files (数电票) — parsed directly, no OCR. */
+const EINVOICE_EXTS = new Set([".xml", ".ofd"]);
 
 /**
- * Upload one or more invoice files (PDF or image) to a campaign. Access is
+ * Upload one or more invoice files (PDF, image, or China digital-invoice XML/OFD) to a campaign. Access is
  * verified first, then each file is saved, a pending record created, and
  * background processing kicked off per file. The frontend polls
  * GET /api/campaigns/:campaignId for live status. Each invoice is attributed
@@ -51,7 +53,8 @@ export default defineEventHandler(async (event) => {
     const ext = extname(f.filename!).toLowerCase();
     const isPdf = ext === ".pdf";
     const isImg = IMAGE_EXTS.has(ext);
-    if (!isPdf && !isImg) continue; // auto-filter: only PDF + images
+    const eInv = EINVOICE_EXTS.has(ext) ? (ext.slice(1) as "xml" | "ofd") : null;
+    if (!isPdf && !isImg && !eInv) continue; // auto-filter: PDF / images / 数电票 files
 
     const pureName = basename(f.filename!.replace(/\\/g, "/"));
     const safeName = `${randomUUID().slice(0, 8)}_${pureName}`;
@@ -63,7 +66,7 @@ export default defineEventHandler(async (event) => {
       uploaderId: user.id,
       filename: pureName,
       savedPath,
-      fileType: isPdf ? "pdf" : "image",
+      fileType: eInv ?? (isPdf ? "pdf" : "image"),
       status: "pending",
       reason: "Waiting for recognition",
       amountInTotal: false,
@@ -77,7 +80,7 @@ export default defineEventHandler(async (event) => {
   if (created.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: "No PDF or image files detected",
+      statusMessage: "No PDF, image, or digital-invoice (XML/OFD) files detected",
     });
   }
   return { ok: true, results: created.map(invoiceToPublic) };
