@@ -279,11 +279,19 @@ onMounted(load);
 
           <div class="flex flex-wrap items-center gap-5 text-sm">
             <label class="flex items-center gap-2">
-              <input v-model="useSsl" type="checkbox" class="size-4 accent-(--color-primary)" />
+              <input
+                v-model="useSsl"
+                type="checkbox"
+                class="size-4 accent-(--color-primary)"
+              />
               <span>{{ t("settings.ssl") }}</span>
             </label>
             <label class="flex items-center gap-2">
-              <input v-model="useTls" type="checkbox" class="size-4 accent-(--color-primary)" />
+              <input
+                v-model="useTls"
+                type="checkbox"
+                class="size-4 accent-(--color-primary)"
+              />
               <span>{{ t("settings.starttls") }}</span>
             </label>
             <label class="flex items-center gap-2">

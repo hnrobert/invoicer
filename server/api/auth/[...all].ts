@@ -24,7 +24,10 @@ export default defineEventHandler(async (event) => {
   // OAuth return page instead so the user sees a proper message.
   if (event.method === "GET" && path === "/error") {
     const code = getQuery(event).error?.toString() || "unknown";
-    return sendRedirect(event, `/oauth/callback?error=${encodeURIComponent(code)}`);
+    return sendRedirect(
+      event,
+      `/oauth/callback?error=${encodeURIComponent(code)}`,
+    );
   }
 
   if (!isSignUp && !isSignIn) {
@@ -34,7 +37,8 @@ export default defineEventHandler(async (event) => {
   const raw = (await readBody<Record<string, unknown>>(event).catch(
     () => ({}),
   )) as Record<string, unknown> & { email?: unknown };
-  const email = typeof raw.email === "string" ? raw.email.trim().toLowerCase() : "";
+  const email =
+    typeof raw.email === "string" ? raw.email.trim().toLowerCase() : "";
 
   if (isSignUp) {
     // Username policy: letters (both cases), digits, hyphen, underscore only.
@@ -42,7 +46,8 @@ export default defineEventHandler(async (event) => {
     if (!/^[A-Za-z0-9_-]{1,39}$/.test(name)) {
       throw createError({
         statusCode: 400,
-        message: "Username may only contain letters (a-z, A-Z), digits, - and _ (1-39 characters).",
+        message:
+          "Username may only contain letters (a-z, A-Z), digits, - and _ (1-39 characters).",
       });
     }
   }

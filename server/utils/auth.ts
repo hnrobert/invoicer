@@ -38,7 +38,9 @@ authDb.pragma("journal_mode = WAL");
  */
 function ensureAuthTables(): void {
   const hasUser = authDb
-    .prepare("SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='user'")
+    .prepare(
+      "SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='user'",
+    )
     .get() as { ok: number } | undefined;
   if (hasUser) return;
   console.log("[auth] better-auth tables missing — creating schema…");

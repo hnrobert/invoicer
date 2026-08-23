@@ -4,9 +4,12 @@
 definePageMeta({ layout: "default" });
 const { organizations } = useOrgs();
 onMounted(() => {
-  navigateTo(organizations.value[0]?.slug ? `/orgs/${organizations.value[0].slug}` : "/", {
-    replace: true,
-  });
+  navigateTo(
+    organizations.value[0]?.slug ? `/orgs/${organizations.value[0].slug}` : "/",
+    {
+      replace: true,
+    },
+  );
 });
 </script>
 

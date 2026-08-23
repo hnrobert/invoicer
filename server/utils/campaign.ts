@@ -55,10 +55,7 @@ export async function getSessionUser(event: H3Event): Promise<SessionUser> {
 }
 
 /** True if `userId` is a member of `organizationId` (any role). */
-export function isOrgMember(
-  organizationId: string,
-  userId: string,
-): boolean {
+export function isOrgMember(organizationId: string, userId: string): boolean {
   const row = authDb
     .prepare(
       "SELECT 1 AS ok FROM member WHERE organizationId = ? AND userId = ?",
@@ -78,9 +75,7 @@ export async function getOrgRole(
   userId: string,
 ): Promise<OrgRole | null> {
   const row = authDb
-    .prepare(
-      "SELECT role FROM member WHERE organizationId = ? AND userId = ?",
-    )
+    .prepare("SELECT role FROM member WHERE organizationId = ? AND userId = ?")
     .get(organizationId, userId) as { role: string } | undefined;
   if (!row) return null;
   switch (row.role) {
@@ -176,10 +171,15 @@ export async function resolveCampaignRights(
   }
 
   // New platform model.
-  if (!role && !collaborator && campaign.visibility !== "public") return NO_ACCESS;
+  if (!role && !collaborator && campaign.visibility !== "public")
+    return NO_ACCESS;
 
   const uploadOpen = campaign.status === "active";
-  const r: CampaignRights = { ...NO_ACCESS, legacy: false, canViewCampaign: true };
+  const r: CampaignRights = {
+    ...NO_ACCESS,
+    legacy: false,
+    canViewCampaign: true,
+  };
 
   switch (role) {
     case "owner":
@@ -207,7 +207,11 @@ export async function resolveCampaignRights(
       Object.assign(r, { canUpload: uploadOpen });
       if (isManager) {
         // The member created this campaign → its manager (review/export here).
-        Object.assign(r, { canViewAll: true, canReview: true, canExport: true });
+        Object.assign(r, {
+          canViewAll: true,
+          canReview: true,
+          canExport: true,
+        });
       }
       break;
     default:

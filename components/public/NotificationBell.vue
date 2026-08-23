@@ -62,8 +62,12 @@ function text(n: Note): string {
       return t("notify.collabAdded", { campaign: c });
     case "invoice.reviewed":
       return n.data.decision === "qualified"
-        ? t("notify.reviewApproved", { filename: String(n.data.filename ?? "") })
-        : t("notify.reviewRejected", { filename: String(n.data.filename ?? "") });
+        ? t("notify.reviewApproved", {
+            filename: String(n.data.filename ?? ""),
+          })
+        : t("notify.reviewRejected", {
+            filename: String(n.data.filename ?? ""),
+          });
     case "campaign.status":
       return t("notify.campaignStatus", {
         campaign: c,
@@ -84,7 +88,12 @@ function fmtTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? ""
-    : d.toLocaleString(undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    : d.toLocaleString(undefined, {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 }
 
 onMounted(() => void load());

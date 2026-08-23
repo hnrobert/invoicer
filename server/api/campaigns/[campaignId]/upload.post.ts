@@ -33,13 +33,17 @@ export default defineEventHandler(async (event) => {
   if (!rights.canUpload) {
     throw createError({
       statusCode: 403,
-      statusMessage: "Uploads are currently closed for this campaign (not open, closed, or archived)",
+      statusMessage:
+        "Uploads are currently closed for this campaign (not open, closed, or archived)",
     });
   }
 
   const form = await readMultipartFormData(event);
   if (!form)
-    throw createError({ statusCode: 400, statusMessage: "No upload content received" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "No upload content received",
+    });
 
   const files = form.filter((f) => !!f.filename);
   if (files.length === 0)
@@ -53,7 +57,9 @@ export default defineEventHandler(async (event) => {
     const ext = extname(f.filename!).toLowerCase();
     const isPdf = ext === ".pdf";
     const isImg = IMAGE_EXTS.has(ext);
-    const eInv = EINVOICE_EXTS.has(ext) ? (ext.slice(1) as "xml" | "ofd") : null;
+    const eInv = EINVOICE_EXTS.has(ext)
+      ? (ext.slice(1) as "xml" | "ofd")
+      : null;
     if (!isPdf && !isImg && !eInv) continue; // auto-filter: PDF / images / 数电票 files
 
     const pureName = basename(f.filename!.replace(/\\/g, "/"));
@@ -80,7 +86,8 @@ export default defineEventHandler(async (event) => {
   if (created.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: "No PDF, image, or digital-invoice (XML/OFD) files detected",
+      statusMessage:
+        "No PDF, image, or digital-invoice (XML/OFD) files detected",
     });
   }
   return { ok: true, results: created.map(invoiceToPublic) };

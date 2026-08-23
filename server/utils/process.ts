@@ -45,7 +45,8 @@ export async function processInvoice(invoiceId: number): Promise<void> {
           { id: invoiceId },
           {
             status: "review",
-            reason: "Digital-invoice file recognized, but no invoice fields found — review manually",
+            reason:
+              "Digital-invoice file recognized, but no invoice fields found — review manually",
             processedAt: new Date(),
           },
         );
@@ -61,7 +62,8 @@ export async function processInvoice(invoiceId: number): Promise<void> {
           { id: invoiceId },
           {
             status: "review",
-            reason: "No text extracted from the PDF (likely a scan — upload as an image or review manually)",
+            reason:
+              "No text extracted from the PDF (likely a scan — upload as an image or review manually)",
             processedAt: new Date(),
           },
         );

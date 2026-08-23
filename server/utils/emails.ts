@@ -34,9 +34,7 @@ export async function findEmailOwner(email: string): Promise<string | null> {
  * secondary. Returns null when the email is already a primary (or unknown —
  * let better-auth produce its normal invalid-credentials error).
  */
-export async function primaryForLogin(
-  email: string,
-): Promise<string | null> {
+export async function primaryForLogin(email: string): Promise<string | null> {
   const e = norm(email);
   const isPrimary = authDb
     .prepare("SELECT 1 AS ok FROM user WHERE lower(email) = ?")
@@ -80,13 +78,18 @@ export async function addEmail(userId: string, email: string): Promise<void> {
 }
 
 /** Unlink a secondary email (the primary cannot be removed this way). */
-export async function removeEmail(userId: string, email: string): Promise<void> {
+export async function removeEmail(
+  userId: string,
+  email: string,
+): Promise<void> {
   const e = norm(email);
   const user = authDb
     .prepare("SELECT email FROM user WHERE id = ?")
     .get(userId) as { email: string } | undefined;
   if (user?.email?.toLowerCase() === e) {
-    throw new Error("The primary email cannot be removed — switch primary first");
+    throw new Error(
+      "The primary email cannot be removed — switch primary first",
+    );
   }
   await AppDataSource.getRepository(UserEmail).delete({ userId, email: e });
 }

@@ -95,7 +95,10 @@ export function useAuth() {
    * continues to `redirect` (a relative app path) — every OAuth outcome,
    * success or error, is visible there.
    */
-  async function signInSocial(provider: ProviderId, redirect = "/"): Promise<void> {
+  async function signInSocial(
+    provider: ProviderId,
+    redirect = "/",
+  ): Promise<void> {
     const target = redirect.startsWith("/") ? redirect : "/";
     const callbackURL = `${window.location.origin}/oauth/callback?redirect=${encodeURIComponent(target)}`;
     // Both github and wechat are built-in providers, so signIn.social accepts
@@ -118,7 +121,8 @@ export function useAuth() {
    */
   async function linkProvider(
     provider: ProviderId,
-    callbackURL: string = window.location.origin + "/oauth/callback?redirect=%2Fsettings%3Fsection%3Dsecurity",
+    callbackURL: string = window.location.origin +
+      "/oauth/callback?redirect=%2Fsettings%3Fsection%3Dsecurity",
   ): Promise<void> {
     await (
       authClient() as unknown as {

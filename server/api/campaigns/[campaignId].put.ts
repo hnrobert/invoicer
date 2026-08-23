@@ -16,9 +16,16 @@ const STATUSES = ["active", "closed", "archived"] as const;
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "Only org owners/admins or the campaign manager can change settings" });
+    throw createError({
+      statusCode: 403,
+      statusMessage:
+        "Only org owners/admins or the campaign manager can change settings",
+    });
   }
   const body = await readBody<{
     visibility?: string;
@@ -31,7 +38,10 @@ export default defineEventHandler(async (event) => {
   const patch: Partial<Campaign> = {};
   if (typeof body?.visibility === "string") {
     if (!(VISIBILITIES as readonly string[]).includes(body.visibility)) {
-      throw createError({ statusCode: 400, statusMessage: "Invalid visibility" });
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid visibility",
+      });
     }
     patch.visibility = body.visibility as Campaign["visibility"];
     // Any explicit visibility choice confirms the platform model.
@@ -48,14 +58,20 @@ export default defineEventHandler(async (event) => {
   }
   if (typeof body?.status === "string") {
     if (!(STATUSES as readonly string[]).includes(body.status)) {
-      throw createError({ statusCode: 400, statusMessage: "Invalid campaign status" });
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid campaign status",
+      });
     }
     patch.status = body.status as Campaign["status"];
   }
   if (body?.deadline === null || typeof body?.deadline === "string") {
     const d = body.deadline === null ? null : new Date(body.deadline);
     if (d && Number.isNaN(d.getTime())) {
-      throw createError({ statusCode: 400, statusMessage: "Invalid deadline format" });
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid deadline format",
+      });
     }
     patch.deadline = d;
   }
@@ -64,7 +80,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (Object.keys(patch).length === 0) {
-    throw createError({ statusCode: 400, statusMessage: "No fields to update" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "No fields to update",
+    });
   }
   logAudit({
     organizationId: campaign.organizationId,

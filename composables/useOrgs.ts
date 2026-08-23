@@ -2,7 +2,6 @@ import type {
   Organization,
   OrgFull,
   OrgInvitation,
-  OrgMember,
   OrgRole,
 } from "#shared/types";
 

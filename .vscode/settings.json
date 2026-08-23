@@ -26,8 +26,5 @@
     "vueuse",
     "WECHAT"
   ],
-  "i18n-ally.localesPaths": [
-    "i18n",
-    "i18n/locales"
-  ]
+  "i18n-ally.localesPaths": ["i18n", "i18n/locales"]
 }

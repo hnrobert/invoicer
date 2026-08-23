@@ -15,7 +15,9 @@
     "postinstall": "nuxt prepare",
     "tsup": "tsup",
     "selftest": "tsx scripts/selftest.ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@nuxtjs/i18n": "^10.6.0",
@@ -45,14 +47,18 @@
     "vue-sonner": "^2.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^6.4.17",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
     "prettier": "^3.4.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.67.0",
     "vue-tsc": "^3.3.0"
   }
 }

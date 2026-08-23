@@ -113,9 +113,12 @@ function fromAddress(c: MailConfig): string {
 }
 
 function validate(c: MailConfig, input: SendMailInput): void {
-  if (!EMAIL_RE.test(input.to)) throw new Error("Invalid recipient email address");
+  if (!EMAIL_RE.test(input.to))
+    throw new Error("Invalid recipient email address");
   if (input.to.length > c.maxLenRecipientEmail) {
-    throw new Error(`Recipient email exceeds max length (${c.maxLenRecipientEmail})`);
+    throw new Error(
+      `Recipient email exceeds max length (${c.maxLenRecipientEmail})`,
+    );
   }
   if (input.subject.length > c.maxLenSubject) {
     throw new Error(`Subject exceeds max length (${c.maxLenSubject})`);
@@ -178,7 +181,9 @@ async function sendViaPost(
   } catch (e) {
     // email-poster already formats HTTP failures as "Webhook returned <status>:
     // <detail>"; surface that message verbatim, fall back for non-Error throws.
-    throw new Error(e instanceof Error ? e.message : "Webhook send failed");
+    throw new Error(e instanceof Error ? e.message : "Webhook send failed", {
+      cause: e,
+    });
   }
 }
 

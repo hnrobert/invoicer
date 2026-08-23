@@ -35,7 +35,8 @@ const assignable = computed(() => [
   ...customRoles.value.map((r) => r.name),
 ]);
 function roleDisplay(r: string): string {
-  if (["owner", "admin", "editor", "viewer", "member"].includes(r)) return roleLabel(r);
+  if (["owner", "admin", "editor", "viewer", "member"].includes(r))
+    return roleLabel(r);
   const custom = customRoles.value.find((c) => c.name === r);
   return custom ? `${r} (${roleLabel(custom.baseRole)})` : r;
 }
@@ -124,7 +125,10 @@ onMounted(reload);
   <div v-if="notFound" class="py-16 text-center text-sm text-muted-foreground">
     {{ t("orgs.notFound") }}
   </div>
-  <div v-else-if="loading" class="py-16 text-center text-sm text-muted-foreground">
+  <div
+    v-else-if="loading"
+    class="py-16 text-center text-sm text-muted-foreground"
+  >
     {{ t("settings.loading") }}
   </div>
   <div v-else-if="org && full" class="flex flex-col gap-6">
@@ -136,7 +140,10 @@ onMounted(reload);
     />
 
     <!-- invite (privileged only) -->
-    <div v-if="isPrivileged" class="flex flex-col gap-2 sm:flex-row sm:items-end">
+    <div
+      v-if="isPrivileged"
+      class="flex flex-col gap-2 sm:flex-row sm:items-end"
+    >
       <div class="flex flex-1 flex-col gap-1">
         <Label>{{ t("orgs.inviteEmail") }}</Label>
         <Input
@@ -167,8 +174,12 @@ onMounted(reload);
       <table class="w-full text-sm">
         <thead class="bg-muted/50 text-left text-xs text-muted-foreground">
           <tr>
-            <th class="px-3 py-2 font-medium">{{ t("auth.register.emailLabel") }}</th>
-            <th class="px-3 py-2 font-medium">{{ t("auth.register.nameLabel") }}</th>
+            <th class="px-3 py-2 font-medium">
+              {{ t("auth.register.emailLabel") }}
+            </th>
+            <th class="px-3 py-2 font-medium">
+              {{ t("auth.register.nameLabel") }}
+            </th>
             <th class="px-3 py-2 font-medium">{{ t("orgs.inviteRole") }}</th>
             <th v-if="isPrivileged" class="px-3 py-2 text-right font-medium">
               {{ t("home.table.action") }}

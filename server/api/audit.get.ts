@@ -15,7 +15,10 @@ export default defineEventHandler(async (event) => {
   const campaignId = q.campaignId ? Number(q.campaignId) : null;
   const orgId = typeof q.orgId === "string" ? q.orgId : null;
   if (!campaignId && !orgId) {
-    throw createError({ statusCode: 400, statusMessage: "campaignId or orgId is required" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "campaignId or orgId is required",
+    });
   }
 
   if (campaignId) {
@@ -23,7 +26,10 @@ export default defineEventHandler(async (event) => {
       id: campaignId,
     });
     if (!campaign) {
-      throw createError({ statusCode: 404, statusMessage: "Campaign not found" });
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Campaign not found",
+      });
     }
     const role = campaign.organizationId
       ? await getOrgRole(campaign.organizationId, user.id)

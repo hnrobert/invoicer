@@ -44,11 +44,20 @@ export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const format = (getQuery(event).format ?? "csv").toString();
   if (!["csv", "xlsx", "zip"].includes(format)) {
-    throw createError({ statusCode: 400, statusMessage: "format must be csv / xlsx / zip" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "format must be csv / xlsx / zip",
+    });
   }
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!rights.canExport && !rights.legacy) {
-    throw createError({ statusCode: 403, statusMessage: "No export permission" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "No export permission",
+    });
   }
 
   const invoices = await AppDataSource.getRepository(Invoice).find({
@@ -58,7 +67,9 @@ export default defineEventHandler(async (event) => {
 
   // Uploader identity — export-grade (Editor+), so names/emails are included.
   const uploaderIds = [
-    ...new Set(invoices.map((i) => i.uploaderId).filter((u): u is string => !!u)),
+    ...new Set(
+      invoices.map((i) => i.uploaderId).filter((u): u is string => !!u),
+    ),
   ];
   const uploaderRows = uploaderIds.length
     ? (authDb
@@ -75,7 +86,11 @@ export default defineEventHandler(async (event) => {
 
   const flow = usesSubmitFlow(campaign) ? "submit" : "direct";
   const total = await calcTotal(campaignId, { flow });
-  const safeName = (campaign.name || campaign.expectedTitle || `campaign-${campaignId}`)
+  const safeName = (
+    campaign.name ||
+    campaign.expectedTitle ||
+    `campaign-${campaignId}`
+  )
     .replace(/[\\/:*?"<>|\s]+/g, "_")
     .slice(0, 60);
 
@@ -98,8 +113,16 @@ export default defineEventHandler(async (event) => {
 
   if (format === "csv") {
     const header = [
-      "ID", "Filename", "Uploader", "Title", "Tax ID", "Amount",
-      "Recognition", "Review", "Reason", "Uploaded at",
+      "ID",
+      "Filename",
+      "Uploader",
+      "Title",
+      "Tax ID",
+      "Amount",
+      "Recognition",
+      "Review",
+      "Reason",
+      "Uploaded at",
     ];
     const lines = [header.map(csvEscape).join(",")];
     for (const i of invoices) {
@@ -112,7 +135,9 @@ export default defineEventHandler(async (event) => {
           i.extractedTaxId ?? "",
           amountOf(i) ?? "",
           STATUS_LABEL[i.status] ?? i.status,
-          flow === "submit" ? (RSTATE_LABEL[i.reviewState] ?? i.reviewState) : "",
+          flow === "submit"
+            ? (RSTATE_LABEL[i.reviewState] ?? i.reviewState)
+            : "",
           i.reason ?? "",
           i.createdAt.toISOString(),
         ]
@@ -121,13 +146,16 @@ export default defineEventHandler(async (event) => {
       );
     }
     lines.push("");
-    lines.push([`Compliant total (${flow === "submit" ? "approved" : "qualified"})`, total.toFixed(2)].map(csvEscape).join(","));
-    // BOM so Excel opens UTF-8 Chinese correctly.
-    return download(
-      "﻿" + lines.join("\r\n"),
-      "text/csv; charset=utf-8",
-      "csv",
+    lines.push(
+      [
+        `Compliant total (${flow === "submit" ? "approved" : "qualified"})`,
+        total.toFixed(2),
+      ]
+        .map(csvEscape)
+        .join(","),
     );
+    // BOM so Excel opens UTF-8 Chinese correctly.
+    return download("﻿" + lines.join("\r\n"), "text/csv; charset=utf-8", "csv");
   }
 
   if (format === "xlsx") {
@@ -174,7 +202,10 @@ export default defineEventHandler(async (event) => {
         x: i.extractedTaxId ?? "",
         amt: amountOf(i),
         s: STATUS_LABEL[i.status] ?? i.status,
-        r: flow === "submit" ? (RSTATE_LABEL[i.reviewState] ?? i.reviewState) : "",
+        r:
+          flow === "submit"
+            ? (RSTATE_LABEL[i.reviewState] ?? i.reviewState)
+            : "",
         reason: i.reason ?? "",
         at: i.createdAt.toISOString(),
       });
@@ -193,7 +224,8 @@ export default defineEventHandler(async (event) => {
     const data = await readFile(i.savedPath).catch(() => null);
     if (!data) continue;
     const group = flow === "submit" ? (i.reviewState ?? "draft") : i.status;
-    const upDir = (i.uploaderId && uploaders.get(i.uploaderId)?.name) || "unknown";
+    const upDir =
+      (i.uploaderId && uploaders.get(i.uploaderId)?.name) || "unknown";
     const safeUp = upDir.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 40);
     zip.addFile(`${group}/${safeUp}/${basename(i.savedPath)}`, data);
   }

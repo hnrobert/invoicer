@@ -36,8 +36,7 @@ export default defineEventHandler(async (event) => {
   const orgName = (id: string) =>
     (
       authDb.prepare("SELECT name FROM organization WHERE id = ?").get(id) as
-        | { name: string }
-        | undefined
+        { name: string } | undefined
     )?.name ?? id;
 
   return {

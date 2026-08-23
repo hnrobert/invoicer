@@ -34,7 +34,10 @@ export default defineEventHandler(async (event) => {
   // Validate non-empty values so a malformed map can never be persisted (the
   // body XOR rule — `body` vs `bodyHtml`/`bodyText` — is enforced here too).
   let postFieldMap = "";
-  if (typeof body?.postFieldMap === "string" && body.postFieldMap.trim() !== "") {
+  if (
+    typeof body?.postFieldMap === "string" &&
+    body.postFieldMap.trim() !== ""
+  ) {
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(body.postFieldMap);
@@ -61,7 +64,8 @@ export default defineEventHandler(async (event) => {
 
   const patch: MailConfigInput = {
     provider,
-    smtpServer: typeof body?.smtpServer === "string" ? body.smtpServer.trim() : "",
+    smtpServer:
+      typeof body?.smtpServer === "string" ? body.smtpServer.trim() : "",
     smtpPort: clampInt(body?.smtpPort, 465, 1, 65535),
     useSsl: Boolean(body?.useSsl),
     useTls: Boolean(body?.useTls),
@@ -95,7 +99,10 @@ export default defineEventHandler(async (event) => {
 
   // Validate required field per provider.
   if (provider === "smtp" && !patch.smtpServer) {
-    throw createError({ statusCode: 400, statusMessage: "SMTP server is required" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "SMTP server is required",
+    });
   }
   if (provider === "post" && !patch.postUrl) {
     throw createError({

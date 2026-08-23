@@ -1,5 +1,4 @@
 import { AppDataSource } from "#server/utils/database";
-import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { getOrgRole, requireCampaignAccess } from "#server/utils/campaign";
 import { authDb } from "#server/utils/auth";
@@ -14,26 +13,42 @@ import { notify } from "#server/utils/notify";
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!campaign.organizationId) {
-    throw createError({ statusCode: 400, statusMessage: "Personal campaigns cannot be transferred" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Personal campaigns cannot be transferred",
+    });
   }
   const role = await getOrgRole(campaign.organizationId, user.id);
   if (!rights.canManage && role !== "owner" && role !== "admin") {
-    throw createError({ statusCode: 403, statusMessage: "Only Owner/Admin or the campaign manager can initiate a transfer" });
+    throw createError({
+      statusCode: 403,
+      statusMessage:
+        "Only Owner/Admin or the campaign manager can initiate a transfer",
+    });
   }
 
   const { target_org_id: targetOrgId } = await readBody<{
     target_org_id?: string;
   }>(event);
   if (!targetOrgId || targetOrgId === campaign.organizationId) {
-    throw createError({ statusCode: 400, statusMessage: "Invalid target organization" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Invalid target organization",
+    });
   }
   const targetOrg = authDb
     .prepare("SELECT id, name FROM organization WHERE id = ?")
     .get(targetOrgId) as { id: string; name: string } | undefined;
   if (!targetOrg) {
-    throw createError({ statusCode: 404, statusMessage: "Target organization not found" });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Target organization not found",
+    });
   }
 
   const repo = AppDataSource.getRepository(CampaignTransfer);
@@ -42,7 +57,10 @@ export default defineEventHandler(async (event) => {
     status: "pending",
   });
   if (dup) {
-    throw createError({ statusCode: 400, statusMessage: "This campaign already has a pending transfer request" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "This campaign already has a pending transfer request",
+    });
   }
 
   const tr = await repo.save({

@@ -30,7 +30,11 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    : d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 }
 
 onMounted(async () => {
@@ -54,7 +58,10 @@ onMounted(async () => {
     {{ t("orgs.notFound") }}
     <NuxtLink to="/" class="ml-1 underline">{{ t("settings.back") }}</NuxtLink>
   </div>
-  <div v-else-if="loading" class="py-16 text-center text-sm text-muted-foreground">
+  <div
+    v-else-if="loading"
+    class="py-16 text-center text-sm text-muted-foreground"
+  >
     {{ t("settings.loading") }}
   </div>
   <div v-else-if="org" class="flex flex-col gap-6">
@@ -94,7 +101,11 @@ onMounted(async () => {
         :to="`/orgs/${org.slug}/campaigns/${c.id}`"
         class="flex items-center gap-3 border-b py-3 transition-colors first:border-t hover:bg-accent/40"
       >
-        <Icon spec="FolderOpen" :size="16" class="shrink-0 text-muted-foreground" />
+        <Icon
+          spec="FolderOpen"
+          :size="16"
+          class="shrink-0 text-muted-foreground"
+        />
         <span class="min-w-0 flex-1 truncate text-sm font-medium">{{
           c.name || c.expectedTitle
         }}</span>
@@ -103,12 +114,16 @@ onMounted(async () => {
           class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
           >{{ t("orgs.migration.badge") }}</span
         >
-        <span class="rounded-full border px-2 py-0.5 text-xs" :class="VIS_CLS[c.visibility]">{{
-          t(`home.settings.vis.${c.visibility}`)
-        }}</span>
-        <span class="rounded-full border px-2 py-0.5 text-xs" :class="ST_CLS[c.status]">{{
-          t(`home.settings.st.${c.status}`)
-        }}</span>
+        <span
+          class="rounded-full border px-2 py-0.5 text-xs"
+          :class="VIS_CLS[c.visibility]"
+          >{{ t(`home.settings.vis.${c.visibility}`) }}</span
+        >
+        <span
+          class="rounded-full border px-2 py-0.5 text-xs"
+          :class="ST_CLS[c.status]"
+          >{{ t(`home.settings.st.${c.status}`) }}</span
+        >
         <span class="w-20 shrink-0 text-right text-xs text-muted-foreground">{{
           fmtDate(c.createdAt)
         }}</span>

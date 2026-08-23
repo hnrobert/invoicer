@@ -42,7 +42,9 @@ async function submitCampaign() {
     );
     const org = organizations.value.find((o) => o.id === scope.value);
     navigateTo(
-      org ? `/orgs/${org.slug}/campaigns/${campaignId}` : `/personal/${campaignId}`,
+      org
+        ? `/orgs/${org.slug}/campaigns/${campaignId}`
+        : `/personal/${campaignId}`,
       { replace: true },
     );
   } catch (e) {
@@ -76,7 +78,11 @@ async function submitOrg() {
       <button
         type="button"
         class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="!showOrgForm ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'"
+        :class="
+          !showOrgForm
+            ? 'bg-accent text-foreground'
+            : 'text-muted-foreground hover:text-foreground'
+        "
         @click="showOrgForm = false"
       >
         {{ t("nav.newCampaign") }}
@@ -84,7 +90,11 @@ async function submitOrg() {
       <button
         type="button"
         class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="showOrgForm ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'"
+        :class="
+          showOrgForm
+            ? 'bg-accent text-foreground'
+            : 'text-muted-foreground hover:text-foreground'
+        "
         @click="showOrgForm = true"
       >
         {{ t("nav.newOrg") }}
@@ -160,21 +170,18 @@ async function submitOrg() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="flex flex-col gap-2">
           <Label>{{ t("orgs.nameLabel") }}</Label>
-          <Input
-            v-model="newName"
-            :placeholder="t('orgs.namePlaceholder')"
-          />
+          <Input v-model="newName" :placeholder="t('orgs.namePlaceholder')" />
         </div>
         <div class="flex flex-col gap-2">
           <Label>{{ t("orgs.slugLabel") }}</Label>
-          <Input
-            v-model="newSlug"
-            :placeholder="t('orgs.slugPlaceholder')"
-          />
+          <Input v-model="newSlug" :placeholder="t('orgs.slugPlaceholder')" />
         </div>
       </div>
       <p class="text-xs text-muted-foreground">{{ t("orgs.slugHint") }}</p>
-      <Button :disabled="creatingOrg || !newName.trim() || !newSlug.trim()" @click="submitOrg">
+      <Button
+        :disabled="creatingOrg || !newName.trim() || !newSlug.trim()"
+        @click="submitOrg"
+      >
         <Icon spec="Building2" :size="16" />
         {{ creatingOrg ? t("orgs.creating") : t("orgs.create") }}
       </Button>

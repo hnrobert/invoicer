@@ -9,9 +9,7 @@ export default defineEventHandler(async (event) => {
   const id = getQuery(event).id ? Number(getQuery(event).id) : null;
   const repo = AppDataSource.getRepository(Notification);
   await repo.update(
-    id
-      ? { id, userId: user.id }
-      : { userId: user.id, readAt: IsNull() },
+    id ? { id, userId: user.id } : { userId: user.id, readAt: IsNull() },
     { readAt: new Date() },
   );
   return { ok: true };

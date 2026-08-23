@@ -43,7 +43,8 @@ export function matchInvoice(
   if (titleOk && taxOk) {
     if (amount == null) {
       status = "review";
-      reason = "Title and tax ID matched, but no amount recognized — enter it manually";
+      reason =
+        "Title and tax ID matched, but no amount recognized — enter it manually";
     } else {
       status = "qualified";
       reason = "Title and tax ID both matched";

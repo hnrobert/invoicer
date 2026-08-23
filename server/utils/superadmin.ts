@@ -78,12 +78,13 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
 }
 
 /** Require a signed-in superadmin; throws 401/403 otherwise. */
-export async function requireSuperAdmin(
-  event: H3Event,
-): Promise<SessionUser> {
+export async function requireSuperAdmin(event: H3Event): Promise<SessionUser> {
   const user = await getSessionUser(event);
   if (!(await isSuperAdmin(user.id))) {
-    throw createError({ statusCode: 403, statusMessage: "Superadmin access only" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Superadmin access only",
+    });
   }
   return user;
 }

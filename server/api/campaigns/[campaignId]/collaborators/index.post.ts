@@ -12,9 +12,15 @@ import { notify } from "#server/utils/notify";
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "Only campaign managers can add collaborators" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Only campaign managers can add collaborators",
+    });
   }
   const { email } = await readBody<{ email?: string }>(event);
   const norm = (email ?? "").trim().toLowerCase();
@@ -25,19 +31,29 @@ export default defineEventHandler(async (event) => {
     .prepare("SELECT id, name, email FROM user WHERE lower(email) = ?")
     .get(norm) as { id: string; name: string; email: string } | undefined;
   if (!u) {
-    throw createError({ statusCode: 404, statusMessage: "No registered user with that email" });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "No registered user with that email",
+    });
   }
   if (
     campaign.organizationId &&
     (await getOrgRole(campaign.organizationId, u.id))
   ) {
-    throw createError({ statusCode: 400, statusMessage: "This user is already an org member — no collaborator entry needed" });
+    throw createError({
+      statusCode: 400,
+      statusMessage:
+        "This user is already an org member — no collaborator entry needed",
+    });
   }
 
   const repo = AppDataSource.getRepository(CampaignCollaborator);
   const existing = await repo.findOneBy({ campaignId, userId: u.id });
   if (existing) {
-    throw createError({ statusCode: 400, statusMessage: "This user is already a collaborator" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "This user is already a collaborator",
+    });
   }
   await repo.save({ campaignId, userId: u.id });
   logAudit({

@@ -6,7 +6,10 @@ export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const email = decodeURIComponent(getRouterParam(event, "email") ?? "");
   if (!email) {
-    throw createError({ statusCode: 400, statusMessage: "Missing email parameter" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Missing email parameter",
+    });
   }
   try {
     await removeEmail(user.id, email);

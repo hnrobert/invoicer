@@ -20,18 +20,28 @@ export default defineEventHandler(async (event) => {
   const repo = AppDataSource.getRepository(Invoice);
   const inv = await repo.findOneBy({ id: invoiceId, campaignId });
   if (!inv)
-    throw createError({ statusCode: 404, statusMessage: "Invoice record not found" });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Invoice record not found",
+    });
   const owns = inv.uploaderId === user.id || rights.canManage;
   if (!owns) {
-    throw createError({ statusCode: 403, statusMessage: "You can only submit your own invoices" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "You can only submit your own invoices",
+    });
   }
   if (inv.reviewState !== "draft") {
-    throw createError({ statusCode: 400, statusMessage: "This invoice is not in draft state" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "This invoice is not in draft state",
+    });
   }
   if (!TERMINAL.has(inv.status)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Recognition is not finished (or failed) — cannot submit yet",
+      statusMessage:
+        "Recognition is not finished (or failed) — cannot submit yet",
     });
   }
 

@@ -63,8 +63,7 @@ const normDate = (v: string): string | null => {
 
 /** True when the leaf sits on the BUYER side (path or value context). */
 const isBuyer = (l: Leaf) =>
-  /buyer|purchase|gmf|购.*方|买方/.test(l.path) ||
-  /^购买方/.test(l.value);
+  /buyer|purchase|gmf|购.*方|买方/.test(l.path) || /^购买方/.test(l.value);
 
 function fieldsFromLeaves(leaves: Leaf[]): Partial<InvoiceFields> {
   const pick = (pred: (l: Leaf) => boolean): Leaf | undefined =>
@@ -82,7 +81,11 @@ function fieldsFromLeaves(leaves: Leaf[]): Partial<InvoiceFields> {
   }
 
   const taxLeaf =
-    pick((l) => isBuyer(l) && /(?:taxid|taxno|nsrsbh|gmfsbh|sbh|identification)$/.test(l.path)) ??
+    pick(
+      (l) =>
+        isBuyer(l) &&
+        /(?:taxid|taxno|nsrsbh|gmfsbh|sbh|identification)$/.test(l.path),
+    ) ??
     pick((l) => /纳税人识别号|统一社会信用/.test(l.value) && isBuyer(l)) ??
     pick((l) => /(?:nsrsbh|gmfsbh|taxregistration)/.test(l.path));
   if (taxLeaf) {
@@ -91,28 +94,38 @@ function fieldsFromLeaves(leaves: Leaf[]): Partial<InvoiceFields> {
   }
 
   const amountLeaf =
-    pick((l) => /pricetaxtotal|totalamountandtax|grandtotal|jshj|价税合计/.test(l.path)) ??
-    pick((l) => /^价税合计|^[（(]小写/.test(l.value));
+    pick((l) =>
+      /pricetaxtotal|totalamountandtax|grandtotal|jshj|价税合计/.test(l.path),
+    ) ?? pick((l) => /^价税合计|^[（(]小写/.test(l.value));
   if (amountLeaf) {
-    const m = amountLeaf.value.match(/[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/);
+    const m = amountLeaf.value.match(
+      /[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
+    );
     if (m?.[1]) out.amount = normAmount(m[1]);
   }
 
-  const noLeaf = pick((l) => /invoicenumber|invoiceno|fphm|发票号码/.test(l.path));
+  const noLeaf = pick((l) =>
+    /invoicenumber|invoiceno|fphm|发票号码/.test(l.path),
+  );
   if (noLeaf) {
     const m = noLeaf.value.match(/\d{8}|\d{20}/);
     if (m) out.invoiceNo = m[0];
   }
 
-  const dateLeaf = pick((l) => /issuedate|invoicedate|kprq|开票日期/.test(l.path));
+  const dateLeaf = pick((l) =>
+    /issuedate|invoicedate|kprq|开票日期/.test(l.path),
+  );
   if (dateLeaf) out.issueDate = normDate(dateLeaf.value);
 
   return out;
 }
 
-function parseXmlBuffer(buf: Buffer): { fields: Partial<InvoiceFields>; text: string } {
+function parseXmlBuffer(buf: Buffer): {
+  fields: Partial<InvoiceFields>;
+  text: string;
+} {
   const text = buf.toString("utf8");
-  let leaves: Leaf[] = [];
+  const leaves: Leaf[] = [];
   try {
     const tree = xml.parse(text);
     flatten(tree, "", leaves);
@@ -139,11 +152,17 @@ function parseXmlBuffer(buf: Buffer): { fields: Partial<InvoiceFields>; text: st
 /** Extract the embedded invoice XML from an OFD container (ZIP of XMLs). */
 function ofdXmlBuffers(buf: Buffer): Buffer[] {
   const zip = new AdmZip(buf);
-  const entries = zip.getEntries().filter((e) => !e.isDirectory && /\.xml$/i.test(e.entryName));
+  const entries = zip
+    .getEntries()
+    .filter((e) => !e.isDirectory && /\.xml$/i.test(e.entryName));
   // Prefer the invoice payload over scaffolding (Doc.xml etc.).
   entries.sort((a, b) => {
     const score = (n: string) =>
-      (/original.*invoice|invoice.*\.xml/i.test(n) ? 0 : /attachment/i.test(n) ? 1 : 2);
+      /original.*invoice|invoice.*\.xml/i.test(n)
+        ? 0
+        : /attachment/i.test(n)
+          ? 1
+          : 2;
     return score(a.entryName) - score(b.entryName);
   });
   return entries.slice(0, 3).map((e) => e.getData());
@@ -160,7 +179,15 @@ export function parseElectronicInvoice(
   ext: "xml" | "ofd",
 ): EInvoiceParseResult | null {
   const xmls =
-    ext === "xml" ? [buf] : (() => { try { return ofdXmlBuffers(buf); } catch { return []; } })();
+    ext === "xml"
+      ? [buf]
+      : (() => {
+          try {
+            return ofdXmlBuffers(buf);
+          } catch {
+            return [];
+          }
+        })();
   if (!xmls.length) return null;
 
   // Merge fields across candidate XMLs (first non-null wins per field).

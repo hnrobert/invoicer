@@ -20,12 +20,16 @@ export default defineEventHandler(async (event) => {
   for (const t of raw) {
     if (!t || typeof t !== "object") continue;
     const id =
-      typeof (t as { id?: unknown }).id === "string" ? (t as { id: string }).id : "";
+      typeof (t as { id?: unknown }).id === "string"
+        ? (t as { id: string }).id
+        : "";
     const name =
       typeof (t as { name?: unknown }).name === "string"
         ? (t as { name: string }).name
         : "";
-    const fm = FieldMapSchema.safeParse((t as { fields?: unknown }).fields ?? {});
+    const fm = FieldMapSchema.safeParse(
+      (t as { fields?: unknown }).fields ?? {},
+    );
     if (!id || !fm.success) continue;
     clean.push({ id, name, fields: fm.data });
   }

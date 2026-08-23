@@ -38,19 +38,22 @@ const userOpen = ref(false);
 
         <!-- search (right-aligned, before the action icons) -->
         <div class="ml-auto flex items-center gap-1.5">
-        <form class="relative hidden w-64 sm:block md:w-72" @submit.prevent="submitSearch">
-          <Icon
-            spec="Search"
-            :size="14"
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            v-model="searchQ"
-            type="search"
-            :placeholder="t('nav.searchPlaceholder')"
-            class="h-9 w-full rounded-md border bg-muted/40 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-background"
-          />
-        </form>
+          <form
+            class="relative hidden w-64 sm:block md:w-72"
+            @submit.prevent="submitSearch"
+          >
+            <Icon
+              spec="Search"
+              :size="14"
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              v-model="searchQ"
+              type="search"
+              :placeholder="t('nav.searchPlaceholder')"
+              class="h-9 w-full rounded-md border bg-muted/40 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-background"
+            />
+          </form>
 
           <template v-if="user">
             <!-- "+" create dropdown -->
@@ -138,7 +141,10 @@ const userOpen = ref(false);
                 <button
                   type="button"
                   class="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                  @click="userOpen = false; signOut()"
+                  @click="
+                    userOpen = false;
+                    signOut();
+                  "
                 >
                   <Icon spec="LogOut" :size="14" />
                   {{ t("auth.user.logout") }}

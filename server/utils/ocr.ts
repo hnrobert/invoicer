@@ -52,7 +52,10 @@ function deepFindTextArray(node: unknown, depth = 0): string[] | null {
   // Prefer the canonical PaddleX keys first, then dig.
   const rec = node as Record<string, unknown>;
   for (const key of ["rec_texts", "recText", "texts"]) {
-    if (Array.isArray(rec[key]) && rec[key].every((v) => typeof v === "string")) {
+    if (
+      Array.isArray(rec[key]) &&
+      rec[key].every((v) => typeof v === "string")
+    ) {
       return rec[key] as string[];
     }
   }
@@ -67,7 +70,9 @@ async function paddleOcr(buf: Buffer): Promise<string | null> {
   const base = process.env.PADDLEOCR_URL;
   if (!base) return null;
   if (Date.now() < paddleDownUntil) return null;
-  const url = /\/(ocr|predict)$/i.test(base) ? base : `${base.replace(/\/$/, "")}/ocr`;
+  const url = /\/(ocr|predict)$/i.test(base)
+    ? base
+    : `${base.replace(/\/$/, "")}/ocr`;
   try {
     const res = await fetch(url, {
       method: "POST",

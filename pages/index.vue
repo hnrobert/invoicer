@@ -16,16 +16,14 @@ const orgCampaigns = ref<CampaignPublic[]>([]);
 const collaborations = ref<CampaignPublic[]>([]);
 
 /** Unified feed, newest first, tagged with its section for the card badge. */
-const feed = computed(
-  () =>
-    [
-      ...personal.value.map((c) => ({ ...c, kind: "personal" as const })),
-      ...orgCampaigns.value.map((c) => ({ ...c, kind: "org" as const })),
-      ...collaborations.value.map((c) => ({ ...c, kind: "collab" as const })),
-    ].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    ),
+const feed = computed(() =>
+  [
+    ...personal.value.map((c) => ({ ...c, kind: "personal" as const })),
+    ...orgCampaigns.value.map((c) => ({ ...c, kind: "org" as const })),
+    ...collaborations.value.map((c) => ({ ...c, kind: "collab" as const })),
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  ),
 );
 
 const orgName = (id: string | null): string | null =>
@@ -41,7 +39,11 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    : d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 }
 
 const VIS_CLS: Record<string, string> = {
@@ -182,7 +184,13 @@ onMounted(async () => {
               class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-muted-foreground"
             >
               <Icon
-                :spec="c.kind === 'personal' ? 'User' : c.kind === 'collab' ? 'UserPlus' : 'Building2'"
+                :spec="
+                  c.kind === 'personal'
+                    ? 'User'
+                    : c.kind === 'collab'
+                      ? 'UserPlus'
+                      : 'Building2'
+                "
                 :size="11"
               />
               {{

@@ -14,8 +14,16 @@ const props = defineProps<{
 const route = useRoute();
 const tabs = computed(() => {
   const base = [
-    { key: "index", to: `/orgs/${props.slug}`, label: t("orgs.tabs.campaigns") },
-    { key: "members", to: `/orgs/${props.slug}/members`, label: t("orgs.tabs.members") },
+    {
+      key: "index",
+      to: `/orgs/${props.slug}`,
+      label: t("orgs.tabs.campaigns"),
+    },
+    {
+      key: "members",
+      to: `/orgs/${props.slug}/members`,
+      label: t("orgs.tabs.members"),
+    },
   ];
   if (props.showSettings) {
     base.push({
@@ -48,7 +56,11 @@ const activeKey = computed(() =>
           <h1 class="truncate text-xl font-semibold">{{ name }}</h1>
           <span
             class="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
-            >{{ visibility === "public" ? t("orgs.vis.public") : t("orgs.vis.private") }}</span
+            >{{
+              visibility === "public"
+                ? t("orgs.vis.public")
+                : t("orgs.vis.private")
+            }}</span
           >
         </div>
         <p class="mt-0.5 text-sm text-muted-foreground">{{ slug }}</p>

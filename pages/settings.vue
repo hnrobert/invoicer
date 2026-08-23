@@ -19,16 +19,25 @@ const ALL = [
   "mail",
   "users",
 ] as const;
-const section = computed<(typeof ALL)[number]>(
-  () =>
-    (ALL as readonly string[]).includes(String(route.query.section))
-      ? (route.query.section as (typeof ALL)[number])
-      : "profile",
+const section = computed<(typeof ALL)[number]>(() =>
+  (ALL as readonly string[]).includes(String(route.query.section))
+    ? (route.query.section as (typeof ALL)[number])
+    : "profile",
 );
-const secUrl = (key: string) => ({ path: "/settings", query: { section: key } });
+const secUrl = (key: string) => ({
+  path: "/settings",
+  query: { section: key },
+});
 
-const { user, isAdmin, linkProvider, unlinkProvider, listAccounts, refreshUser, changePassword } =
-  useAuth();
+const {
+  user,
+  isAdmin,
+  linkProvider,
+  unlinkProvider,
+  listAccounts,
+  refreshUser,
+  changePassword,
+} = useAuth();
 const { list: enabledList } = useOAuthProviders();
 
 // ---------- security: change password ----------
@@ -130,7 +139,9 @@ const localeList = computed(
 );
 
 // ---------- linked providers ----------
-const accounts = ref<Array<{ id: string; providerId: string; accountId: string }>>([]);
+const accounts = ref<
+  Array<{ id: string; providerId: string; accountId: string }>
+>([]);
 const linkable = computed<ProviderId[]>(() => enabledList.value);
 function isLinked(provider: ProviderId) {
   return accounts.value.some((a) => a.providerId === provider);
@@ -161,13 +172,21 @@ async function onDisconnect(provider: ProviderId) {
 
 // ---------- admin: users ----------
 const users = ref<
-  { id: string; name: string; email: string; verified: boolean; createdAt: string }[]
+  {
+    id: string;
+    name: string;
+    email: string;
+    verified: boolean;
+    createdAt: string;
+  }[]
 >([]);
 const usersLoading = ref(false);
 async function loadUsers() {
   usersLoading.value = true;
   try {
-    const data = await $fetch<{ users: typeof users.value }>("/api/admin/users");
+    const data = await $fetch<{ users: typeof users.value }>(
+      "/api/admin/users",
+    );
     users.value = data.users;
   } catch (e) {
     toast.error((e as Error).message);
@@ -179,7 +198,11 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    : d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 }
 
 const sections = computed(() => [
@@ -189,7 +212,12 @@ const sections = computed(() => [
     to: secUrl("profile"),
     icon: "IdCard",
   },
-  { key: "emails", label: t("account.emails.title"), to: secUrl("emails"), icon: "Mail" },
+  {
+    key: "emails",
+    label: t("account.emails.title"),
+    to: secUrl("emails"),
+    icon: "Mail",
+  },
   {
     key: "preferences",
     label: t("account.prefsTitle"),
@@ -205,8 +233,18 @@ const sections = computed(() => [
   ...(isAdmin.value
     ? [
         { key: "adminGroup", label: t("settings.sections.admin"), to: null },
-        { key: "mail", label: t("admin.sections.mail"), to: secUrl("mail"), icon: "Send" },
-        { key: "users", label: t("admin.sections.users"), to: secUrl("users"), icon: "Users" },
+        {
+          key: "mail",
+          label: t("admin.sections.mail"),
+          to: secUrl("mail"),
+          icon: "Send",
+        },
+        {
+          key: "users",
+          label: t("admin.sections.users"),
+          to: secUrl("users"),
+          icon: "Users",
+        },
       ]
     : []),
 ]);
@@ -222,10 +260,16 @@ watch(section, (v) => {
 </script>
 
 <template>
-  <SettingsShell :title="t('settings.title')" :active="section" :sections="sections">
+  <SettingsShell
+    :title="t('settings.title')"
+    :active="section"
+    :sections="sections"
+  >
     <!-- ============ profile ============ -->
     <div v-if="section === 'profile'" class="flex flex-col gap-4">
-      <h3 class="text-base font-semibold">{{ t("settings.sections.profile") }}</h3>
+      <h3 class="text-base font-semibold">
+        {{ t("settings.sections.profile") }}
+      </h3>
       <div class="flex items-center gap-3 rounded-lg border p-3 text-sm">
         <span
           class="flex size-12 shrink-0 items-center justify-center rounded-full border bg-muted text-base font-semibold"
@@ -258,14 +302,18 @@ watch(section, (v) => {
     <!-- ============ emails ============ -->
     <div v-else-if="section === 'emails'" class="flex flex-col gap-3">
       <h3 class="text-base font-semibold">{{ t("account.emails.title") }}</h3>
-      <p class="text-sm text-muted-foreground">{{ t("account.emails.desc") }}</p>
+      <p class="text-sm text-muted-foreground">
+        {{ t("account.emails.desc") }}
+      </p>
       <div
         v-for="e in emails"
         :key="e.email"
         class="flex items-center gap-3 rounded-lg border p-3"
       >
         <Icon spec="Mail" :size="18" class="text-muted-foreground" />
-        <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ e.email }}</span>
+        <span class="min-w-0 flex-1 truncate text-sm font-medium">{{
+          e.email
+        }}</span>
         <span
           v-if="e.primary"
           class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
@@ -298,7 +346,9 @@ watch(section, (v) => {
       <h3 class="text-base font-semibold">{{ t("account.prefsTitle") }}</h3>
       <p class="text-sm text-muted-foreground">{{ t("account.prefsDesc") }}</p>
       <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="w-20 shrink-0 text-muted-foreground">{{ t("account.themeLabel") }}</span>
+        <span class="w-20 shrink-0 text-muted-foreground">{{
+          t("account.themeLabel")
+        }}</span>
         <div class="inline-flex rounded-lg border p-1">
           <button
             v-for="m in ['light', 'dark'] as const"
@@ -317,7 +367,9 @@ watch(section, (v) => {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="w-20 shrink-0 text-muted-foreground">{{ t("account.langLabel") }}</span>
+        <span class="w-20 shrink-0 text-muted-foreground">{{
+          t("account.langLabel")
+        }}</span>
         <div class="inline-flex rounded-lg border p-1">
           <button
             v-for="l in localeList"
@@ -341,8 +393,12 @@ watch(section, (v) => {
     <div v-else-if="section === 'security'" class="flex flex-col gap-6">
       <!-- change password -->
       <div class="flex flex-col gap-3">
-        <h3 class="text-base font-semibold">{{ t("settings.security.title") }}</h3>
-        <p class="text-sm text-muted-foreground">{{ t("settings.security.desc") }}</p>
+        <h3 class="text-base font-semibold">
+          {{ t("settings.security.title") }}
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ t("settings.security.desc") }}
+        </p>
         <p
           v-if="!hasPasswordAccount"
           class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground"
@@ -356,16 +412,35 @@ watch(section, (v) => {
         >
           <div class="flex flex-col gap-2">
             <Label>{{ t("settings.security.currentPw") }}</Label>
-            <Input v-model="currentPw" type="password" required autocomplete="current-password" />
+            <Input
+              v-model="currentPw"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
           </div>
           <div class="flex flex-col gap-2">
             <Label>{{ t("settings.security.newPw") }}</Label>
-            <Input v-model="newPw" type="password" required minlength="8" autocomplete="new-password" />
-            <p class="text-xs text-muted-foreground">{{ t("auth.register.passwordHint") }}</p>
+            <Input
+              v-model="newPw"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+            />
+            <p class="text-xs text-muted-foreground">
+              {{ t("auth.register.passwordHint") }}
+            </p>
           </div>
           <div class="flex flex-col gap-2">
             <Label>{{ t("auth.register.confirmLabel") }}</Label>
-            <Input v-model="confirmPw" type="password" required minlength="8" autocomplete="new-password" />
+            <Input
+              v-model="confirmPw"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+            />
           </div>
           <Button type="submit" :disabled="pwBusy" class="self-start">
             <Icon spec="KeyRound" :size="14" />
@@ -377,13 +452,17 @@ watch(section, (v) => {
       <!-- linked providers -->
       <div class="flex flex-col gap-3 border-t pt-5">
         <h3 class="text-base font-semibold">{{ t("account.linkedTitle") }}</h3>
-        <p class="text-sm text-muted-foreground">{{ t("account.linkedDesc") }}</p>
+        <p class="text-sm text-muted-foreground">
+          {{ t("account.linkedDesc") }}
+        </p>
         <div
           v-if="hasPasswordAccount"
           class="flex items-center gap-3 rounded-lg border p-3"
         >
           <Icon spec="Mail" :size="18" class="text-muted-foreground" />
-          <span class="text-sm font-medium">{{ t("account.emailPassword") }}</span>
+          <span class="text-sm font-medium">{{
+            t("account.emailPassword")
+          }}</span>
           <span
             class="ml-auto rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
             >{{ t("settings.security.linkedTag") }}</span
@@ -400,7 +479,11 @@ watch(section, (v) => {
             class="text-muted-foreground"
           />
           <span class="text-sm font-medium">
-            {{ provider === "github" ? t("auth.oauth.github") : t("auth.oauth.wechat") }}
+            {{
+              provider === "github"
+                ? t("auth.oauth.github")
+                : t("auth.oauth.wechat")
+            }}
           </span>
           <Button
             v-if="isLinked(provider)"
@@ -412,11 +495,20 @@ watch(section, (v) => {
           >
             {{ t("account.disconnect") }}
           </Button>
-          <Button v-else type="button" size="sm" class="ml-auto" @click="onConnect(provider)">
+          <Button
+            v-else
+            type="button"
+            size="sm"
+            class="ml-auto"
+            @click="onConnect(provider)"
+          >
             {{ t("account.connect") }}
           </Button>
         </div>
-        <p v-if="!linkable.length && !hasPasswordAccount" class="py-2 text-center text-sm text-muted-foreground">
+        <p
+          v-if="!linkable.length && !hasPasswordAccount"
+          class="py-2 text-center text-sm text-muted-foreground"
+        >
           {{ t("account.noLinks") }}
         </p>
       </div>
@@ -430,29 +522,52 @@ watch(section, (v) => {
     <!-- ============ admin: users ============ -->
     <div v-else-if="section === 'users' && isAdmin" class="flex flex-col gap-3">
       <h3 class="text-base font-semibold">{{ t("admin.sections.users") }}</h3>
-      <div v-if="usersLoading" class="py-10 text-center text-sm text-muted-foreground">
+      <div
+        v-if="usersLoading"
+        class="py-10 text-center text-sm text-muted-foreground"
+      >
         {{ t("settings.loading") }}
       </div>
       <div v-else class="overflow-x-auto rounded-lg border">
         <table class="w-full text-sm">
           <thead class="bg-muted/50 text-left text-xs text-muted-foreground">
             <tr>
-              <th class="px-3 py-2 font-medium">{{ t("auth.register.nameLabel") }}</th>
-              <th class="px-3 py-2 font-medium">{{ t("auth.login.emailLabel") }}</th>
-              <th class="px-3 py-2 font-medium">{{ t("admin.users.verified") }}</th>
-              <th class="px-3 py-2 text-right font-medium">{{ t("admin.users.joined") }}</th>
+              <th class="px-3 py-2 font-medium">
+                {{ t("auth.register.nameLabel") }}
+              </th>
+              <th class="px-3 py-2 font-medium">
+                {{ t("auth.login.emailLabel") }}
+              </th>
+              <th class="px-3 py-2 font-medium">
+                {{ t("admin.users.verified") }}
+              </th>
+              <th class="px-3 py-2 text-right font-medium">
+                {{ t("admin.users.joined") }}
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="u in users" :key="u.id" class="border-t last:border-0 hover:bg-accent/30">
+            <tr
+              v-for="u in users"
+              :key="u.id"
+              class="border-t last:border-0 hover:bg-accent/30"
+            >
               <td class="px-3 py-2 font-medium">{{ u.name }}</td>
               <td class="px-3 py-2 text-muted-foreground">{{ u.email }}</td>
               <td class="px-3 py-2">
                 <span
                   class="rounded-full border px-2 py-0.5 text-xs"
-                  :class="u.verified ? 'border-emerald-500/40 text-emerald-600' : 'border-border text-muted-foreground'"
+                  :class="
+                    u.verified
+                      ? 'border-emerald-500/40 text-emerald-600'
+                      : 'border-border text-muted-foreground'
+                  "
                 >
-                  {{ u.verified ? t("admin.users.verifiedYes") : t("admin.users.verifiedNo") }}
+                  {{
+                    u.verified
+                      ? t("admin.users.verifiedYes")
+                      : t("admin.users.verifiedNo")
+                  }}
                 </span>
               </td>
               <td class="px-3 py-2 text-right text-xs text-muted-foreground">
@@ -465,8 +580,15 @@ watch(section, (v) => {
     </div>
 
     <!-- admin section requested by a non-admin -->
-    <div v-else-if="section === 'mail' || section === 'users'" class="py-16 text-center text-sm text-muted-foreground">
-      <Icon spec="ShieldAlert" :size="28" class="mx-auto mb-3 text-muted-foreground" />
+    <div
+      v-else-if="section === 'mail' || section === 'users'"
+      class="py-16 text-center text-sm text-muted-foreground"
+    >
+      <Icon
+        spec="ShieldAlert"
+        :size="28"
+        class="mx-auto mb-3 text-muted-foreground"
+      />
       {{ t("admin.deniedDesc") }}
     </div>
   </SettingsShell>

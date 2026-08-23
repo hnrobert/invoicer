@@ -17,9 +17,15 @@ import { notify } from "#server/utils/notify";
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const invoiceId = Number(getRouterParam(event, "invoiceId"));
-  const { user, rights, campaign } = await requireCampaignAccess(event, campaignId);
+  const { user, rights, campaign } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!rights.canReview) {
-    throw createError({ statusCode: 403, statusMessage: "No review permission" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "No review permission",
+    });
   }
   const body = await readBody<{
     decision?: string;
@@ -36,13 +42,17 @@ export default defineEventHandler(async (event) => {
   const repo = AppDataSource.getRepository(Invoice);
   const inv = await repo.findOneBy({ id: invoiceId, campaignId });
   if (!inv)
-    throw createError({ statusCode: 404, statusMessage: "Invoice record not found" });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Invoice record not found",
+    });
 
   const submitFlow = usesSubmitFlow(campaign);
   if (submitFlow && inv.reviewState !== "submitted") {
     throw createError({
       statusCode: 400,
-      statusMessage: "Only submitted invoices can be reviewed (the uploader must submit first)",
+      statusMessage:
+        "Only submitted invoices can be reviewed (the uploader must submit first)",
     });
   }
 
@@ -50,7 +60,10 @@ export default defineEventHandler(async (event) => {
   if (body.manual_amount != null && body.manual_amount !== "") {
     const n = Number(body.manual_amount);
     if (Number.isNaN(n))
-      throw createError({ statusCode: 400, statusMessage: "Invalid manual amount" });
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid manual amount",
+      });
     manualAmount = n;
   }
 
@@ -70,13 +83,17 @@ export default defineEventHandler(async (event) => {
           // Submit flow: status keeps the recognition outcome; reviewState is
           // the authoritative audit result (totals count approvals only).
           reviewState: decision === "qualified" ? "approved" : "rejected",
-          reason: decision === "qualified" ? "Review approved" : "Review rejected",
+          reason:
+            decision === "qualified" ? "Review approved" : "Review rejected",
           amountInTotal: decision === "qualified",
           manualAmount,
         }
       : {
           status: decision,
-          reason: decision === "qualified" ? "Manual review: qualified" : "Manual review: unqualified",
+          reason:
+            decision === "qualified"
+              ? "Manual review: qualified"
+              : "Manual review: unqualified",
           amountInTotal: decision === "qualified",
           manualAmount,
         },

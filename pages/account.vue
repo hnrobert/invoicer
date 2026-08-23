@@ -2,7 +2,10 @@
 // Account management moved into the unified Settings hub (/settings). Redirect.
 definePageMeta({ layout: "default" });
 onMounted(() =>
-  navigateTo({ path: "/settings", query: { section: "profile" } }, { replace: true }),
+  navigateTo(
+    { path: "/settings", query: { section: "profile" } },
+    { replace: true },
+  ),
 );
 </script>
 

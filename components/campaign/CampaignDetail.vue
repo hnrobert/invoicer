@@ -29,7 +29,9 @@ const tab = ref<"invoices" | "settings" | "audit">(
 );
 
 const orgName = computed(
-  () => organizations.value.find((o) => o.slug === props.orgSlug)?.name ?? props.orgSlug,
+  () =>
+    organizations.value.find((o) => o.slug === props.orgSlug)?.name ??
+    props.orgSlug,
 );
 
 onMounted(async () => {
@@ -199,7 +201,8 @@ const reviewTarget = ref<InvoicePublic | null>(null);
 const manualAmountInput = ref<string>("");
 function openReview(i: InvoicePublic) {
   reviewTarget.value = i;
-  manualAmountInput.value = i.manualAmount != null ? String(i.manualAmount) : "";
+  manualAmountInput.value =
+    i.manualAmount != null ? String(i.manualAmount) : "";
   reviewModal.value = true;
 }
 async function submitReview(decision: "qualified" | "unqualified") {
@@ -238,7 +241,10 @@ async function submitReview(decision: "qualified" | "unqualified") {
 const exportOpen = ref(false);
 function doExport(fmt: "csv" | "xlsx" | "zip") {
   exportOpen.value = false;
-  window.open(`/api/campaigns/${props.campaignId}/export?format=${fmt}`, "_blank");
+  window.open(
+    `/api/campaigns/${props.campaignId}/export?format=${fmt}`,
+    "_blank",
+  );
 }
 
 // ---------- email report modal ----------
@@ -271,7 +277,9 @@ const setVisibility = ref<"public" | "internal" | "private">("internal");
 const setSearchable = ref(false);
 const setStatus = ref<"active" | "closed" | "archived">("active");
 const setSaving = ref(false);
-const collaborators = ref<{ userId: string; name: string; email: string }[]>([]);
+const collaborators = ref<{ userId: string; name: string; email: string }[]>(
+  [],
+);
 const collabEmail = ref("");
 const collabBusy = ref(false);
 const transferOrgId = ref("");
@@ -371,7 +379,13 @@ watch(tab, (v) => {
 
 // ---------- audit tab ----------
 const auditLogs = ref<
-  { id: number; action: string; target: string; actorName: string; createdAt: string }[]
+  {
+    id: number;
+    action: string;
+    target: string;
+    actorName: string;
+    createdAt: string;
+  }[]
 >([]);
 const auditLoading = ref(false);
 async function loadAudit() {
@@ -394,16 +408,26 @@ async function loadAudit() {
     {{ t("campaign.notFound") }}
     <NuxtLink to="/" class="ml-1 underline">{{ t("settings.back") }}</NuxtLink>
   </div>
-  <div v-else-if="loading" class="py-16 text-center text-sm text-muted-foreground">
+  <div
+    v-else-if="loading"
+    class="py-16 text-center text-sm text-muted-foreground"
+  >
     {{ t("settings.loading") }}
   </div>
   <div v-else class="flex flex-col gap-6">
     <!-- repo-style header -->
     <div class="border-b pb-4">
       <div class="flex flex-wrap items-start gap-3">
-        <Icon spec="FolderOpen" :size="20" class="mt-1 shrink-0 text-muted-foreground" />
+        <Icon
+          spec="FolderOpen"
+          :size="20"
+          class="mt-1 shrink-0 text-muted-foreground"
+        />
         <div class="min-w-0 flex-1">
-          <nav class="flex flex-wrap items-center gap-1 text-lg" aria-label="breadcrumb">
+          <nav
+            class="flex flex-wrap items-center gap-1 text-lg"
+            aria-label="breadcrumb"
+          >
             <NuxtLink
               v-if="orgSlug"
               :to="`/orgs/${orgSlug}`"
@@ -414,9 +438,10 @@ async function loadAudit() {
             <h1 class="truncate font-semibold">{{ inv.name.value }}</h1>
           </nav>
           <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-            <span class="rounded-full border px-2 py-0.5 text-muted-foreground">{{
-              t(`home.settings.vis.${inv.visibility.value}`)
-            }}</span>
+            <span
+              class="rounded-full border px-2 py-0.5 text-muted-foreground"
+              >{{ t(`home.settings.vis.${inv.visibility.value}`) }}</span
+            >
             <span
               class="rounded-full border px-2 py-0.5 text-muted-foreground"
               >{{ t(`home.settings.st.${inv.status.value}`) }}</span
@@ -427,14 +452,27 @@ async function loadAudit() {
               >{{ t("orgs.migration.badge") }}</span
             >
             <span class="text-muted-foreground">
-              {{ t("home.step3.subTitleLabel", { title: inv.expectedTitle.value, tax: inv.expectedTaxId.value || t("common.dash") }) }}
+              {{
+                t("home.step3.subTitleLabel", {
+                  title: inv.expectedTitle.value,
+                  tax: inv.expectedTaxId.value || t("common.dash"),
+                })
+              }}
             </span>
           </div>
         </div>
         <div class="flex shrink-0 gap-2">
           <div v-if="canExport" class="relative">
-            <div v-if="exportOpen" class="fixed inset-0 z-10" @click="exportOpen = false" />
-            <Button variant="outline" size="sm" @click="exportOpen = !exportOpen">
+            <div
+              v-if="exportOpen"
+              class="fixed inset-0 z-10"
+              @click="exportOpen = false"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              @click="exportOpen = !exportOpen"
+            >
               <Icon spec="Download" :size="14" />
               {{ t("home.export.button") }}
               <Icon spec="ChevronDown" :size="12" />
@@ -511,7 +549,11 @@ async function loadAudit() {
         <!-- eslint-disable-next-line vue/no-v-html -- {n} wraps the count in <b>; value is an integer, no injection risk -->
         <span
           class="text-xs text-muted-foreground"
-          v-html="t('home.step2.selectedFiles', { n: `<b>${selectedFiles.length}</b>` })"
+          v-html="
+            t('home.step2.selectedFiles', {
+              n: `<b>${selectedFiles.length}</b>`,
+            })
+          "
         ></span>
         <input
           ref="fileInput"
@@ -525,7 +567,10 @@ async function loadAudit() {
         />
       </button>
       <div v-if="canUpload" class="flex flex-wrap gap-2">
-        <Button :disabled="selectedFiles.length === 0 || uploading" @click="startUpload">
+        <Button
+          :disabled="selectedFiles.length === 0 || uploading"
+          @click="startUpload"
+        >
           <Icon spec="ScanLine" :size="16" />
           {{ uploading ? t("home.step2.uploading") : t("home.step2.start") }}
         </Button>
@@ -537,33 +582,52 @@ async function loadAudit() {
           <Icon spec="Send" :size="14" />
           {{ t("home.action.submitAll") }} ({{ submittableCount }})
         </Button>
-        <Button variant="ghost" @click="resetUpload">{{ t("home.step2.reset") }}</Button>
+        <Button variant="ghost" @click="resetUpload">{{
+          t("home.step2.reset")
+        }}</Button>
       </div>
 
       <!-- summary -->
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="rounded-lg border bg-card p-3">
-          <div class="text-xs text-muted-foreground">{{ t("home.step3.totalLabel") }}</div>
+          <div class="text-xs text-muted-foreground">
+            {{ t("home.step3.totalLabel") }}
+          </div>
           <div class="text-lg font-bold text-primary">
             ¥{{ inv.totalAmount.value.toFixed(2) }}
           </div>
         </div>
         <div class="rounded-lg border bg-card p-3">
-          <div class="text-xs text-muted-foreground">{{ t("home.status.qualified") }}</div>
-          <div class="text-lg font-bold text-emerald-600">{{ inv.counts.value.qualified }}</div>
+          <div class="text-xs text-muted-foreground">
+            {{ t("home.status.qualified") }}
+          </div>
+          <div class="text-lg font-bold text-emerald-600">
+            {{ inv.counts.value.qualified }}
+          </div>
         </div>
         <div class="rounded-lg border bg-card p-3">
-          <div class="text-xs text-muted-foreground">{{ t("home.status.review") }}</div>
-          <div class="text-lg font-bold text-amber-600">{{ inv.counts.value.review }}</div>
+          <div class="text-xs text-muted-foreground">
+            {{ t("home.status.review") }}
+          </div>
+          <div class="text-lg font-bold text-amber-600">
+            {{ inv.counts.value.review }}
+          </div>
         </div>
         <div class="rounded-lg border bg-card p-3">
-          <div class="text-xs text-muted-foreground">{{ t("home.status.unqualified") }}</div>
-          <div class="text-lg font-bold text-rose-600">{{ inv.counts.value.unqualified }}</div>
+          <div class="text-xs text-muted-foreground">
+            {{ t("home.status.unqualified") }}
+          </div>
+          <div class="text-lg font-bold text-rose-600">
+            {{ inv.counts.value.unqualified }}
+          </div>
         </div>
       </div>
 
       <!-- progress -->
-      <div v-if="inv.hasPending.value" class="flex items-center gap-2 text-xs text-muted-foreground">
+      <div
+        v-if="inv.hasPending.value"
+        class="flex items-center gap-2 text-xs text-muted-foreground"
+      >
         <Icon spec="LoaderCircle" :size="14" class="animate-spin" />
         {{
           t("home.step3.progress", {
@@ -609,21 +673,43 @@ async function loadAudit() {
         <table class="w-full text-sm">
           <thead class="bg-muted/50 text-xs text-muted-foreground">
             <tr>
-              <th class="px-3 py-2 text-left font-medium">{{ t("home.table.filename") }}</th>
-              <th class="px-3 py-2 text-left font-medium">{{ t("home.table.title") }}</th>
-              <th class="px-3 py-2 text-left font-medium">{{ t("home.table.taxId") }}</th>
-              <th class="px-3 py-2 text-right font-medium">{{ t("home.table.amount") }}</th>
-              <th class="px-3 py-2 text-left font-medium">{{ t("home.table.status") }}</th>
-              <th class="px-3 py-2 text-left font-medium">{{ t("home.table.reason") }}</th>
-              <th class="px-3 py-2 text-right font-medium">{{ t("home.table.action") }}</th>
+              <th class="px-3 py-2 text-left font-medium">
+                {{ t("home.table.filename") }}
+              </th>
+              <th class="px-3 py-2 text-left font-medium">
+                {{ t("home.table.title") }}
+              </th>
+              <th class="px-3 py-2 text-left font-medium">
+                {{ t("home.table.taxId") }}
+              </th>
+              <th class="px-3 py-2 text-right font-medium">
+                {{ t("home.table.amount") }}
+              </th>
+              <th class="px-3 py-2 text-left font-medium">
+                {{ t("home.table.status") }}
+              </th>
+              <th class="px-3 py-2 text-left font-medium">
+                {{ t("home.table.reason") }}
+              </th>
+              <th class="px-3 py-2 text-right font-medium">
+                {{ t("home.table.action") }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <template v-if="inv.filtered.value.length">
               <template v-for="i in inv.filtered.value" :key="i.id">
-                <tr class="cursor-pointer border-t hover:bg-accent/40" @click="toggleExpand(i.id)">
-                  <td class="max-w-55 truncate px-3 py-2" :title="i.filename">{{ i.filename }}</td>
-                  <td class="max-w-40 truncate px-3 py-2 text-muted-foreground" :title="i.extractedTitle ?? ''">
+                <tr
+                  class="cursor-pointer border-t hover:bg-accent/40"
+                  @click="toggleExpand(i.id)"
+                >
+                  <td class="max-w-55 truncate px-3 py-2" :title="i.filename">
+                    {{ i.filename }}
+                  </td>
+                  <td
+                    class="max-w-40 truncate px-3 py-2 text-muted-foreground"
+                    :title="i.extractedTitle ?? ''"
+                  >
                     {{ i.extractedTitle || t("common.dash") }}
                   </td>
                   <td class="px-3 py-2 font-mono text-xs text-muted-foreground">
@@ -631,14 +717,18 @@ async function loadAudit() {
                   </td>
                   <td class="px-3 py-2 text-right tabular-nums">
                     {{ fmtAmount(i) }}
-                    <span v-if="isManual(i)" class="text-[10px] text-muted-foreground">{{
-                      t("home.step3.manualTag")
-                    }}</span>
+                    <span
+                      v-if="isManual(i)"
+                      class="text-[10px] text-muted-foreground"
+                      >{{ t("home.step3.manualTag") }}</span
+                    >
                   </td>
                   <td class="px-3 py-2">
-                    <span class="inline-flex rounded px-2 py-0.5 text-xs font-medium" :class="statusCls(i.status)">{{
-                      statusLabel(i.status)
-                    }}</span>
+                    <span
+                      class="inline-flex rounded px-2 py-0.5 text-xs font-medium"
+                      :class="statusCls(i.status)"
+                      >{{ statusLabel(i.status) }}</span
+                    >
                     <span
                       v-if="submitFlow"
                       class="ml-1 inline-flex rounded px-2 py-0.5 text-xs font-medium"
@@ -646,20 +736,37 @@ async function loadAudit() {
                       >{{ rstateLabel(i.reviewState) }}</span
                     >
                   </td>
-                  <td class="max-w-50 truncate px-3 py-2 text-xs text-muted-foreground" :title="i.reason ?? ''">
+                  <td
+                    class="max-w-50 truncate px-3 py-2 text-xs text-muted-foreground"
+                    :title="i.reason ?? ''"
+                  >
                     {{ i.reason || t("common.dash") }}
                   </td>
                   <td class="px-3 py-2 text-right" @click.stop>
-                    <Button v-if="submittable(i)" variant="outline" size="sm" @click="doSubmit(i)">
+                    <Button
+                      v-if="submittable(i)"
+                      variant="outline"
+                      size="sm"
+                      @click="doSubmit(i)"
+                    >
                       {{ t("home.action.submit") }}
                     </Button>
-                    <Button v-else-if="reviewable(i)" variant="outline" size="sm" @click="openReview(i)">
+                    <Button
+                      v-else-if="reviewable(i)"
+                      variant="outline"
+                      size="sm"
+                      @click="openReview(i)"
+                    >
                       {{ t("home.action.review") }}
                     </Button>
-                    <span v-else-if="i.status === 'error'" class="text-xs text-rose-600">{{
-                      t("home.action.failed")
+                    <span
+                      v-else-if="i.status === 'error'"
+                      class="text-xs text-rose-600"
+                      >{{ t("home.action.failed") }}</span
+                    >
+                    <span v-else class="text-xs text-muted-foreground">{{
+                      t("common.dash")
                     }}</span>
-                    <span v-else class="text-xs text-muted-foreground">{{ t("common.dash") }}</span>
                   </td>
                 </tr>
                 <tr v-if="expanded.has(i.id)">
@@ -676,8 +783,15 @@ async function loadAudit() {
                       class="mx-auto max-h-120 rounded border"
                     />
                     <!-- 数电票 structured files: no visual render — link the parsed source -->
-                    <div v-else class="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
-                      <Icon spec="FileText" :size="24" class="text-muted-foreground" />
+                    <div
+                      v-else
+                      class="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground"
+                    >
+                      <Icon
+                        spec="FileText"
+                        :size="24"
+                        class="text-muted-foreground"
+                      />
                       <span>{{ t("campaign.einvoice") }}</span>
                       <a
                         :href="`/api/invoice/${i.id}/text`"
@@ -691,7 +805,10 @@ async function loadAudit() {
               </template>
             </template>
             <tr v-else>
-              <td colspan="7" class="px-3 py-10 text-center text-sm text-muted-foreground">
+              <td
+                colspan="7"
+                class="px-3 py-10 text-center text-sm text-muted-foreground"
+              >
                 {{ t("home.step3.empty") }}
               </td>
             </tr>
@@ -728,57 +845,92 @@ async function loadAudit() {
         </nav>
       </aside>
 
-      <div v-if="setSection === 'general'" class="flex min-w-0 max-w-2xl flex-1 flex-col gap-6">
-      <div class="flex flex-col gap-1.5">
-        <Label>{{ t("home.settings.visibility") }}</Label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="v in ['public', 'internal', 'private'] as const"
-            :key="v"
-            type="button"
-            class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="setVisibility === v ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent'"
-            @click="setVisibility = v"
-          >
-            {{ t(`home.settings.vis.${v}`) }}
-          </button>
+      <div
+        v-if="setSection === 'general'"
+        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
+      >
+        <div class="flex flex-col gap-1.5">
+          <Label>{{ t("home.settings.visibility") }}</Label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="v in ['public', 'internal', 'private'] as const"
+              :key="v"
+              type="button"
+              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+              :class="
+                setVisibility === v
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'hover:bg-accent'
+              "
+              @click="setVisibility = v"
+            >
+              {{ t(`home.settings.vis.${v}`) }}
+            </button>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {{ t(`home.settings.visDesc.${setVisibility}`) }}
+          </p>
         </div>
-        <p class="text-xs text-muted-foreground">{{ t(`home.settings.visDesc.${setVisibility}`) }}</p>
-      </div>
-      <label v-if="setVisibility === 'public'" class="flex items-center gap-2 text-sm">
-        <input v-model="setSearchable" type="checkbox" class="size-4 accent-(--color-primary)" />
-        {{ t("home.settings.searchable") }}
-      </label>
-      <div class="flex flex-col gap-1.5">
-        <Label>{{ t("home.settings.status") }}</Label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="s in ['active', 'closed', 'archived'] as const"
-            :key="s"
-            type="button"
-            class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="setStatus === s ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent'"
-            @click="setStatus = s"
-          >
-            {{ t(`home.settings.st.${s}`) }}
-          </button>
+        <label
+          v-if="setVisibility === 'public'"
+          class="flex items-center gap-2 text-sm"
+        >
+          <input
+            v-model="setSearchable"
+            type="checkbox"
+            class="size-4 accent-(--color-primary)"
+          />
+          {{ t("home.settings.searchable") }}
+        </label>
+        <div class="flex flex-col gap-1.5">
+          <Label>{{ t("home.settings.status") }}</Label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="s in ['active', 'closed', 'archived'] as const"
+              :key="s"
+              type="button"
+              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+              :class="
+                setStatus === s
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'hover:bg-accent'
+              "
+              @click="setStatus = s"
+            >
+              {{ t(`home.settings.st.${s}`) }}
+            </button>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {{ t(`home.settings.stDesc.${setStatus}`) }}
+          </p>
         </div>
-        <p class="text-xs text-muted-foreground">{{ t(`home.settings.stDesc.${setStatus}`) }}</p>
-      </div>
-      <Button :disabled="setSaving" class="self-start" @click="saveSettings">
-        {{ setSaving ? t("settings.saving") : t("settings.save") }}
-      </Button>
+        <Button :disabled="setSaving" class="self-start" @click="saveSettings">
+          {{ setSaving ? t("settings.saving") : t("settings.save") }}
+        </Button>
       </div>
 
       <!-- collaborators -->
-      <div v-else-if="setSection === 'collab'" class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2">
+      <div
+        v-else-if="setSection === 'collab'"
+        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2"
+      >
         <h3 class="text-sm font-medium">{{ t("home.collab.title") }}</h3>
-        <div v-for="c in collaborators" :key="c.userId" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+        <div
+          v-for="c in collaborators"
+          :key="c.userId"
+          class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+        >
           <div class="min-w-0 flex-1">
             <div class="truncate font-medium">{{ c.name }}</div>
-            <div class="truncate text-xs text-muted-foreground">{{ c.email }}</div>
+            <div class="truncate text-xs text-muted-foreground">
+              {{ c.email }}
+            </div>
           </div>
-          <Button variant="ghost" size="sm" @click="removeCollaborator(c.userId)">
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="removeCollaborator(c.userId)"
+          >
             {{ t("home.collab.remove") }}
           </Button>
         </div>
@@ -804,26 +956,48 @@ async function loadAudit() {
         class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2"
       >
         <h3 class="text-sm font-medium">{{ t("home.transfer.title") }}</h3>
-        <form v-if="otherOrgs.length" class="flex gap-2" @submit.prevent="initiateTransfer">
-          <select v-model="transferOrgId" class="h-9 flex-1 rounded-md border bg-background px-3 text-sm">
+        <form
+          v-if="otherOrgs.length"
+          class="flex gap-2"
+          @submit.prevent="initiateTransfer"
+        >
+          <select
+            v-model="transferOrgId"
+            class="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+          >
             <option value="" disabled>{{ t("home.transfer.pick") }}</option>
-            <option v-for="o in otherOrgs" :key="o.id" :value="o.id">{{ o.name }}</option>
+            <option v-for="o in otherOrgs" :key="o.id" :value="o.id">
+              {{ o.name }}
+            </option>
           </select>
-          <Button type="submit" variant="outline" :disabled="transferBusy || !transferOrgId">
+          <Button
+            type="submit"
+            variant="outline"
+            :disabled="transferBusy || !transferOrgId"
+          >
             {{ t("home.transfer.send") }}
           </Button>
         </form>
-        <p v-else class="text-sm text-muted-foreground">{{ t("home.transfer.noTarget") }}</p>
-        <p class="text-xs text-muted-foreground">{{ t("home.transfer.desc") }}</p>
+        <p v-else class="text-sm text-muted-foreground">
+          {{ t("home.transfer.noTarget") }}
+        </p>
+        <p class="text-xs text-muted-foreground">
+          {{ t("home.transfer.desc") }}
+        </p>
       </div>
       <div v-else-if="setSection === 'transfer'" class="flex-1">
-        <p class="text-sm text-muted-foreground">{{ t("home.transfer.personalNone") }}</p>
+        <p class="text-sm text-muted-foreground">
+          {{ t("home.transfer.personalNone") }}
+        </p>
       </div>
     </div>
 
     <!-- ============ audit tab ============ -->
     <div v-else-if="tab === 'audit'" class="flex flex-col gap-1">
-      <div v-if="auditLoading" class="py-8 text-center text-sm text-muted-foreground">
+      <div
+        v-if="auditLoading"
+        class="py-8 text-center text-sm text-muted-foreground"
+      >
         {{ t("settings.loading") }}
       </div>
       <div
@@ -831,12 +1005,19 @@ async function loadAudit() {
         :key="l.id"
         class="flex flex-wrap items-baseline gap-x-2 border-b py-2 text-xs"
       >
-        <span class="w-36 shrink-0 text-muted-foreground">{{ new Date(l.createdAt).toLocaleString() }}</span>
+        <span class="w-36 shrink-0 text-muted-foreground">{{
+          new Date(l.createdAt).toLocaleString()
+        }}</span>
         <span class="font-mono font-medium">{{ l.action }}</span>
-        <span v-if="l.target" class="text-muted-foreground">· {{ l.target }}</span>
+        <span v-if="l.target" class="text-muted-foreground"
+          >· {{ l.target }}</span
+        >
         <span class="ml-auto text-muted-foreground">{{ l.actorName }}</span>
       </div>
-      <p v-if="!auditLoading && !auditLogs.length" class="py-8 text-center text-sm text-muted-foreground">
+      <p
+        v-if="!auditLoading && !auditLogs.length"
+        class="py-8 text-center text-sm text-muted-foreground"
+      >
         {{ t("orgs.audit.empty") }}
       </p>
     </div>
@@ -850,29 +1031,44 @@ async function loadAudit() {
       <Card class="w-full max-w-md">
         <CardHeader>
           <CardTitle>{{ t("home.reviewModal.title") }}</CardTitle>
-          <CardDescription class="truncate">{{ reviewTarget.filename }}</CardDescription>
+          <CardDescription class="truncate">{{
+            reviewTarget.filename
+          }}</CardDescription>
         </CardHeader>
         <CardContent class="flex flex-col gap-3 text-sm">
           <div>
-            <span class="text-muted-foreground">{{ t("home.reviewModal.titleLabel") }}</span>
+            <span class="text-muted-foreground">{{
+              t("home.reviewModal.titleLabel")
+            }}</span>
             {{ reviewTarget.extractedTitle || t("common.none") }}
           </div>
           <div>
-            <span class="text-muted-foreground">{{ t("home.reviewModal.taxLabel") }}</span>
-            <span class="font-mono text-xs">{{ reviewTarget.extractedTaxId || t("common.none") }}</span>
+            <span class="text-muted-foreground">{{
+              t("home.reviewModal.taxLabel")
+            }}</span>
+            <span class="font-mono text-xs">{{
+              reviewTarget.extractedTaxId || t("common.none")
+            }}</span>
           </div>
           <div>
-            <span class="text-muted-foreground">{{ t("home.reviewModal.amountLabel") }}</span>
+            <span class="text-muted-foreground">{{
+              t("home.reviewModal.amountLabel")
+            }}</span>
             {{
               reviewTarget.extractedAmount != null
                 ? "¥" + reviewTarget.extractedAmount.toFixed(2)
                 : t("common.none")
             }}
           </div>
-          <div v-if="reviewTarget.extractedAmount == null" class="flex flex-col gap-1.5">
+          <div
+            v-if="reviewTarget.extractedAmount == null"
+            class="flex flex-col gap-1.5"
+          >
             <Label>
               {{ t("home.reviewModal.manualAmountLabel") }}
-              <span class="text-rose-600">{{ t("home.reviewModal.manualAmountHint") }}</span>
+              <span class="text-rose-600">{{
+                t("home.reviewModal.manualAmountHint")
+              }}</span>
             </Label>
             <Input
               v-model="manualAmountInput"
@@ -881,15 +1077,27 @@ async function loadAudit() {
               :placeholder="t('home.reviewModal.manualAmountPlaceholder')"
             />
           </div>
-          <p class="text-xs text-muted-foreground">{{ t("home.reviewModal.hint") }}</p>
+          <p class="text-xs text-muted-foreground">
+            {{ t("home.reviewModal.hint") }}
+          </p>
         </CardContent>
         <CardFooter class="justify-end gap-2">
-          <Button variant="ghost" @click="reviewModal = false">{{ t("common.cancel") }}</Button>
+          <Button variant="ghost" @click="reviewModal = false">{{
+            t("common.cancel")
+          }}</Button>
           <Button variant="destructive" @click="submitReview('unqualified')">
-            {{ submitFlow ? t("home.reviewModal.reject") : t("home.reviewModal.unqualify") }}
+            {{
+              submitFlow
+                ? t("home.reviewModal.reject")
+                : t("home.reviewModal.unqualify")
+            }}
           </Button>
           <Button @click="submitReview('qualified')">
-            {{ submitFlow ? t("home.reviewModal.approve") : t("home.reviewModal.qualify") }}
+            {{
+              submitFlow
+                ? t("home.reviewModal.approve")
+                : t("home.reviewModal.qualify")
+            }}
           </Button>
         </CardFooter>
       </Card>
@@ -908,20 +1116,38 @@ async function loadAudit() {
         </CardHeader>
         <CardContent class="flex flex-col gap-2">
           <Label>{{ t("home.reportModal.toLabel") }}</Label>
-          <Input v-model="reportTo" type="email" placeholder="finance@example.com" />
-          <i18n-t keypath="home.reportModal.needMailConfig" tag="p" class="text-xs text-muted-foreground">
+          <Input
+            v-model="reportTo"
+            type="email"
+            placeholder="finance@example.com"
+          />
+          <i18n-t
+            keypath="home.reportModal.needMailConfig"
+            tag="p"
+            class="text-xs text-muted-foreground"
+          >
             <template #link>
-              <NuxtLink to="/settings" class="underline">{{ t("home.reportModal.mailSettingsLink") }}</NuxtLink>
+              <NuxtLink to="/settings" class="underline">{{
+                t("home.reportModal.mailSettingsLink")
+              }}</NuxtLink>
             </template>
           </i18n-t>
         </CardContent>
         <CardFooter class="justify-end gap-2">
-          <Button variant="ghost" :disabled="sendingReport" @click="reportModal = false">
+          <Button
+            variant="ghost"
+            :disabled="sendingReport"
+            @click="reportModal = false"
+          >
             {{ t("common.cancel") }}
           </Button>
           <Button :disabled="sendingReport" @click="sendReport">
             <Icon spec="Send" :size="14" />
-            {{ sendingReport ? t("home.reportModal.sending") : t("home.reportModal.send") }}
+            {{
+              sendingReport
+                ? t("home.reportModal.sending")
+                : t("home.reportModal.send")
+            }}
           </Button>
         </CardFooter>
       </Card>

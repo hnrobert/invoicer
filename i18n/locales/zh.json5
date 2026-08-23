@@ -449,8 +449,7 @@
     desc: "用于发送审核报告的邮件发送配置。密码 / 令牌仅在重新输入时覆盖，留空则保留原值。",
     provider: { smtp: "SMTP", post: "POST Webhook" },
     smtpDesc: "直接连接 SMTP 邮件服务器发送。",
-    postDesc:
-      "通过 HTTP POST Webhook 转发邮件（如 SMToGo、Power Automate 等网关），按下方编辑器定义的 JSON 载荷格式发送。",
+    postDesc: "通过 HTTP POST Webhook 转发邮件（如 SMToGo、Power Automate 等网关），按下方编辑器定义的 JSON 载荷格式发送。",
     loading: "加载中…",
     serverLabel: "SMTP 服务器",
     serverPlaceholder: "smtp.example.com",
@@ -472,8 +471,7 @@
     postTokenLabel: "Bearer Token（可选）",
     postTokenPlaceholderEmpty: "输入 Bearer Token",
     editorTitle: "POST 请求格式",
-    editorDesc:
-      "自定义 JSON 载荷中各邮件字段对应的键名；可保存多个格式随时切换，随配置一并保存。",
+    editorDesc: "自定义 JSON 载荷中各邮件字段对应的键名；可保存多个格式随时切换，随配置一并保存。",
     limitsTitle: "长度限制（高级）",
     maxRecipient: "收件人邮箱最大长度",
     maxSubject: "主题最大长度",

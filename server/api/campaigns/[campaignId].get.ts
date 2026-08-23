@@ -14,7 +14,10 @@ import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
  */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
 
   const seeAll = rights.canViewAll;
   const flow = usesSubmitFlow(campaign) ? "submit" : "direct";
@@ -24,11 +27,11 @@ export default defineEventHandler(async (event) => {
   });
 
   const orgSlug = campaign.organizationId
-    ? (
+    ? ((
         authDb
           .prepare("SELECT slug FROM organization WHERE id = ?")
           .get(campaign.organizationId) as { slug: string } | undefined
-      )?.slug ?? null
+      )?.slug ?? null)
     : null;
 
   return {

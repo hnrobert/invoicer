@@ -7,9 +7,15 @@ import { logAudit } from "#server/utils/audit";
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const userId = getRouterParam(event, "userId")!;
-  const { user, campaign, rights } = await requireCampaignAccess(event, campaignId);
+  const { user, campaign, rights } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "Only campaign managers can remove collaborators" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Only campaign managers can remove collaborators",
+    });
   }
   await AppDataSource.getRepository(CampaignCollaborator).delete({
     campaignId,

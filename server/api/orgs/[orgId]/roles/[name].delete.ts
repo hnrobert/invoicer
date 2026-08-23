@@ -14,7 +14,10 @@ export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const role = await getOrgRole(orgId, user.id);
   if (role !== "owner") {
-    throw createError({ statusCode: 403, statusMessage: "Only the organization owner can manage custom roles" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Only the organization owner can manage custom roles",
+    });
   }
   const repo = AppDataSource.getRepository(OrgCustomRole);
   const existing = await repo.findOneBy({ organizationId: orgId, name });

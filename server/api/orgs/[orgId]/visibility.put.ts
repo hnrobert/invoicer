@@ -12,11 +12,17 @@ export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const role = await getOrgRole(orgId, user.id);
   if (role !== "owner" && role !== "admin") {
-    throw createError({ statusCode: 403, statusMessage: "Only Owner/Admin can change organization visibility" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Only Owner/Admin can change organization visibility",
+    });
   }
   const body = await readBody<{ visibility?: string }>(event);
   if (body?.visibility !== "public" && body?.visibility !== "private") {
-    throw createError({ statusCode: 400, statusMessage: "visibility must be public or private" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "visibility must be public or private",
+    });
   }
 
   const repo = AppDataSource.getRepository(OrgSetting);

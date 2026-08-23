@@ -11,9 +11,16 @@ export default defineEventHandler(async (event) => {
 
   const repo = AppDataSource.getRepository(CampaignTransfer);
   const tr = await repo.findOneBy({ id: transferId });
-  if (!tr) throw createError({ statusCode: 404, statusMessage: "Transfer request not found" });
+  if (!tr)
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Transfer request not found",
+    });
   if (tr.status !== "pending") {
-    throw createError({ statusCode: 400, statusMessage: "This request has already been processed" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "This request has already been processed",
+    });
   }
   const fromRole = await getOrgRole(tr.fromOrganizationId, user.id);
   const toRole = await getOrgRole(tr.toOrganizationId, user.id);

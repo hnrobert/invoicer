@@ -98,9 +98,12 @@ async function addRole() {
 async function deleteRole(name: string) {
   if (!org.value) return;
   try {
-    await $fetch(`/api/orgs/${org.value.id}/roles/${encodeURIComponent(name)}`, {
-      method: "DELETE",
-    });
+    await $fetch(
+      `/api/orgs/${org.value.id}/roles/${encodeURIComponent(name)}`,
+      {
+        method: "DELETE",
+      },
+    );
     await loadRoles();
     await load();
   } catch (e) {
@@ -124,7 +127,13 @@ function roleLabel(r: string): string {
 
 // ---------- transfers ----------
 const transfers = ref<
-  { id: number; campaign: string; incoming: boolean; fromOrg: string; toOrg: string }[]
+  {
+    id: number;
+    campaign: string;
+    incoming: boolean;
+    fromOrg: string;
+    toOrg: string;
+  }[]
 >([]);
 async function loadTransfers() {
   if (!org.value) return;
@@ -157,7 +166,13 @@ async function cancelTransfer(id: number) {
 
 // ---------- audit ----------
 const auditLogs = ref<
-  { id: number; action: string; target: string; actorName: string; createdAt: string }[]
+  {
+    id: number;
+    action: string;
+    target: string;
+    actorName: string;
+    createdAt: string;
+  }[]
 >([]);
 const auditLoading = ref(false);
 async function loadAudit() {
@@ -207,7 +222,12 @@ const sections = computed(() => [
 onMounted(async () => {
   await load();
   if (notFound.value || !isPrivileged.value) return;
-  await Promise.all([loadUnconfirmed(), loadRoles(), loadTransfers(), loadAudit()]);
+  await Promise.all([
+    loadUnconfirmed(),
+    loadRoles(),
+    loadTransfers(),
+    loadAudit(),
+  ]);
 });
 </script>
 
@@ -215,17 +235,33 @@ onMounted(async () => {
   <div v-if="notFound" class="py-16 text-center text-sm text-muted-foreground">
     {{ t("orgs.notFound") }}
   </div>
-  <div v-else-if="loading" class="py-16 text-center text-sm text-muted-foreground">
+  <div
+    v-else-if="loading"
+    class="py-16 text-center text-sm text-muted-foreground"
+  >
     {{ t("settings.loading") }}
   </div>
   <div v-else-if="org && full && isPrivileged" class="flex flex-col gap-6">
-    <OrgHeader :slug="org.slug" :name="org.name" :visibility="visibility" show-settings />
+    <OrgHeader
+      :slug="org.slug"
+      :name="org.name"
+      :visibility="visibility"
+      show-settings
+    />
 
-    <SettingsShell :title="t('orgs.tabs.settings')" :active="section" :sections="sections">
+    <SettingsShell
+      :title="t('orgs.tabs.settings')"
+      :active="section"
+      :sections="sections"
+    >
       <!-- general -->
       <div v-if="section === 'general'" class="flex flex-col gap-4">
-        <h3 class="text-base font-semibold">{{ t("orgs.settings.visibility") }}</h3>
-        <p class="text-sm text-muted-foreground">{{ t("orgs.settings.visibilityDesc") }}</p>
+        <h3 class="text-base font-semibold">
+          {{ t("orgs.settings.visibility") }}
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ t("orgs.settings.visibilityDesc") }}
+        </p>
         <div class="flex flex-wrap gap-2">
           <Button
             :variant="visibility === 'public' ? 'default' : 'outline'"
@@ -244,16 +280,27 @@ onMounted(async () => {
 
       <!-- roles -->
       <div v-else-if="section === 'roles'" class="flex flex-col gap-3">
-        <h3 class="text-base font-semibold">{{ t("orgs.customRoles.title") }}</h3>
-        <p class="text-sm text-muted-foreground">{{ t("orgs.customRoles.desc") }}</p>
+        <h3 class="text-base font-semibold">
+          {{ t("orgs.customRoles.title") }}
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          {{ t("orgs.customRoles.desc") }}
+        </p>
         <div
           v-for="r in customRoles"
           :key="r.name"
           class="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
         >
           <span class="font-medium">{{ r.name }}</span>
-          <span class="text-xs text-muted-foreground">· {{ roleLabel(r.baseRole) }}</span>
-          <Button variant="ghost" size="sm" class="ml-auto" @click="deleteRole(r.name)">
+          <span class="text-xs text-muted-foreground"
+            >· {{ roleLabel(r.baseRole) }}</span
+          >
+          <Button
+            variant="ghost"
+            size="sm"
+            class="ml-auto"
+            @click="deleteRole(r.name)"
+          >
             {{ t("orgs.remove") }}
           </Button>
         </div>
@@ -266,12 +313,23 @@ onMounted(async () => {
             :placeholder="t('orgs.customRoles.namePlaceholder')"
             class="w-40"
           />
-          <select v-model="newRoleBase" class="h-9 rounded-md border bg-background px-3 text-sm">
-            <option v-for="b in ['admin', 'editor', 'viewer', 'member']" :key="b" :value="b">
+          <select
+            v-model="newRoleBase"
+            class="h-9 rounded-md border bg-background px-3 text-sm"
+          >
+            <option
+              v-for="b in ['admin', 'editor', 'viewer', 'member']"
+              :key="b"
+              :value="b"
+            >
               {{ roleLabel(b) }}
             </option>
           </select>
-          <Button type="submit" variant="outline" :disabled="!newRoleName.trim()">
+          <Button
+            type="submit"
+            variant="outline"
+            :disabled="!newRoleName.trim()"
+          >
             {{ t("home.collab.add") }}
           </Button>
         </form>
@@ -282,7 +340,9 @@ onMounted(async () => {
         <h3 class="text-base font-semibold">
           {{ t("orgs.migration.title") }} ({{ unconfirmed.length }})
         </h3>
-        <p class="text-sm text-muted-foreground">{{ t("orgs.migration.desc") }}</p>
+        <p class="text-sm text-muted-foreground">
+          {{ t("orgs.migration.desc") }}
+        </p>
         <p v-if="!unconfirmed.length" class="text-sm text-muted-foreground">
           {{ t("orgs.migration.none") }}
         </p>
@@ -291,7 +351,9 @@ onMounted(async () => {
           :key="c.id"
           class="flex flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
         >
-          <span class="min-w-0 flex-1 truncate font-medium">{{ c.name || c.expectedTitle }}</span>
+          <span class="min-w-0 flex-1 truncate font-medium">{{
+            c.name || c.expectedTitle
+          }}</span>
           <div class="flex gap-1">
             <Button
               v-for="v in ['internal', 'public', 'private'] as const"
@@ -322,8 +384,12 @@ onMounted(async () => {
             :size="14"
             class="text-muted-foreground"
           />
-          <span class="min-w-0 flex-1 truncate font-medium">{{ tr.campaign }}</span>
-          <span class="text-xs text-muted-foreground">{{ tr.fromOrg }} → {{ tr.toOrg }}</span>
+          <span class="min-w-0 flex-1 truncate font-medium">{{
+            tr.campaign
+          }}</span>
+          <span class="text-xs text-muted-foreground"
+            >{{ tr.fromOrg }} → {{ tr.toOrg }}</span
+          >
           <Button v-if="tr.incoming" size="sm" @click="acceptTransfer(tr.id)">
             {{ t("orgs.transfer.accept") }}
           </Button>
@@ -335,8 +401,13 @@ onMounted(async () => {
 
       <!-- audit -->
       <div v-else-if="section === 'audit'" class="flex flex-col gap-1">
-        <h3 class="mb-2 text-base font-semibold">{{ t("orgs.audit.title") }}</h3>
-        <div v-if="auditLoading" class="py-8 text-center text-sm text-muted-foreground">
+        <h3 class="mb-2 text-base font-semibold">
+          {{ t("orgs.audit.title") }}
+        </h3>
+        <div
+          v-if="auditLoading"
+          class="py-8 text-center text-sm text-muted-foreground"
+        >
           {{ t("settings.loading") }}
         </div>
         <div
@@ -348,7 +419,9 @@ onMounted(async () => {
             {{ new Date(l.createdAt).toLocaleString() }}
           </span>
           <span class="font-mono font-medium">{{ l.action }}</span>
-          <span v-if="l.target" class="text-muted-foreground">· {{ l.target }}</span>
+          <span v-if="l.target" class="text-muted-foreground"
+            >· {{ l.target }}</span
+          >
           <span class="ml-auto text-muted-foreground">{{ l.actorName }}</span>
         </div>
         <p
@@ -360,10 +433,20 @@ onMounted(async () => {
       </div>
 
       <!-- danger -->
-      <div v-else-if="section === 'danger'" class="flex flex-col gap-4 rounded-lg border border-destructive/40 p-4">
-        <h3 class="text-base font-semibold text-destructive">{{ t("orgs.danger.title") }}</h3>
+      <div
+        v-else-if="section === 'danger'"
+        class="flex flex-col gap-4 rounded-lg border border-destructive/40 p-4"
+      >
+        <h3 class="text-base font-semibold text-destructive">
+          {{ t("orgs.danger.title") }}
+        </h3>
         <div class="flex flex-wrap gap-2">
-          <Button v-if="myRole !== 'owner'" variant="outline" size="sm" @click="onLeave">
+          <Button
+            v-if="myRole !== 'owner'"
+            variant="outline"
+            size="sm"
+            @click="onLeave"
+          >
             {{ t("orgs.leave") }}
           </Button>
           <Button variant="destructive" size="sm" @click="onDelete">

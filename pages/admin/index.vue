@@ -2,7 +2,10 @@
 // Site admin moved into the unified Settings hub (/settings, Admin group).
 definePageMeta({ layout: "default" });
 onMounted(() =>
-  navigateTo({ path: "/settings", query: { section: "mail" } }, { replace: true }),
+  navigateTo(
+    { path: "/settings", query: { section: "mail" } },
+    { replace: true },
+  ),
 );
 </script>
 

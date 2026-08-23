@@ -15,14 +15,14 @@ export default defineEventHandler(async (event) => {
   const clearAll = rights.canManage || rights.canReview;
 
   const repo = AppDataSource.getRepository(Invoice);
-  const where = clearAll
-    ? { campaignId }
-    : { campaignId, uploaderId: user.id };
+  const where = clearAll ? { campaignId } : { campaignId, uploaderId: user.id };
   const rows = await repo.find({ where });
   for (const r of rows) await unlink(r.savedPath).catch(() => {});
   await repo.delete(where);
   return {
     ok: true,
-    msg: clearAll ? "All uploaded files cleared" : "Your uploaded files cleared",
+    msg: clearAll
+      ? "All uploaded files cleared"
+      : "Your uploaded files cleared",
   };
 });

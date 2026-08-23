@@ -72,14 +72,23 @@ onMounted(async () => {
   <Card class="mx-auto w-full max-w-sm">
     <CardContent class="flex flex-col items-center gap-4 py-10 text-center">
       <template v-if="state === 'working' || state === 'done'">
-        <Icon spec="LoaderCircle" :size="28" class="animate-spin text-muted-foreground" />
-        <p class="text-sm text-muted-foreground">{{ t("oauthCallback.working") }}</p>
+        <Icon
+          spec="LoaderCircle"
+          :size="28"
+          class="animate-spin text-muted-foreground"
+        />
+        <p class="text-sm text-muted-foreground">
+          {{ t("oauthCallback.working") }}
+        </p>
       </template>
       <template v-else>
         <Icon spec="ShieldAlert" :size="28" class="text-muted-foreground" />
         <h1 class="text-base font-semibold">{{ t("oauthCallback.failed") }}</h1>
         <p class="text-sm text-muted-foreground">{{ errorMessage }}</p>
-        <p v-if="errorCode === 'account_not_linked'" class="text-xs text-muted-foreground">
+        <p
+          v-if="errorCode === 'account_not_linked'"
+          class="text-xs text-muted-foreground"
+        >
           {{ t("oauthCallback.notLinkedHint") }}
         </p>
         <div class="mt-2 flex gap-2">

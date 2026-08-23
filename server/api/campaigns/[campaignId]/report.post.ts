@@ -5,7 +5,11 @@ import { calcTotal } from "#server/utils/serialize";
 import { renderCardEmail, escapeHtml } from "email-poster/template";
 import { siteTheme } from "#server/mail/theme";
 import { sendMail } from "#server/utils/mail";
-import { checkAccountSend, checkEmailSend, emailLimitError } from "#server/utils/emailLimit";
+import {
+  checkAccountSend,
+  checkEmailSend,
+  emailLimitError,
+} from "#server/utils/emailLimit";
 
 function esc(s: string | null | undefined): string {
   return escapeHtml(s ?? "");
@@ -23,15 +27,24 @@ const STATUS_LABEL: Record<string, string> = {
 /** Email a campaign's audit report (table + total) to a recipient. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
-  const { campaign, rights, user } = await requireCampaignAccess(event, campaignId);
+  const { campaign, rights, user } = await requireCampaignAccess(
+    event,
+    campaignId,
+  );
   // The report contains everyone's invoices — an export-grade action. Legacy
   // campaigns keep the old behavior (any member may send it).
   if (!rights.canExport && !rights.legacy) {
-    throw createError({ statusCode: 403, statusMessage: "No export/report permission" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "No export/report permission",
+    });
   }
   const { to } = await readBody<{ to?: string }>(event);
   if (!to)
-    throw createError({ statusCode: 400, statusMessage: "Recipient email is required" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Recipient email is required",
+    });
 
   // Rate limits: per sender (aggregated across their sends) and per recipient.
   const accountLimit = checkAccountSend(user.id);
@@ -43,7 +56,9 @@ export default defineEventHandler(async (event) => {
     where: { campaignId },
     order: { id: "asc" },
   });
-  const flow = usesSubmitFlow(campaign) ? ("submit" as const) : ("direct" as const);
+  const flow = usesSubmitFlow(campaign)
+    ? ("submit" as const)
+    : ("direct" as const);
   const total = await calcTotal(campaignId, { flow });
 
   const rows = invoices
@@ -91,5 +106,11 @@ export default defineEventHandler(async (event) => {
     body: html,
     html: true,
   });
-  return { ok: true, messageId, total, count: invoices.length, warning: targetLimit.warning };
+  return {
+    ok: true,
+    messageId,
+    total,
+    count: invoices.length,
+    warning: targetLimit.warning,
+  };
 });

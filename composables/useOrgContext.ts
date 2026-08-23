@@ -10,9 +10,7 @@ export function useOrgContext(slug: string) {
   const { organizations, getFull, refresh: refreshOrgs } = useOrgs();
   const { user } = useAuth();
 
-  const org = computed(() =>
-    organizations.value.find((o) => o.slug === slug),
-  );
+  const org = computed(() => organizations.value.find((o) => o.slug === slug));
   const full = ref<OrgFull | null>(null);
   const loading = ref(true);
   const notFound = ref(false);
@@ -50,5 +48,14 @@ export function useOrgContext(slug: string) {
     }
   }
 
-  return { org, full, loading, notFound, myRole, isPrivileged, visibility, load };
+  return {
+    org,
+    full,
+    loading,
+    notFound,
+    myRole,
+    isPrivileged,
+    visibility,
+    load,
+  };
 }

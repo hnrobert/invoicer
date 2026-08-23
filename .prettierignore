@@ -1,0 +1,6 @@
+ref/**
+data/**
+uploads/**
+.output/**
+.nuxt/**
+node_modules/**
