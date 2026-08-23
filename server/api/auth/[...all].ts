@@ -1,3 +1,4 @@
+import type { H3Event } from "h3";
 import { auth } from "#server/utils/auth";
 import { findEmailOwner, primaryForLogin } from "#server/utils/emails";
 import { ensureBootstrapAdmin } from "#server/utils/superadmin";
@@ -13,7 +14,28 @@ import { ensureBootstrapAdmin } from "#server/utils/superadmin";
 // Intercepted requests have their body re-serialized into a fresh Request —
 // reading the body here drains the original stream, so toWebRequest(event)
 // must NOT be used afterwards on these paths.
+/**
+ * Better Auth resolves the rate-limit client IP from HEADERS ONLY (default:
+ * x-forwarded-for) — a web Request carries no socket info, so without this
+ * the limiter degrades to one shared per-path bucket in production.
+ *
+ *   TRUST_PROXY unset (default, direct exposure): OVERWRITE x-forwarded-for
+ *     with the socket's remote address — clients cannot spoof it (a direct
+ *     peer sending its own XFF gets it replaced).
+ *   TRUST_PROXY=1 (behind nginx/caddy): KEEP the incoming XFF chain; the
+ *     proxy is responsible for setting the real client IP.
+ */
+function stampClientIp(event: H3Event): void {
+  const remote =
+    (event.node?.req as { socket?: { remoteAddress?: string } } | undefined)
+      ?.socket?.remoteAddress ?? "";
+  const incoming = event.headers.get("x-forwarded-for");
+  if (process.env.TRUST_PROXY && incoming) return;
+  if (remote) event.headers.set("x-forwarded-for", remote);
+}
+
 export default defineEventHandler(async (event) => {
+  stampClientIp(event);
   // NOTE: event.path includes the query string — strip it before matching.
   const path = event.path.replace(/^.*\/api\/auth/, "").split("?")[0];
   const isSignUp = event.method === "POST" && path === "/sign-up/email";
