@@ -48,6 +48,8 @@ function roleLabel(r: string): string {
       return t("orgs.role.admin");
     case "editor":
       return t("orgs.role.editor");
+    case "supervisor":
+      return t("orgs.role.supervisor");
     case "viewer":
       return t("orgs.role.viewer");
     default:

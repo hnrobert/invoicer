@@ -116,6 +116,8 @@ function roleLabel(r: string): string {
       return t("orgs.role.admin");
     case "editor":
       return t("orgs.role.editor");
+    case "supervisor":
+      return t("orgs.role.supervisor");
     case "viewer":
       return t("orgs.role.viewer");
     case "member":
@@ -318,7 +320,7 @@ onMounted(async () => {
             class="h-9 rounded-md border bg-background px-3 text-sm"
           >
             <option
-              v-for="b in ['admin', 'editor', 'viewer', 'member']"
+              v-for="b in ['admin', 'editor', 'supervisor', 'viewer', 'member']"
               :key="b"
               :value="b"
             >

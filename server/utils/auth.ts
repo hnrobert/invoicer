@@ -2,6 +2,11 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
+import {
+  adminAc,
+  memberAc,
+  ownerAc,
+} from "better-auth/plugins/organization/access";
 import Database from "better-sqlite3";
 
 const githubId = process.env.GITHUB_CLIENT_ID;
@@ -137,6 +142,20 @@ export const auth = betterAuth({
       // Invitations are surfaced in the UI (pending invites list) rather than
       // emailed for now; wire this to the SMTP sender later.
       sendInvitationEmail: async () => {},
+      // Register the app-level tiers beyond Better Auth's defaults
+      // (admin/owner/member). Without this, invite-member and
+      // update-member-role reject the role with ROLE_NOT_FOUND. All app
+      // permissions are enforced by resolveCampaignRights (campaign.ts);
+      // these statements only gate Better Auth's OWN org endpoints, so the
+      // tiers get member-level privileges there (the least it grants).
+      roles: {
+        owner: ownerAc,
+        admin: adminAc,
+        member: memberAc,
+        editor: memberAc,
+        supervisor: memberAc,
+        viewer: memberAc,
+      },
     }),
   ],
   // We deliberately do not run an email-verification loop. To keep the trust

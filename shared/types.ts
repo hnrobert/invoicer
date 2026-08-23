@@ -24,8 +24,9 @@ export interface AuthUser {
 // ── Organizations (Better Auth organization plugin) ──────────────────────
 // Wire shapes of the /api/auth/organization/* endpoints, shared by the client.
 
-/** Organization membership roles. The five built-in tiers (GitHub-like). */
-export type OrgRole = "owner" | "admin" | "editor" | "viewer" | "member";
+/** Organization membership roles. The six built-in tiers (GitHub-like). */
+export type OrgRole =
+  "owner" | "admin" | "editor" | "supervisor" | "viewer" | "member";
 
 /** A GitHub-style organization a user belongs to or owns. */
 export interface Organization {

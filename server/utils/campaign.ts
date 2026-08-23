@@ -82,6 +82,7 @@ export async function getOrgRole(
     case "owner":
     case "admin":
     case "editor":
+    case "supervisor":
     case "viewer":
     case "member":
       return row.role;
@@ -199,6 +200,11 @@ export async function resolveCampaignRights(
         canReview: true,
         canExport: true,
       });
+      break;
+    case "supervisor":
+      // Read-everything / download for invoice auditors — NO modification:
+      // view all invoices + exports/downloads, but no review, upload or manage.
+      Object.assign(r, { canViewAll: true, canExport: true });
       break;
     case "viewer":
       Object.assign(r, { canViewAll: true }); // read-only: no export, no upload
