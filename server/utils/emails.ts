@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { AppDataSource } from "./database";
 import { UserEmail } from "#server/entities/userEmail.entity";
 import { authDb } from "./auth";
@@ -12,7 +13,12 @@ import { authDb } from "./auth";
 export interface AccountEmail {
   email: string;
   primary: boolean;
+  /** Secondary emails: verified means control was proven via the emailed link. */
+  verified: boolean;
 }
+
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // verification links live 24h
+const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
 const norm = (e: string) => e.trim().toLowerCase();
 
@@ -43,7 +49,8 @@ export async function primaryForLogin(email: string): Promise<string | null> {
   const row = await AppDataSource.getRepository(UserEmail).findOneBy({
     email: e,
   });
-  if (!row) return null;
+  // Only VERIFIED secondaries sign in — an unverified link proves nothing.
+  if (!row?.verifiedAt) return null;
   const user = authDb
     .prepare("SELECT email FROM user WHERE id = ?")
     .get(row.userId) as { email: string } | undefined;
@@ -60,13 +67,51 @@ export async function listEmails(userId: string): Promise<AccountEmail[]> {
     order: { id: "asc" },
   });
   const out: AccountEmail[] = [];
-  if (user?.email) out.push({ email: user.email, primary: true });
-  for (const r of rows) out.push({ email: r.email, primary: false });
+  if (user?.email)
+    out.push({ email: user.email, primary: true, verified: true });
+  for (const r of rows)
+    out.push({ email: r.email, primary: false, verified: !!r.verifiedAt });
   return out;
 }
 
-/** Link a new secondary email. Throws (H3-free Error) on conflicts. */
-export async function addEmail(userId: string, email: string): Promise<void> {
+/** Mint a fresh verification token for a linked-but-unverified email. */
+export async function issueEmailVerification(
+  userId: string,
+  email: string,
+): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  await AppDataSource.getRepository(UserEmail).update(
+    { userId, email },
+    {
+      tokenHash: sha256(token),
+      tokenExpiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+    },
+  );
+  return token;
+}
+
+/** Consume a verification token: mark the email verified. True on success. */
+export async function consumeEmailVerification(
+  token: string,
+): Promise<boolean> {
+  const repo = AppDataSource.getRepository(UserEmail);
+  const row = await repo.findOneBy({ tokenHash: sha256(token) });
+  if (!row) return false;
+  if (!row.tokenExpiresAt || row.tokenExpiresAt.getTime() < Date.now())
+    return false;
+  await repo.update(
+    { id: row.id },
+    { verifiedAt: new Date(), tokenHash: null, tokenExpiresAt: null },
+  );
+  return true;
+}
+
+/**
+ * Link a new secondary email — UNVERIFIED: returns the raw verification token
+ * for the caller to email; the address only becomes usable (sign-in, promote
+ * to primary) after `consumeEmailVerification` marks it verified.
+ */
+export async function addEmail(userId: string, email: string): Promise<string> {
   const e = norm(email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
     throw new Error("Invalid email address");
@@ -74,7 +119,12 @@ export async function addEmail(userId: string, email: string): Promise<void> {
   if (await findEmailOwner(e)) {
     throw new Error("This email is already linked to another account");
   }
-  await AppDataSource.getRepository(UserEmail).save({ userId, email: e });
+  await AppDataSource.getRepository(UserEmail).save({
+    userId,
+    email: e,
+    verifiedAt: null,
+  });
+  return issueEmailVerification(userId, e);
 }
 
 /** Unlink a secondary email (the primary cannot be removed this way). */
@@ -113,10 +163,14 @@ export async function setPrimaryEmail(
   const repo = AppDataSource.getRepository(UserEmail);
   const target = await repo.findOneBy({ userId, email: e });
   if (!target) throw new Error("That email is not linked to this account");
+  if (!target.verifiedAt) {
+    throw new Error("Verify that email before making it primary");
+  }
 
   const oldPrimary = user.email;
+  // The target already proved control — the new primary stays verified.
   authDb
-    .prepare("UPDATE user SET email = ?, emailVerified = 0 WHERE id = ?")
+    .prepare("UPDATE user SET email = ?, emailVerified = 1 WHERE id = ?")
     .run(e, userId);
   await repo.remove(target);
   // Keep the old primary linked as a secondary (unless somehow already taken).

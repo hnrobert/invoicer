@@ -25,6 +25,17 @@ export class UserEmail {
   @Column({ type: "text", nullable: false })
   email!: string;
 
+  /** When the owner proved control of this address (null = pending). */
+  @Column({ name: "verified_at", type: "datetime", nullable: true })
+  verifiedAt!: Date | null;
+
+  /** SHA-256 of the pending verification token (null once verified/expired). */
+  @Column({ name: "token_hash", type: "text", nullable: true })
+  tokenHash!: string | null;
+
+  @Column({ name: "token_expires_at", type: "datetime", nullable: true })
+  tokenExpiresAt!: Date | null;
+
   @Column({
     name: "created_at",
     type: "datetime",

@@ -79,7 +79,9 @@ async function submitChangePassword() {
 // The username is chosen at sign-up; the primary email is managed under Emails.
 
 // ---------- emails ----------
-const emails = ref<{ email: string; primary: boolean }[]>([]);
+const emails = ref<{ email: string; primary: boolean; verified: boolean }[]>(
+  [],
+);
 const newEmail = ref("");
 const emailBusy = ref(false);
 async function refreshEmails() {
@@ -102,11 +104,23 @@ async function addEmail() {
     );
     emails.value = data.emails;
     newEmail.value = "";
-    toast.success(t("account.emails.added"));
+    toast.success(t("account.emails.verifySent"));
   } catch (e) {
     toast.error((e as Error).message);
   } finally {
     emailBusy.value = false;
+  }
+}
+async function resendVerification(email: string) {
+  try {
+    const data = await $fetch<{ emails: typeof emails.value }>(
+      "/api/account/emails/resend",
+      { method: "POST", body: { email } },
+    );
+    emails.value = data.emails;
+    toast.success(t("account.emails.verifySent"));
+  } catch (e) {
+    toast.error((e as Error).message);
   }
 }
 async function removeEmail(email: string) {
@@ -292,6 +306,16 @@ const sections = computed(() => [
 ]);
 
 onMounted(() => {
+  // Verification link landing: /settings?section=emails&verified=1|0
+  const v = route.query.verified;
+  if (typeof v === "string") {
+    if (v === "1") toast.success(t("account.emails.verifyOk"));
+    else toast.error(t("account.emails.verifyBad"));
+    navigateTo(
+      { path: "/settings", query: { section: "emails" } },
+      { replace: true },
+    );
+  }
   void refreshPasskeys();
   void refreshEmails();
   void refreshAccounts();
@@ -351,7 +375,7 @@ watch(section, (v) => {
       <div
         v-for="e in emails"
         :key="e.email"
-        class="flex items-center gap-3 rounded-lg border p-3"
+        class="flex flex-wrap items-center gap-2 rounded-lg border p-3 sm:gap-3"
       >
         <Icon spec="Mail" :size="18" class="text-muted-foreground" />
         <span class="min-w-0 flex-1 truncate text-sm font-medium">{{
@@ -362,9 +386,32 @@ watch(section, (v) => {
           class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
           >{{ t("account.emails.primaryTag") }}</span
         >
-        <template v-else>
-          <Button variant="outline" size="sm" @click="makePrimary(e.email)">
+        <span
+          v-else-if="e.verified"
+          class="rounded-full border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-600"
+          >{{ t("account.emails.verifiedTag") }}</span
+        >
+        <span
+          v-else
+          class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+          >{{ t("account.emails.unverifiedTag") }}</span
+        >
+        <template v-if="!e.primary">
+          <Button
+            v-if="e.verified"
+            variant="outline"
+            size="sm"
+            @click="makePrimary(e.email)"
+          >
             {{ t("account.emails.makePrimary") }}
+          </Button>
+          <Button
+            v-else
+            variant="outline"
+            size="sm"
+            @click="resendVerification(e.email)"
+          >
+            {{ t("account.emails.resend") }}
           </Button>
           <Button variant="ghost" size="sm" @click="removeEmail(e.email)">
             {{ t("account.emails.remove") }}
