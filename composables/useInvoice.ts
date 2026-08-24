@@ -52,6 +52,8 @@ export function useInvoice() {
   const hasPending = ref(false);
   /** Server-computed rights + review flow + scoping for the active campaign. */
   const rights = ref<CampaignRights | null>(null);
+  /** Group ids the caller reviews (org role "reviewer"). */
+  const myGroupIds = ref<number[]>([]);
   const flow = ref<"direct" | "submit">("direct");
   const scopedToMe = ref(false);
   const visibility = ref<CampaignVisibility>("internal");
@@ -104,6 +106,7 @@ export function useInvoice() {
       rights: CampaignRights;
       flow: "direct" | "submit";
       scoped_to_me: boolean;
+      my_group_ids?: number[];
       visibility: CampaignVisibility;
       status: CampaignStatus;
     }>(`/api/campaigns/${id}`);
@@ -118,6 +121,7 @@ export function useInvoice() {
     rights.value = data.rights;
     flow.value = data.flow;
     scopedToMe.value = data.scoped_to_me;
+    myGroupIds.value = data.my_group_ids ?? [];
     visibility.value = data.visibility;
     status.value = data.status;
     if (data.has_pending) startPolling();
@@ -133,6 +137,7 @@ export function useInvoice() {
       rights: CampaignRights;
       flow: "direct" | "submit";
       scoped_to_me: boolean;
+      my_group_ids?: number[];
       visibility: CampaignVisibility;
       status: CampaignStatus;
     }>(`/api/campaigns/${campaignId.value}`);
@@ -142,6 +147,7 @@ export function useInvoice() {
     rights.value = data.rights;
     flow.value = data.flow;
     scopedToMe.value = data.scoped_to_me;
+    myGroupIds.value = data.my_group_ids ?? [];
     visibility.value = data.visibility;
     status.value = data.status;
     if (!data.has_pending) stopPolling();
@@ -284,6 +290,7 @@ export function useInvoice() {
     rights,
     flow,
     scopedToMe,
+    myGroupIds,
     visibility,
     status,
     filter,

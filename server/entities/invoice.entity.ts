@@ -27,6 +27,10 @@ export class Invoice {
   @Column({ name: "uploader_id", type: "text", nullable: true })
   uploaderId!: string | null;
 
+  /** Review group this invoice belongs to (null = ungrouped). */
+  @Column({ name: "group_id", type: "integer", nullable: true })
+  groupId!: number | null;
+
   @Column({ type: "text", nullable: false })
   filename!: string;
 

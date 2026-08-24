@@ -3,7 +3,14 @@ import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 import { getOrgRole, getSessionUser } from "#server/utils/campaign";
 import { logAudit } from "#server/utils/audit";
 
-const BASES = ["admin", "editor", "supervisor", "viewer", "member"] as const;
+const BASES = [
+  "admin",
+  "editor",
+  "reviewer",
+  "supervisor",
+  "viewer",
+  "member",
+] as const;
 
 /**
  * Create a custom role (Owner only): a display name bound to a base role.
@@ -29,7 +36,17 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Role name is required",
     });
   }
-  if (["owner", "admin", "editor", "viewer", "member"].includes(name)) {
+  if (
+    [
+      "owner",
+      "admin",
+      "editor",
+      "reviewer",
+      "supervisor",
+      "viewer",
+      "member",
+    ].includes(name)
+  ) {
     throw createError({
       statusCode: 400,
       statusMessage: "Cannot reuse a built-in role name",
@@ -38,7 +55,8 @@ export default defineEventHandler(async (event) => {
   if (!(BASES as readonly string[]).includes(baseRole)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "baseRole must be admin/editor/supervisor/viewer/member",
+      statusMessage:
+        "baseRole must be admin/editor/reviewer/supervisor/viewer/member",
     });
   }
 

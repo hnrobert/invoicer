@@ -8,6 +8,7 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
     id: r.id,
     campaignId: r.campaignId,
     uploaderId: r.uploaderId,
+    groupId: r.groupId,
     filename: r.filename,
     fileType: r.fileType,
     status: r.status,
@@ -20,6 +21,16 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
     amountInTotal: r.amountInTotal,
     error: r.error,
   };
+}
+
+/** Sum compliant amounts over an explicit invoice row set (scoped views). */
+export function sumRows(rows: Invoice[]): number {
+  let total = 0;
+  for (const r of rows) {
+    const amt = r.extractedAmount ?? r.manualAmount;
+    if (amt != null) total += amt;
+  }
+  return Math.round(total * 100) / 100;
 }
 
 /**

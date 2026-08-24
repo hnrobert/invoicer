@@ -26,7 +26,13 @@ export interface AuthUser {
 
 /** Organization membership roles. The six built-in tiers (GitHub-like). */
 export type OrgRole =
-  "owner" | "admin" | "editor" | "supervisor" | "viewer" | "member";
+  | "owner"
+  | "admin"
+  | "editor"
+  | "reviewer"
+  | "supervisor"
+  | "viewer"
+  | "member";
 
 /** A GitHub-style organization a user belongs to or owns. */
 export interface Organization {
@@ -109,6 +115,8 @@ export interface CampaignPublic {
  */
 export interface CampaignRights {
   legacy: boolean;
+  /** Org role "reviewer": review/see invoices in ASSIGNED GROUPS only. */
+  groupReviewer: boolean;
   canViewCampaign: boolean;
   /** See ALL invoices incl. others'; otherwise only the caller's own. */
   canViewAll: boolean;
@@ -123,6 +131,7 @@ export interface InvoicePublic {
   id: number;
   campaignId: number;
   uploaderId: string | null;
+  groupId: number | null;
   filename: string;
   fileType: "pdf" | "image" | "xml" | "ofd";
   status: InvoiceStatus;

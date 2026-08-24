@@ -3,6 +3,8 @@ import { auth, authDb } from "./auth";
 import { AppDataSource } from "./database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
+import { CampaignGroup } from "#server/entities/campaignGroup.entity";
+import { GroupReviewer } from "#server/entities/groupReviewer.entity";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 import type { SessionUser } from "./auth";
 import type { CampaignRights, OrgRole } from "#shared/types";
@@ -82,6 +84,7 @@ export async function getOrgRole(
     case "owner":
     case "admin":
     case "editor":
+    case "reviewer":
     case "supervisor":
     case "viewer":
     case "member":
@@ -119,6 +122,7 @@ export async function isCollaborator(
 
 const NO_ACCESS: CampaignRights = {
   legacy: false,
+  groupReviewer: false,
   canViewCampaign: false,
   canViewAll: false,
   canUpload: false,
@@ -162,6 +166,7 @@ export async function resolveCampaignRights(
     const manage = role === "owner" || role === "admin";
     return {
       legacy: true,
+      groupReviewer: false,
       canViewCampaign: true,
       canViewAll: true,
       canUpload: true,
@@ -201,6 +206,11 @@ export async function resolveCampaignRights(
         canExport: true,
       });
       break;
+    case "reviewer":
+      // Group-scoped review duty: sees and reviews invoices in ASSIGNED
+      // groups only (checked per invoice via myGroupIds); nothing else.
+      Object.assign(r, { groupReviewer: true });
+      break;
     case "supervisor":
       // Read-everything / download for invoice auditors — NO modification:
       // view all invoices + exports/downloads, but no review, upload or manage.
@@ -212,11 +222,14 @@ export async function resolveCampaignRights(
     case "member":
       Object.assign(r, { canUpload: uploadOpen });
       if (isManager) {
-        // The member created this campaign → its manager (review/export here).
+        // The member created this campaign → its manager: full control of it
+        // (review/export, groups & collaborators, settings), like a repo
+        // creator being their repo's admin.
         Object.assign(r, {
           canViewAll: true,
           canReview: true,
           canExport: true,
+          canManage: true,
         });
       }
       break;
@@ -247,6 +260,31 @@ export function usesSubmitFlow(campaign: Campaign): boolean {
  */
 function effectivelyArchived(campaign: Campaign): boolean {
   return campaign.status === "archived";
+}
+
+/** The caller's assigned review groups in a campaign (org role "reviewer"). */
+export async function myReviewGroups(
+  campaignId: number,
+  userId: string,
+): Promise<number[]> {
+  const rows = await AppDataSource.getRepository(GroupReviewer)
+    .createQueryBuilder("gr")
+    .innerJoin(CampaignGroup, "g", "g.id = gr.groupId")
+    .where("gr.userId = :userId", { userId })
+    .andWhere("g.campaignId = :campaignId", { campaignId })
+    .getRawAndEntities();
+  return rows.entities.map((e) => e.groupId);
+}
+
+/**
+ * Whether the caller (group reviewer) may review/see this specific invoice:
+ * it must sit in one of their assigned groups.
+ */
+export function invoiceInGroups(
+  invoice: { groupId: number | null },
+  groupIds: number[],
+): boolean {
+  return invoice.groupId != null && groupIds.includes(invoice.groupId);
 }
 
 /**

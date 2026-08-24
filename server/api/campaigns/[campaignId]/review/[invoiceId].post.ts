@@ -1,6 +1,10 @@
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
-import { requireCampaignAccess, usesSubmitFlow } from "#server/utils/campaign";
+import {
+  myReviewGroups,
+  requireCampaignAccess,
+  usesSubmitFlow,
+} from "#server/utils/campaign";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
@@ -21,7 +25,20 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  if (!rights.canReview) {
+  // Group reviewers hold no campaign-wide canReview — they may review only
+  // invoices inside their assigned groups, checked per invoice.
+  let mayReview = rights.canReview;
+  if (!mayReview && rights.groupReviewer) {
+    const target = await AppDataSource.getRepository(Invoice).findOneBy({
+      id: invoiceId,
+      campaignId,
+    });
+    if (target) {
+      const groups = await myReviewGroups(campaignId, user.id);
+      mayReview = target.groupId != null && groups.includes(target.groupId);
+    }
+  }
+  if (!mayReview) {
     throw createError({
       statusCode: 403,
       statusMessage: "No review permission",

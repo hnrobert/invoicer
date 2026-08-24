@@ -154,6 +154,7 @@ export const auth = betterAuth({
         admin: adminAc,
         member: memberAc,
         editor: memberAc,
+        reviewer: memberAc,
         supervisor: memberAc,
         viewer: memberAc,
       },

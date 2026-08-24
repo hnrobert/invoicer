@@ -39,11 +39,14 @@ onMounted(async () => {
   loading.value = true;
   try {
     await inv.resume(props.campaignId);
+    myGroupIds.value = inv.myGroupIds.value;
   } catch {
     notFound.value = true;
+    myGroupIds.value = inv.myGroupIds.value;
   } finally {
     loading.value = false;
   }
+  void loadGroups();
 });
 onUnmounted(() => inv.stopPolling());
 
@@ -79,6 +82,97 @@ async function resetUpload() {
   if (!confirm(t("home.step2.resetConfirm"))) return;
   await inv.clearAll();
   selectedFiles.value = [];
+}
+
+// ---------- groups ----------
+interface GroupInfo {
+  id: number;
+  name: string;
+  reviewers: { userId: string; name: string; email: string }[];
+}
+const groups = ref<GroupInfo[]>([]);
+const myGroupIds = ref<number[]>([]);
+const groupNameInput = ref("");
+const groupBusy = ref(false);
+const groupReviewerEmail = ref<Record<number, string>>({});
+
+async function loadGroups() {
+  try {
+    const data = await $fetch<{ groups: GroupInfo[] }>(
+      `/api/campaigns/${props.campaignId}/groups`,
+    );
+    groups.value = data.groups;
+  } catch {
+    groups.value = [];
+  }
+}
+const groupName = (gid: number | null): string | null =>
+  gid == null ? null : (groups.value.find((g) => g.id === gid)?.name ?? null);
+
+async function createGroup() {
+  const n = groupNameInput.value.trim();
+  if (!n) return;
+  groupBusy.value = true;
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/groups`, {
+      method: "POST",
+      body: { name: n },
+    });
+    groupNameInput.value = "";
+    await loadGroups();
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    groupBusy.value = false;
+  }
+}
+async function deleteGroup(id: number) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/groups/${id}`, {
+      method: "DELETE",
+    });
+    await loadGroups();
+    await inv.refresh();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function addGroupReviewer(gid: number) {
+  const email = (groupReviewerEmail.value[gid] ?? "").trim();
+  if (!email) return;
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/groups/${gid}/reviewers`, {
+      method: "POST",
+      body: { email },
+    });
+    groupReviewerEmail.value[gid] = "";
+    await loadGroups();
+    toast.success(t("home.groups.reviewerAdded"));
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function removeGroupReviewer(gid: number, userId: string) {
+  try {
+    await $fetch(
+      `/api/campaigns/${props.campaignId}/groups/${gid}/reviewers/${userId}`,
+      { method: "DELETE" },
+    );
+    await loadGroups();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function setInvoiceGroup(iid: number, gid: number | null) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/invoices/group`, {
+      method: "POST",
+      body: { invoiceIds: [iid], groupId: gid },
+    });
+    await inv.refresh();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
 }
 
 // ---------- results ----------
@@ -171,8 +265,14 @@ function submittable(i: InvoicePublic): boolean {
     TERMINAL.has(i.status)
   );
 }
+const isGroupReviewer = computed(() => !!inv.rights.value?.groupReviewer);
+function inMyGroup(i: InvoicePublic): boolean {
+  return i.groupId != null && myGroupIds.value.includes(i.groupId);
+}
 function reviewable(i: InvoicePublic): boolean {
-  if (submitFlow.value) return canReview.value && i.reviewState === "submitted";
+  const mayReview = canReview.value || (isGroupReviewer.value && inMyGroup(i));
+  if (!mayReview) return false;
+  if (submitFlow.value) return i.reviewState === "submitted";
   return i.status === "review";
 }
 const submittableCount = computed(
@@ -272,7 +372,7 @@ async function sendReport() {
 }
 
 // ---------- settings tab ----------
-const setSection = ref<"general" | "collab" | "transfer">("general");
+const setSection = ref<"general" | "groups" | "collab" | "transfer">("general");
 const setVisibility = ref<"public" | "internal" | "private">("internal");
 const setSearchable = ref(false);
 const setStatus = ref<"active" | "closed" | "archived">("active");
@@ -705,6 +805,32 @@ async function loadAudit() {
                 >
                   <td class="max-w-55 truncate px-3 py-2" :title="i.filename">
                     {{ i.filename }}
+                    <select
+                      v-if="canManage && groups.length"
+                      class="ml-1 rounded border bg-background px-1 py-0.5 text-[11px]"
+                      :value="i.groupId ?? ''"
+                      @change.stop="
+                        setInvoiceGroup(
+                          i.id,
+                          ($event.target as HTMLSelectElement).value
+                            ? Number(($event.target as HTMLSelectElement).value)
+                            : null,
+                        )
+                      "
+                      @click.stop
+                    >
+                      <option value="">
+                        {{ t("home.groups.ungrouped") }}
+                      </option>
+                      <option v-for="g in groups" :key="g.id" :value="g.id">
+                        {{ g.name }}
+                      </option>
+                    </select>
+                    <span
+                      v-else-if="groupName(i.groupId)"
+                      class="ml-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
+                      >{{ groupName(i.groupId) }}</span
+                    >
                   </td>
                   <td
                     class="max-w-40 truncate px-3 py-2 text-muted-foreground"
@@ -827,6 +953,7 @@ async function loadAudit() {
           <button
             v-for="ss in [
               { key: 'general', label: t('orgs.settings.general') },
+              { key: 'groups', label: t('home.groups.title') },
               { key: 'collab', label: t('home.collab.title') },
               { key: 'transfer', label: t('home.transfer.title') },
             ]"
@@ -907,6 +1034,74 @@ async function loadAudit() {
         <Button :disabled="setSaving" class="self-start" @click="saveSettings">
           {{ setSaving ? t("settings.saving") : t("settings.save") }}
         </Button>
+      </div>
+
+      <!-- groups & reviewers -->
+      <div
+        v-else-if="setSection === 'groups'"
+        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-3"
+      >
+        <h3 class="text-base font-semibold">{{ t("home.groups.title") }}</h3>
+        <p class="text-sm text-muted-foreground">{{ t("home.groups.desc") }}</p>
+        <div
+          v-for="g in groups"
+          :key="g.id"
+          class="flex flex-col gap-2 rounded-lg border p-3"
+        >
+          <div class="flex items-center gap-2">
+            <Icon spec="FolderGit2" :size="15" class="text-muted-foreground" />
+            <span class="text-sm font-medium">{{ g.name }}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="ml-auto"
+              @click="deleteGroup(g.id)"
+            >
+              {{ t("orgs.remove") }}
+            </Button>
+          </div>
+          <div
+            v-for="r in g.reviewers"
+            :key="r.userId"
+            class="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm"
+          >
+            <Icon spec="UserCheck" :size="14" class="text-muted-foreground" />
+            <span class="font-medium">{{ r.name }}</span>
+            <span class="text-xs text-muted-foreground">{{ r.email }}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="ml-auto"
+              @click="removeGroupReviewer(g.id, r.userId)"
+            >
+              {{ t("orgs.remove") }}
+            </Button>
+          </div>
+          <form class="flex gap-2" @submit.prevent="addGroupReviewer(g.id)">
+            <Input
+              v-model="groupReviewerEmail[g.id]"
+              type="email"
+              :placeholder="t('home.groups.reviewerPlaceholder')"
+              class="flex-1"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              {{ t("home.groups.addReviewer") }}
+            </Button>
+          </form>
+        </div>
+        <p v-if="!groups.length" class="text-xs text-muted-foreground">
+          {{ t("home.groups.none") }}
+        </p>
+        <form class="flex gap-2" @submit.prevent="createGroup">
+          <Input
+            v-model="groupNameInput"
+            :placeholder="t('home.groups.namePlaceholder')"
+            class="w-48"
+          />
+          <Button type="submit" variant="outline" :disabled="groupBusy">
+            {{ t("home.groups.create") }}
+          </Button>
+        </form>
       </div>
 
       <!-- collaborators -->

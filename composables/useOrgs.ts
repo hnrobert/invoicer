@@ -9,6 +9,7 @@ const ORG_ROLES = [
   "owner",
   "admin",
   "editor",
+  "reviewer",
   "supervisor",
   "viewer",
   "member",
