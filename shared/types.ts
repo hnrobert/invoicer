@@ -85,6 +85,19 @@ export type InvoiceStatus =
 export type ReviewState = "draft" | "submitted" | "approved" | "rejected";
 
 export type CampaignVisibility = "public" | "internal" | "private";
+
+/** A stored invoice title (个人/组织/站点) with full reimbursement fields. */
+export interface InvoiceTitlePublic {
+  id: number;
+  ownerType: "user" | "org" | "site";
+  ownerId: string;
+  title: string;
+  taxId: string;
+  bankName: string;
+  bankAccount: string;
+  address: string;
+  phone: string;
+}
 export type CampaignStatus = "active" | "closed" | "archived";
 
 /**

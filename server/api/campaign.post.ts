@@ -15,11 +15,14 @@ export default defineEventHandler(async (event) => {
     tax_id?: string;
     organization_id?: string;
     name?: string;
+    title_ids?: number[];
   }>(event);
 
   const title = (body?.title ?? "").trim();
   const taxId = (body?.tax_id ?? "").trim();
-  if (!title && !taxId) {
+  const titleIds = Array.isArray(body?.title_ids) ? body.title_ids.filter((n) => Number.isFinite(n)) : [];
+  // Either a custom title/tax pair OR at least one stored title suffices.
+  if (!title && !taxId && !titleIds.length) {
     throw createError({
       statusCode: 400,
       statusMessage: "Please provide at least a buyer title or tax ID",
@@ -35,6 +38,8 @@ export default defineEventHandler(async (event) => {
     organizationId = body.organization_id;
   }
 
+  // Stored-title selection (multi): validated after the campaign exists below.
+
   const name = (body?.name ?? "").trim();
   const campaign = await AppDataSource.getRepository(Campaign).save({
     userId: user.id,
@@ -48,5 +53,9 @@ export default defineEventHandler(async (event) => {
     visibility: "internal",
     visibilityConfirmed: true,
   });
+  if (titleIds.length) {
+    const { saveCampaignTitles } = await import("#server/utils/campaignTitles");
+    await saveCampaignTitles(campaign.id, organizationId, user.id, titleIds);
+  }
   return { ok: true, campaign_id: campaign.id };
 });

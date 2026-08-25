@@ -7,6 +7,7 @@ import {
 } from "#server/utils/campaign";
 import { authDb } from "#server/utils/auth";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
+import { campaignTitleRows } from "#server/utils/campaignTitles";
 
 /**
  * List a campaign's invoices with a running total and a "still processing"
@@ -92,6 +93,7 @@ export default defineEventHandler(async (event) => {
     status: campaign.status,
     rights,
     flow,
+    titles: await campaignTitleRows(campaignId),
     scoped_to_me: !seeAll,
     invoices: invoices.map(invoiceToPublic),
     // Total over the VISIBLE set (campaign-wide for privileged viewers,

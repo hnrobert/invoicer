@@ -8,6 +8,53 @@ useHead({ title: () => t("nav.new") });
 const route = useRoute();
 const inv = useInvoice();
 const { organizations, refresh: refreshOrgs, create: createOrg } = useOrgs();
+import type { InvoiceTitlePublic } from "#shared/types";
+
+// Stored-title picker: personal + site + (for the selected org scope) that
+// org's titles. Multi-select — the campaign allows every checked title.
+interface TitleGroups {
+  personal: InvoiceTitlePublic[];
+  site: InvoiceTitlePublic[];
+  organizations: { orgId: string; titles: InvoiceTitlePublic[] }[];
+}
+const titleGroups = ref<TitleGroups>({
+  personal: [],
+  site: [],
+  organizations: [],
+});
+const selectedTitleIds = ref<number[]>([]);
+const showCustom = ref(false);
+
+async function loadTitles() {
+  try {
+    titleGroups.value = await $fetch<TitleGroups>("/api/titles");
+  } catch {
+    titleGroups.value = { personal: [], site: [], organizations: [] };
+  }
+}
+const orgTitleList = computed(() => {
+  const oid = scope.value;
+  return oid
+    ? (titleGroups.value.organizations.find((g) => g.orgId === oid)?.titles ??
+        [])
+    : [];
+});
+const titleGroupsFlat = computed(() =>
+  [
+    { label: t("titles.groupPersonal"), items: titleGroups.value.personal },
+    { label: t("titles.groupOrg"), items: orgTitleList.value },
+    { label: t("titles.groupSite"), items: titleGroups.value.site },
+  ].filter((g) => g.items.length),
+);
+
+function toggleTitle(id: number) {
+  const i = selectedTitleIds.value.indexOf(id);
+  if (i >= 0) selectedTitleIds.value.splice(i, 1);
+  else selectedTitleIds.value.push(id);
+}
+const anyTitleChosen = computed(
+  () => selectedTitleIds.value.length > 0 || showCustom.value,
+);
 
 const creating = ref(false);
 const scope = ref<string | null>(null);
@@ -23,21 +70,23 @@ const creatingOrg = ref(false);
 
 onMounted(() => {
   scope.value = organizations.value[0]?.id ?? null;
+  void loadTitles();
 });
 
 async function submitCampaign() {
-  if (!title.value.trim() && !taxId.value.trim()) {
-    toast.error(t("home.step1.needOne"));
+  if (!anyTitleChosen.value) {
+    toast.error(t("titles.needOne"));
     return;
   }
   creating.value = true;
   try {
     const campaignId = await inv.createCampaign(
-      title.value.trim(),
-      taxId.value.trim(),
+      showCustom.value ? title.value.trim() : "",
+      showCustom.value ? taxId.value.trim() : "",
       {
         organizationId: scope.value,
         name: campaignName.value.trim(),
+        titleIds: selectedTitleIds.value,
       },
     );
     const org = organizations.value.find((o) => o.id === scope.value);
@@ -136,12 +185,87 @@ async function submitOrg() {
           </button>
         </div>
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-2">
+        <Label>{{ t("home.step1.nameLabel") }}</Label>
+        <Input
+          v-model="campaignName"
+          :placeholder="t('home.step1.namePlaceholder')"
+        />
+      </div>
+
+      <!-- invoice-title picker (multi): personal + org + site -->
+      <div class="flex flex-col gap-2">
+        <Label>{{ t("titles.pickLabel") }}</Label>
+        <div
+          v-for="g in titleGroupsFlat"
+          :key="g.label"
+          class="flex flex-col gap-1.5"
+        >
+          <div
+            class="text-[11px] uppercase tracking-wide text-muted-foreground"
+          >
+            {{ g.label }}
+          </div>
+          <div class="flex flex-col gap-1">
+            <button
+              v-for="row in g.items"
+              :key="row.id"
+              type="button"
+              class="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors"
+              :class="
+                selectedTitleIds.includes(row.id)
+                  ? 'border-primary bg-primary/5'
+                  : 'hover:bg-accent'
+              "
+              @click="toggleTitle(row.id)"
+            >
+              <span
+                class="flex size-4 shrink-0 items-center justify-center rounded border"
+                :class="
+                  selectedTitleIds.includes(row.id)
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border'
+                "
+              >
+                <Icon
+                  v-if="selectedTitleIds.includes(row.id)"
+                  spec="Check"
+                  :size="11"
+                />
+              </span>
+              <span class="font-medium">{{ row.title || "—" }}</span>
+              <span class="font-mono text-xs text-muted-foreground">{{
+                row.taxId || "—"
+              }}</span>
+              <span
+                v-if="row.bankName || row.address || row.phone"
+                class="w-full text-xs text-muted-foreground"
+              >
+                {{ row.bankName
+                }}{{ row.bankAccount ? " · " + row.bankAccount : ""
+                }}{{ row.address ? " · " + row.address : ""
+                }}{{ row.phone ? " · " + row.phone : "" }}
+              </span>
+            </button>
+          </div>
+        </div>
+        <label class="mt-1 flex items-center gap-2 text-sm">
+          <input
+            v-model="showCustom"
+            type="checkbox"
+            class="size-4 accent-(--color-primary)"
+          />
+          {{ t("titles.useCustom") }}
+        </label>
+      </div>
+
+      <!-- custom title (one-off pair) -->
+      <div v-if="showCustom" class="grid gap-4 sm:grid-cols-2">
         <div class="flex flex-col gap-2">
-          <Label>{{ t("home.step1.nameLabel") }}</Label>
+          <Label>{{ t("home.step1.titleLabel") }}</Label>
           <Input
-            v-model="campaignName"
-            :placeholder="t('home.step1.namePlaceholder')"
+            v-model="title"
+            :placeholder="t('home.step1.titlePlaceholder')"
           />
         </div>
         <div class="flex flex-col gap-2">
@@ -151,13 +275,6 @@ async function submitOrg() {
             :placeholder="t('home.step1.taxPlaceholder')"
           />
         </div>
-      </div>
-      <div class="flex flex-col gap-2">
-        <Label>{{ t("home.step1.titleLabel") }}</Label>
-        <Input
-          v-model="title"
-          :placeholder="t('home.step1.titlePlaceholder')"
-        />
       </div>
       <Button :disabled="creating" @click="submitCampaign">
         <Icon spec="FolderPlus" :size="16" />

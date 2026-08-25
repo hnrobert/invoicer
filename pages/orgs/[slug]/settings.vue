@@ -11,9 +11,15 @@ const slug = route.params.slug as string;
 useHead({ title: () => `${t("orgs.tabs.settings")} · ${slug}` });
 
 const section = computed(() =>
-  ["general", "roles", "migration", "transfers", "audit", "danger"].includes(
-    String(route.query.section),
-  )
+  [
+    "general",
+    "titles",
+    "roles",
+    "migration",
+    "transfers",
+    "audit",
+    "danger",
+  ].includes(String(route.query.section))
     ? (route.query.section as string)
     : "general",
 );
@@ -214,6 +220,7 @@ async function onDelete() {
 
 const sections = computed(() => [
   { key: "general", label: t("orgs.settings.general"), to: secUrl("general") },
+  { key: "titles", label: t("titles.title"), to: secUrl("titles") },
   { key: "roles", label: t("orgs.customRoles.title"), to: secUrl("roles") },
   { key: "migration", label: t("orgs.migration.nav"), to: secUrl("migration") },
   { key: "transfers", label: t("orgs.transfer.nav"), to: secUrl("transfers") },
@@ -281,6 +288,10 @@ onMounted(async () => {
       </div>
 
       <!-- roles -->
+      <div v-else-if="section === 'titles'">
+        <TitleManager owner-type="org" :org-id="org!.id" />
+      </div>
+
       <div v-else-if="section === 'roles'" class="flex flex-col gap-3">
         <h3 class="text-base font-semibold">
           {{ t("orgs.customRoles.title") }}

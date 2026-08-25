@@ -202,6 +202,37 @@
     selectOrg: "Select",
   },
 
+  // ── invoice titles ───────────────────────────────────────────
+  titles: {
+    title: "Invoice titles",
+    siteTitle: "Site titles",
+    desc: "Store reimbursement titles (name, tax ID, bank, account, address, phone) and pick them when creating campaigns.",
+    none: "No titles yet.",
+    add: "Add title",
+    editing: "Edit title",
+    edit: "Edit",
+    delete: "Delete",
+    save: "Save",
+    needOne: "Pick at least one invoice title or check custom",
+    pickLabel: "Allowed invoice titles (multi-select)",
+    useCustom: "Use a one-off custom title",
+    groupPersonal: "Personal titles",
+    groupOrg: "Organization titles",
+    groupSite: "Site titles",
+    fieldTitle: "Invoice title",
+    fieldTitlePh: "University of Nottingham Ningbo",
+    fieldTax: "Tax ID",
+    fieldTaxPh: "1233000077647510XG",
+    fieldBank: "Bank",
+    fieldBankPh: "Bank of China, Ningbo",
+    fieldAccount: "Bank account",
+    fieldAccountPh: "376658330575",
+    fieldAddress: "Address",
+    fieldAddressPh: "199 Taikang East Road, Ningbo",
+    fieldPhone: "Phone",
+    fieldPhonePh: "0574-88180000",
+  },
+
   // ── site admin (superadmin) ─────────────────────────────────
   admin: {
     title: "Site admin",

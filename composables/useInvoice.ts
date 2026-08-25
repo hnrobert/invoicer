@@ -34,6 +34,8 @@ export type FilterKey = "all" | InvoiceStatus;
 export interface CreateCampaignOptions {
   organizationId?: string | null;
   name?: string;
+  /** Stored invoice-title ids to allow (multi); see /api/titles. */
+  titleIds?: number[];
 }
 
 /**
@@ -79,6 +81,7 @@ export function useInvoice() {
         tax_id: taxId,
         organization_id: opts.organizationId ?? null,
         name: opts.name ?? "",
+        title_ids: opts.titleIds ?? [],
       },
     });
     if (!data.ok) throw new Error(data.msg || "创建征集活动失败");

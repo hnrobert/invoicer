@@ -6,7 +6,8 @@ import { extractPdfText } from "./extract";
 import { ocrImage } from "./ocr";
 import { extractInvoiceFields } from "./fields";
 import { detectKind, extractReceiptFields } from "./receipt";
-import { matchInvoice } from "./match";
+import { matchInvoiceMulti } from "./match";
+import { allowedPairs } from "./campaignTitles";
 import { parseElectronicInvoice } from "./einvoice";
 
 /**
@@ -104,11 +105,18 @@ export async function processInvoice(invoiceId: number): Promise<void> {
     }
 
     const fields = directFields ?? extractInvoiceFields(text);
-    const m = matchInvoice(
-      fields,
-      campaign?.expectedTitle ?? "",
-      campaign?.expectedTaxId ?? null,
-    );
+    const m = campaign
+      ? matchInvoiceMulti(
+          { title: fields.title, taxId: fields.taxId, amount: fields.amount },
+          await allowedPairs(campaign),
+        )
+      : {
+          status: "review" as const,
+          reason: "No campaign context",
+          titleOk: false,
+          taxOk: false,
+          amountInTotal: false,
+        };
 
     await repo.update(
       { id: invoiceId },

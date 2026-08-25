@@ -13,6 +13,7 @@ const route = useRoute();
 
 const ALL = [
   "profile",
+  "titles",
   "emails",
   "preferences",
   "security",
@@ -269,6 +270,12 @@ const sections = computed(() => [
     icon: "IdCard",
   },
   {
+    key: "titles",
+    label: t("titles.title"),
+    to: secUrl("titles"),
+    icon: "ReceiptText",
+  },
+  {
     key: "emails",
     label: t("account.emails.title"),
     to: secUrl("emails"),
@@ -364,6 +371,11 @@ watch(section, (v) => {
       <p class="text-xs text-muted-foreground">
         {{ t("settings.sections.profileHint") }}
       </p>
+    </div>
+
+    <!-- ============ titles ============ -->
+    <div v-else-if="section === 'titles'">
+      <TitleManager :owner-type="isAdmin ? 'site' : 'user'" />
     </div>
 
     <!-- ============ emails ============ -->

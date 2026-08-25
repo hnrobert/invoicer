@@ -203,6 +203,37 @@
     selectOrg: "选择",
   },
 
+  // ── 发票抬头 ─────────────────────────────────────────────────
+  titles: {
+    title: "发票抬头",
+    siteTitle: "站点抬头",
+    desc: "存储常用报销抬头（抬头、税号、开户银行、银行账号、地址、电话），创建活动时可直接选用。",
+    none: "暂无抬头。",
+    add: "添加抬头",
+    editing: "编辑抬头",
+    edit: "编辑",
+    delete: "删除",
+    save: "保存",
+    needOne: "请至少选择一个发票抬头或勾选自定义",
+    pickLabel: "选择发票抬头（可多选）",
+    useCustom: "使用自定义抬头（一次性）",
+    groupPersonal: "个人抬头",
+    groupOrg: "组织抬头",
+    groupSite: "站点抬头",
+    fieldTitle: "发票抬头",
+    fieldTitlePh: "宁波诺丁汉大学",
+    fieldTax: "税号",
+    fieldTaxPh: "1233000077647510XG",
+    fieldBank: "开户银行",
+    fieldBankPh: "中国银行宁波分行",
+    fieldAccount: "银行账号",
+    fieldAccountPh: "376658330575",
+    fieldAddress: "企业地址",
+    fieldAddressPh: "宁波市泰康东路199号",
+    fieldPhone: "电话",
+    fieldPhonePh: "0574-88180000",
+  },
+
   // ── 站点管理（superadmin）───────────────────────────────────
   admin: {
     title: "站点管理",
