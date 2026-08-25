@@ -132,6 +132,9 @@ export interface InvoicePublic {
   campaignId: number;
   uploaderId: string | null;
   groupId: number | null;
+  kind: "invoice" | "receipt";
+  extractedMerchant: string | null;
+  extractedOrderNo: string | null;
   filename: string;
   fileType: "pdf" | "image" | "xml" | "ofd";
   status: InvoiceStatus;

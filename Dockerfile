@@ -7,7 +7,11 @@ WORKDIR /app
 # everything else (exceljs / adm-zip / tesseract.js) is pure JS/WASM.
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+# The postinstall hook runs this script — copy it before install.
+COPY scripts/fetch-tessdata.ts scripts/fetch-tessdata.ts
+# postinstall auto-fetches tessdata (tolerant); enforce strictness for the
+# image — an OCR-less build must fail loudly.
+RUN TESSDATA_STRICT=1 pnpm install --frozen-lockfile
 
 # --- build ---
 FROM base AS build
@@ -29,8 +33,10 @@ WORKDIR /app
 
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/package.json ./package.json
-# OCR language data (chi_sim / chi_tra / eng), served locally — no API download.
-COPY --from=build /app/tessdata ./tessdata
+# OCR language data, fetched by postinstall in the deps stage (strict mode) —
+# take it from there, not from the build context (CI checkouts have no
+# tessdata on disk; `COPY . .` in the build stage can't provide it).
+COPY --from=deps /app/tessdata ./tessdata
 
 # better-sqlite3's native binary is bundled by Nitro into .output.
 RUN mkdir -p /app/data /app/uploads

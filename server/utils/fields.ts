@@ -43,6 +43,8 @@ const INVOICE_CODE = /发票代码\s*[:：]?\s*(\d{10,12})(?!\d)/;
 export interface InvoiceFields {
   title: string | null;
   taxId: string | null;
+  /** SELLER name (pairing key: receipt.merchant ↔ invoice.seller). */
+  seller: string | null;
   amount: number | null;
   /** 发票号码 — 20 digits for 数电票, 8 for legacy tax-control invoices. */
   invoiceNo: string | null;
@@ -118,10 +120,12 @@ export function extractInvoiceFields(text: string): InvoiceFields {
   //      "公司A公司B" run at the first company suffix when two taxes exist),
   //   3. buyer = first or second pair depending on which label block
   //      (购买/销售) appears first in the text.
+  let seller: string | null = null;
   if (!title) {
     const pos = positionalFields(raw);
     if (pos) {
       title = pos.title;
+      seller = pos.seller;
       if (pos.taxId) taxId = pos.taxId;
     }
   }
@@ -129,6 +133,7 @@ export function extractInvoiceFields(text: string): InvoiceFields {
   return {
     title,
     taxId,
+    seller,
     amount,
     invoiceNo: no?.[1] ?? null,
     issueDate,
@@ -168,7 +173,7 @@ function splitJoinedName(joined: string): [string, string] | null {
 
 function positionalFields(
   text: string,
-): { title: string; taxId: string } | null {
+): { title: string; taxId: string; seller: string | null } | null {
   const taxes = scanTaxTokens(text);
   if (!taxes.length) return null;
 
@@ -195,8 +200,11 @@ function positionalFields(
   const sellIdx = text.indexOf("销");
   const buyerFirst = buyIdx >= 0 && (sellIdx < 0 || buyIdx < sellIdx);
 
-  const name = (buyerFirst ? names[0] : names[1]) as string | undefined;
-  const tax = buyerFirst ? taxes[0] : taxes[1];
+  const bi = buyerFirst ? 0 : 1;
+  const si = 1 - bi;
+  const name = names[bi] as string | undefined;
+  const seller = (names[si] as string | undefined) ?? null;
+  const tax = taxes[bi] ?? taxes[0]!;
   if (!name) return null;
-  return { title: name, taxId: tax ?? taxes[0]! };
+  return { title: name, taxId: tax, seller };
 }

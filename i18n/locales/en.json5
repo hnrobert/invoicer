@@ -347,6 +347,7 @@
       processing: "Processing",
       error: "Failed",
     },
+    kind: { receipt: "Receipt" },
     reviewState: {
       draft: "Draft",
       submitted: "Submitted",

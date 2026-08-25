@@ -45,16 +45,23 @@ services:
   # PP-OCR sidecar (optional, profile "ocr" so the default stack stays light).
   # Reachable only over the compose-internal network — no host port exposed;
   # the app calls http://paddleocr:8080 (service-name DNS).
-  # Official PaddleX serving image — POST /ocr with {file: <base64>, fileType: 1}.
-  # Check https://github.com/PaddlePaddle/PaddleX/blob/release/3.x/docs/ for the
-  # current image tag; this one tracks PaddleX 3.x.
+  # Official PaddleX image running basic serving for the OCR pipeline:
+  #   POST /ocr with JSON {file: <base64>, fileType: 1}
+  #   → result.ocrResults[i].prunedResult.rec_texts
+  # Contract verified against
+  # https://paddlepaddle.github.io/PaddleX/3.4/en/pipeline_usage/tutorials/ocr_pipelines/OCR.html
+  # Enable: docker compose --profile ocr up -d (first request downloads the
+  # OCR models into the named volume — expect a one-time delay).
   paddleocr:
-    image: registry.baidubce.com/paddlex/paddlex-api:paddlex-3.2.1
-    environment:
-      # CPU-only PP-OCRv5 mobile models (small + fast); swap to server models
-      # on a GPU host for the best accuracy.
-      PADDLE_PDX_SERVER_HOST_PORT: 8080
-      PADDLE_PDX_PIPELINE: OCR
-      PADDLE_PDX_DEVICE: cpu
+    image: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlex/paddlex:paddlex3.3.11-paddlepaddle3.2.0-cpu
+    command:
+      - sh
+      - -c
+      - paddlex --install serving >/dev/null 2>&1; exec paddlex --serve --pipeline OCR --host 0.0.0.0 --port 8080
+    volumes:
+      - paddle-models:/root/.paddlex
     restart: unless-stopped
     profiles: ["ocr"]
+
+volumes:
+  paddle-models:

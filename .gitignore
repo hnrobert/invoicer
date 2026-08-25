@@ -24,3 +24,6 @@ uploads/
 npm-debug.log*
 
 docker-compose.yaml
+# OCR traineddata — fetched at setup (pnpm fetch:tessdata), not committed
+/tessdata/
+/*.traineddata

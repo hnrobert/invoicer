@@ -12,12 +12,13 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
-    "postinstall": "nuxt prepare",
+    "postinstall": "nuxt prepare && tsx scripts/fetch-tessdata.ts",
     "tsup": "tsup",
     "selftest": "tsx scripts/selftest.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "fetch:tessdata": "tsx scripts/fetch-tessdata.ts"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^10.6.0",

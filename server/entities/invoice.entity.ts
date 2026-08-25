@@ -31,6 +31,18 @@ export class Invoice {
   @Column({ name: "group_id", type: "integer", nullable: true })
   groupId!: number | null;
 
+  /** Document kind: formal invoice, or receipt/order screenshot (OCR path). */
+  @Column({ type: "text", nullable: false, default: "invoice" })
+  kind!: "invoice" | "receipt";
+
+  /** Receipt path: merchant/shop name. Invoices: the SELLER name (pairing key). */
+  @Column({ name: "extracted_merchant", type: "text", nullable: true })
+  extractedMerchant!: string | null;
+
+  /** Receipt path: order number (订单号/订单编号). */
+  @Column({ name: "extracted_order_no", type: "text", nullable: true })
+  extractedOrderNo!: string | null;
+
   @Column({ type: "text", nullable: false })
   filename!: string;
 

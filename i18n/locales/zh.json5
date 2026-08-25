@@ -348,6 +348,7 @@
       processing: "识别中",
       error: "失败",
     },
+    kind: { receipt: "小票" },
     reviewState: {
       draft: "草稿",
       submitted: "待审核",

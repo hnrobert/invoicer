@@ -98,19 +98,71 @@ async function paddleOcr(buf: Buffer): Promise<string | null> {
   }
 }
 
+/**
+ * Recognition languages. Simplified Chinese + ASCII (digits, ¥, latin) covers
+ * mainland invoices/receipts; traditional (chi_tra) is omitted because each
+ * extra language roughly DOUBLES recognition time, and hard cases are better
+ * served by the PaddleOCR sidecar. Override with OCR_LANGS="chi_sim,chi_tra,eng".
+ */
+const LANGS = (process.env.OCR_LANGS || "chi_sim,eng")
+  .split(",")
+  .map((l) => l.trim())
+  .filter(Boolean);
+
+/**
+ * Shared, lazily-created worker. Creating a worker re-reads ~10MB of
+ * traineddata + re-initializes wasm — measurable per image, and much worse on
+ * cold page cache / containers — so ONE worker serves all requests.
+ * Recognition is serialized through a promise chain (a tesseract worker
+ * processes one image at a time); on failure the worker is discarded and the
+ * next call recreates it.
+ */
+type TesseractWorker = Awaited<ReturnType<typeof createWorker>>;
+let sharedWorker: Promise<TesseractWorker> | null = null;
+let queue: Promise<unknown> = Promise.resolve();
+
+function getWorker() {
+  if (!sharedWorker) {
+    sharedWorker = createWorker(LANGS, 1, {
+      langPath: langPath(),
+      // Bundled traineddata files are uncompressed — without this tesseract.js
+      // looks for .traineddata.gz and image OCR hangs forever.
+      gzip: false,
+      // tesseract.js otherwise copies each loaded language into cachePath
+      // (default: cwd) — that's what littered <lang>.traineddata files into
+      // the repo root. We read straight from the bundled dir, no cache.
+      cacheMethod: "none",
+      // corePath is auto-resolved from the bundled tesseract.js-core (the Dockerfile
+      // copies its .wasm next to the .js so this also works in the image).
+    }).catch((e) => {
+      sharedWorker = null; // failed init — retry on next call
+      throw e;
+    });
+  }
+  return sharedWorker;
+}
+
 /** OCR an image buffer with tesseract.js (local traineddata, no API). */
 async function tesseractOcr(buf: Buffer): Promise<string> {
-  const worker = await createWorker(["chi_sim", "chi_tra", "eng"], 1, {
-    langPath: langPath(),
-    // corePath is auto-resolved from the bundled tesseract.js-core (the Dockerfile
-    // copies its .wasm next to the .js so this also works in the image).
+  const run = queue.then(async () => {
+    const worker = await getWorker();
+    try {
+      const { data } = await worker.recognize(buf);
+      return data.text ?? "";
+    } catch (e) {
+      // The worker may be broken (OOM, wasm crash) — drop it so the next
+      // call starts fresh instead of failing forever.
+      sharedWorker = null;
+      try {
+        await worker!.terminate();
+      } catch {
+        // already dead
+      }
+      throw e;
+    }
   });
-  try {
-    const { data } = await worker.recognize(buf);
-    return data.text ?? "";
-  } finally {
-    await worker.terminate();
-  }
+  queue = run.catch(() => {}); // keep the chain alive after failures
+  return run;
 }
 
 /**

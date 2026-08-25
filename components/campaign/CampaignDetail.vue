@@ -804,7 +804,11 @@ async function loadAudit() {
                   @click="toggleExpand(i.id)"
                 >
                   <td class="max-w-55 truncate px-3 py-2" :title="i.filename">
-                    {{ i.filename }}
+                    <span
+                      v-if="i.kind === 'receipt'"
+                      class="mr-1 rounded-full border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-700 dark:text-sky-400"
+                      >{{ t("home.kind.receipt") }}</span
+                    >{{ i.filename }}
                     <select
                       v-if="canManage && groups.length"
                       class="ml-1 rounded border bg-background px-1 py-0.5 text-[11px]"
@@ -834,12 +838,24 @@ async function loadAudit() {
                   </td>
                   <td
                     class="max-w-40 truncate px-3 py-2 text-muted-foreground"
-                    :title="i.extractedTitle ?? ''"
+                    :title="
+                      i.kind === 'receipt'
+                        ? (i.extractedMerchant ?? '')
+                        : (i.extractedTitle ?? '')
+                    "
                   >
-                    {{ i.extractedTitle || t("common.dash") }}
+                    {{
+                      i.kind === "receipt"
+                        ? i.extractedMerchant || t("common.dash")
+                        : i.extractedTitle || t("common.dash")
+                    }}
                   </td>
                   <td class="px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {{ i.extractedTaxId || t("common.dash") }}
+                    {{
+                      i.kind === "receipt"
+                        ? i.extractedOrderNo || t("common.dash")
+                        : i.extractedTaxId || t("common.dash")
+                    }}
                   </td>
                   <td class="px-3 py-2 text-right tabular-nums">
                     {{ fmtAmount(i) }}

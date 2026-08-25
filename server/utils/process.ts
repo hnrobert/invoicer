@@ -5,6 +5,7 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { extractPdfText } from "./extract";
 import { ocrImage } from "./ocr";
 import { extractInvoiceFields } from "./fields";
+import { detectKind, extractReceiptFields } from "./receipt";
 import { matchInvoice } from "./match";
 import { parseElectronicInvoice } from "./einvoice";
 
@@ -73,6 +74,35 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       text = await ocrImage(inv.savedPath);
     }
 
+    // ---- receipt / order-screenshot branch (OCR'd images) ----
+    // Receipts have no invoice structure — extract merchant/order-no/amount
+    // and park them for manual review until the receipt↔invoice pairing mode
+    // ships. XML/OFD 数电票 are always invoices.
+    if (inv.fileType === "image" && !directFields) {
+      const kind = detectKind(text);
+      if (kind === "receipt") {
+        const r = extractReceiptFields(text);
+        const ok = r.amount != null || r.merchant || r.orderNo;
+        await repo.update(
+          { id: invoiceId },
+          {
+            kind: "receipt",
+            status: ok ? "review" : "unqualified",
+            reason: ok
+              ? "Receipt/order screenshot recognized — pending invoice pairing"
+              : "No receipt fields recognized (need paid amount / merchant / order no)",
+            extractedMerchant: r.merchant,
+            extractedOrderNo: r.orderNo,
+            extractedAmount: r.amount,
+            amountInTotal: false,
+            rawText: text.slice(0, 20000),
+            processedAt: new Date(),
+          },
+        );
+        return;
+      }
+    }
+
     const fields = directFields ?? extractInvoiceFields(text);
     const m = matchInvoice(
       fields,
@@ -83,11 +113,13 @@ export async function processInvoice(invoiceId: number): Promise<void> {
     await repo.update(
       { id: invoiceId },
       {
+        kind: "invoice",
         status: m.status,
         reason: m.reason,
         amountInTotal: m.amountInTotal,
         extractedTitle: fields.title,
         extractedTaxId: fields.taxId,
+        extractedMerchant: fields.seller,
         extractedAmount: fields.amount,
         rawText: text.slice(0, 20000),
         processedAt: new Date(),

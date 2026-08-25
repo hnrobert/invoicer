@@ -205,6 +205,7 @@ export function parseElectronicInvoice(
   const f: InvoiceFields = {
     title: merged.title ?? null,
     taxId: merged.taxId ?? null,
+    seller: null,
     amount: merged.amount ?? null,
     invoiceNo: merged.invoiceNo ?? null,
     issueDate: merged.issueDate ?? null,
