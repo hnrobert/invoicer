@@ -19,7 +19,8 @@ const TITLE_CLEAN =
 
 const TAX_ID_LABELED =
   /(?:纳税人识别号|统一社会信用代码|税号)[:：]?\s*([0-9A-HJ-NPQRTUWXY]{15,20})/;
-const TAX_ID_18 = /[0-9A-HJ-NPQRTUWXY]{18}/;
+const TAX_ID_18 =
+  /(?<![0-9A-HJ-NPQRTUWXY])[0-9A-HJ-NPQRTUWXY]{18}(?![0-9A-HJ-NPQRTUWXY])/;
 const TAX_ID_NUM = /\b\d{15,20}\b/;
 
 const AMOUNT_PATTERNS: RegExp[] = [
@@ -66,7 +67,12 @@ export function extractInvoiceFields(text: string): InvoiceFields {
       const full = (m[1]!.split(TITLE_CLEAN)[0] ?? "")
         .trim()
         .replace(/[\s:：\t]+$/, "");
-      if (full.length >= 2) title = full;
+      // 数电票 label-block layouts make these regexes catch header words
+      // ("项目名称"…); a label-only capture is garbage — skip it so the
+      // positional fallback below can run.
+      const garbage =
+        /^(?:[\s:：]*(?:项目名称|名称|购买方|销售方|信息|开票人|收款人|复核|备注|合计|价税合计.*|（?小写）?|大写|规格型号|单位|数量|单价|金额|税率(?:\/征收率)?|税额)[\s:：]*)+$/u;
+      if (full.length >= 2 && !garbage.test(full)) title = full;
       break;
     }
   }
@@ -102,6 +108,24 @@ export function extractInvoiceFields(text: string): InvoiceFields {
     ? `${date[1]}-${date[2]!.padStart(2, "0")}-${date[3]!.padStart(2, "0")}`
     : null;
 
+  // --- positional fallback (数电票 layouts that separate labels from values)
+  // Text-based e-invoice PDFs often emit the label block first and the value
+  // stream later (sometimes with the buyer/seller names concatenated). When
+  // the label-adjacent regexes found no title, pair values positionally:
+  //   1. tax ids = standalone 18-char tokens (boundaries exclude the 20-digit
+  //      invoice number),
+  //   2. names = CJK runs that aren't label words (splitting a joined
+  //      "公司A公司B" run at the first company suffix when two taxes exist),
+  //   3. buyer = first or second pair depending on which label block
+  //      (购买/销售) appears first in the text.
+  if (!title) {
+    const pos = positionalFields(raw);
+    if (pos) {
+      title = pos.title;
+      if (pos.taxId) taxId = pos.taxId;
+    }
+  }
+
   return {
     title,
     taxId,
@@ -112,4 +136,67 @@ export function extractInvoiceFields(text: string): InvoiceFields {
     invoiceCode: code?.[1] ?? null,
     raw,
   };
+}
+
+/** Label words that must never be mistaken for a party name. */
+const NAME_LABEL_RE =
+  /(名称|购买|销售|项目|备注|开票人|收款人|复核|密码|规格|型号|单位|数量|单价|金额|税率|税额|合计|价税|大写|小写|统一社会信用|纳税人|识别号|发票|日期|电子|普通|专用|号码|机器|编号|校验码|银行|账号|地址|电话|品目)/;
+
+/**
+ * Standalone tax-id tokens in text order. Handles both separated tokens
+ * ("…XG" alone) AND concatenated buyer+seller runs ("…R…XG", a 36-char
+ * stream sliced into 18-char halves); non-multiple runs (e.g. the 20-digit
+ * invoice number) are rejected wholesale.
+ */
+function scanTaxTokens(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/[0-9A-HJ-NPQRTUWXY]{18,}/g)) {
+    const run = m[0];
+    if (run.length % 18 === 0) {
+      for (let i = 0; i < run.length; i += 18) out.push(run.slice(i, i + 18));
+    }
+  }
+  return out;
+}
+
+function splitJoinedName(joined: string): [string, string] | null {
+  const m = joined.match(
+    /^(.{3,25}?(?:有限公司|有限责任公司|股份有限公司|（普通合伙）|（有限合伙）|大学|学院|研究院|研究中心|事务所|工作室|商店|商场|厂|集团))(.{3,25})$/u,
+  );
+  return m ? [m[1]!, m[2]!] : null;
+}
+
+function positionalFields(
+  text: string,
+): { title: string; taxId: string } | null {
+  const taxes = scanTaxTokens(text);
+  if (!taxes.length) return null;
+
+  // CJK party-name candidates: label words excluded, and runs inside
+  // asterisk-wrapped item names ("*其他机械设备*电器…") dropped — those are
+  // line items, not parties.
+  let names = [...text.matchAll(/[\u4e00-\u9fff（）()]{4,30}/gu)]
+    .filter(
+      (m) => text[m.index - 1] !== "*" && text[m.index + m[0].length] !== "*",
+    )
+    .map((m) => m[0])
+    .filter((x) => !NAME_LABEL_RE.test(x));
+
+  // Joined buyer+seller name run ("…公司A公司B") → split at the first
+  // company suffix; the split parts are the two parties in value order.
+  if (taxes.length >= 2 && names.length) {
+    const split = splitJoinedName(names[0]!);
+    if (split) names = split;
+  }
+  if (!names.length) return null;
+
+  // Which party block leads the label section decides value order.
+  const buyIdx = text.indexOf("购");
+  const sellIdx = text.indexOf("销");
+  const buyerFirst = buyIdx >= 0 && (sellIdx < 0 || buyIdx < sellIdx);
+
+  const name = (buyerFirst ? names[0] : names[1]) as string | undefined;
+  const tax = buyerFirst ? taxes[0] : taxes[1];
+  if (!name) return null;
+  return { title: name, taxId: tax ?? taxes[0]! };
 }
