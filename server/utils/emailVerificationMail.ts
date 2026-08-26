@@ -9,28 +9,25 @@ export function siteOrigin(fallback?: string): string {
   return (fallback || "http://localhost:10752").replace(/\/+$/, "");
 }
 
-/** Send the "verify this email" message; returns the message id. */
-export async function sendVerificationEmail(
+/** Send the 6-digit verification code message; returns the message id. */
+export async function sendVerificationCodeEmail(
   to: string,
-  token: string,
-  origin?: string,
+  code: string,
 ): Promise<string> {
-  const url = `${siteOrigin(origin)}/api/account/emails/verify?token=${encodeURIComponent(token)}`;
   const html = renderCardEmail(
     {
-      title: "Verify your email",
+      title: "Email verification code",
       bodyHtml: `
-        <p style="margin:0 0 12px;">Confirm this address to finish linking it to your Invoicer account. Verified emails can sign in and become your primary address.</p>
-        <p style="margin:0;color:#6b7280;font-size:12px;">This link expires in 24 hours. If you didn't request it, ignore this email.</p>`,
-      preheader: "Confirm this address to link it to your account",
-      actionLabel: "Verify email",
-      actionUrl: url,
+        <p style="margin:0 0 12px;">Enter this code in Settings → Emails to finish linking <b>${to}</b> to your Invoicer account:</p>
+        <p style="margin:0 0 12px;font-size:32px;font-weight:700;letter-spacing:8px;">${code}</p>
+        <p style="margin:0;color:#6b7280;font-size:12px;">This code expires in 10 minutes. If you didn't request it, ignore this email.</p>`,
+      preheader: `Verification code ${code.slice(0, 3)}··`,
     },
     siteTheme(),
   );
   return sendMail({
     to,
-    subject: "Invoicer · Verify your email",
+    subject: "Invoicer · Verification code",
     body: html,
     html: true,
   });

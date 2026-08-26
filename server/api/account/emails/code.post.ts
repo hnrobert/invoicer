@@ -1,15 +1,15 @@
 import { AppDataSource } from "#server/utils/database";
 import { UserEmail } from "#server/entities/userEmail.entity";
 import { getSessionUser } from "#server/utils/campaign";
-import { issueEmailVerification, listEmails } from "#server/utils/emails";
-import { sendVerificationEmail } from "#server/utils/emailVerificationMail";
+import { issueEmailCode, listEmails } from "#server/utils/emails";
+import { sendVerificationCodeEmail } from "#server/utils/emailVerificationMail";
 import {
   checkAccountSend,
   checkEmailSend,
   emailLimitError,
 } from "#server/utils/emailLimit";
 
-/** Re-send the verification message for one of the caller's UNVERIFIED emails. */
+/** Send a 6-digit verification code to one of the caller's UNVERIFIED emails. */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const { email } = await readBody<{ email?: string }>(event);
@@ -17,9 +17,10 @@ export default defineEventHandler(async (event) => {
   if (!e) {
     throw createError({ statusCode: 400, statusMessage: "Email is required" });
   }
-
-  const repo = AppDataSource.getRepository(UserEmail);
-  const row = await repo.findOneBy({ userId: user.id, email: e });
+  const row = await AppDataSource.getRepository(UserEmail).findOneBy({
+    userId: user.id,
+    email: e,
+  });
   if (!row) {
     throw createError({ statusCode: 404, statusMessage: "Not linked" });
   }
@@ -32,18 +33,14 @@ export default defineEventHandler(async (event) => {
   const limit = checkEmailSend("email-verification", e);
   if (!limit.allowed) throw createError(emailLimitError(limit));
 
-  const token = await issueEmailVerification(user.id, e);
+  const code = await issueEmailCode(user.id, e);
   try {
-    await sendVerificationEmail(
-      e,
-      token,
-      event.headers.get("origin") ?? undefined,
-    );
+    await sendVerificationCodeEmail(e, code);
   } catch (err) {
     throw createError({
       statusCode: 503,
       statusMessage:
-        "Verification email could not be sent — check the mail delivery settings. " +
+        "Code email could not be sent — check the mail delivery settings. " +
         (err as Error).message,
     });
   }

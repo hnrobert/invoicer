@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { AppDataSource } from "./database";
 import { UserEmail } from "#server/entities/userEmail.entity";
 import { authDb } from "./auth";
@@ -13,11 +13,10 @@ import { authDb } from "./auth";
 export interface AccountEmail {
   email: string;
   primary: boolean;
-  /** Secondary emails: verified means control was proven via the emailed link. */
+  /** Secondary emails: verified means control was proven via the emailed code. */
   verified: boolean;
 }
 
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // verification links live 24h
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
 const norm = (e: string) => e.trim().toLowerCase();
@@ -74,44 +73,52 @@ export async function listEmails(userId: string): Promise<AccountEmail[]> {
   return out;
 }
 
-/** Mint a fresh verification token for a linked-but-unverified email. */
-export async function issueEmailVerification(
+const CODE_TTL_MS = 10 * 60 * 1000; // verification codes live 10 minutes
+
+/**
+ * Issue a 6-digit verification code for a linked-but-unverified email.
+ * Returns the raw code for the caller to email; only its hash is stored.
+ */
+export async function issueEmailCode(
   userId: string,
   email: string,
 ): Promise<string> {
-  const token = randomBytes(32).toString("base64url");
+  const code = String(100000 + Math.floor(Math.random() * 900000));
   await AppDataSource.getRepository(UserEmail).update(
     { userId, email },
     {
-      tokenHash: sha256(token),
-      tokenExpiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+      codeHash: sha256(code),
+      codeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
     },
   );
-  return token;
+  return code;
 }
 
-/** Consume a verification token: mark the email verified. True on success. */
-export async function consumeEmailVerification(
-  token: string,
+/** Consume a 6-digit code: mark the email verified. True on success. */
+export async function consumeEmailCode(
+  userId: string,
+  email: string,
+  code: string,
 ): Promise<boolean> {
   const repo = AppDataSource.getRepository(UserEmail);
-  const row = await repo.findOneBy({ tokenHash: sha256(token) });
-  if (!row) return false;
-  if (!row.tokenExpiresAt || row.tokenExpiresAt.getTime() < Date.now())
+  const row = await repo.findOneBy({ userId, email });
+  if (!row?.codeHash || row.codeHash !== sha256(code.trim())) return false;
+  if (!row.codeExpiresAt || row.codeExpiresAt.getTime() < Date.now())
     return false;
   await repo.update(
     { id: row.id },
-    { verifiedAt: new Date(), tokenHash: null, tokenExpiresAt: null },
+    { verifiedAt: new Date(), codeHash: null, codeExpiresAt: null },
   );
   return true;
 }
 
 /**
- * Link a new secondary email — UNVERIFIED: returns the raw verification token
- * for the caller to email; the address only becomes usable (sign-in, promote
- * to primary) after `consumeEmailVerification` marks it verified.
+ * Link a new secondary email — UNVERIFIED and silent (no email is sent yet;
+ * the user triggers the code flow from Settings → Emails). The address only
+ * becomes usable (sign-in, promote to primary) after `consumeEmailCode`
+ * marks it verified.
  */
-export async function addEmail(userId: string, email: string): Promise<string> {
+export async function addEmail(userId: string, email: string): Promise<void> {
   const e = norm(email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
     throw new Error("Invalid email address");
@@ -124,7 +131,6 @@ export async function addEmail(userId: string, email: string): Promise<string> {
     email: e,
     verifiedAt: null,
   });
-  return issueEmailVerification(userId, e);
 }
 
 /** Unlink a secondary email (the primary cannot be removed this way). */

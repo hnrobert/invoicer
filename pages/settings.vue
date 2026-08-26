@@ -4,6 +4,7 @@
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
 import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
+import type { KebabMenuItemSpec } from "~/components/ui/KebabMenu.vue";
 import { useColorMode } from "@vueuse/core";
 
 definePageMeta({ layout: "default" });
@@ -105,23 +106,50 @@ async function addEmail() {
     );
     emails.value = data.emails;
     newEmail.value = "";
-    toast.success(t("account.emails.verifySent"));
+    toast.success(t("account.emails.addedUnverified"));
   } catch (e) {
     toast.error((e as Error).message);
   } finally {
     emailBusy.value = false;
   }
 }
-async function resendVerification(email: string) {
+// Code flow: "send code" arms an inline input; the user enters the emailed
+// 6-digit code and confirms.
+const codeSentFor = ref<string | null>(null);
+const codeInput = ref<Record<string, string>>({});
+const codeBusy = ref(false);
+async function sendCode(email: string) {
+  codeBusy.value = true;
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
-      "/api/account/emails/resend",
-      { method: "POST", body: { email } },
-    );
-    emails.value = data.emails;
-    toast.success(t("account.emails.verifySent"));
+    await $fetch("/api/account/emails/code", {
+      method: "POST",
+      body: { email },
+    });
+    codeSentFor.value = email;
+    toast.success(t("account.emails.codeSent"));
   } catch (e) {
     toast.error((e as Error).message);
+  } finally {
+    codeBusy.value = false;
+  }
+}
+async function verifyCode(email: string) {
+  const code = (codeInput.value[email] ?? "").trim();
+  if (!code) return;
+  codeBusy.value = true;
+  try {
+    const data = await $fetch<{ emails: typeof emails.value }>(
+      "/api/account/emails/verify-code",
+      { method: "POST", body: { email, code } },
+    );
+    emails.value = data.emails;
+    codeSentFor.value = null;
+    codeInput.value[email] = "";
+    toast.success(t("account.emails.verifyOk"));
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    codeBusy.value = false;
   }
 }
 async function removeEmail(email: string) {
@@ -147,6 +175,40 @@ async function makePrimary(email: string) {
   } catch (e) {
     toast.error((e as Error).message);
   }
+}
+
+// GitHub-style bottom card: pick the primary among VERIFIED emails.
+const primaryEmail = computed(
+  () => emails.value.find((e) => e.primary)?.email ?? "",
+);
+const verifiedEmails = computed(() => emails.value.filter((e) => e.verified));
+function onPrimarySelect(ev: Event) {
+  const v = (ev.target as HTMLSelectElement).value;
+  if (v && v !== primaryEmail.value) void makePrimary(v);
+}
+
+// Per-row kebab menu (primary rows keep none — the primary is managed via the
+// select card and cannot be deleted).
+function emailMenu(e: {
+  email: string;
+  primary: boolean;
+  verified: boolean;
+}): KebabMenuItemSpec[] {
+  if (e.primary) return [];
+  const items: KebabMenuItemSpec[] = [];
+  if (e.verified)
+    items.push({ key: "primary", label: t("account.emails.makePrimary") });
+  items.push({
+    key: "delete",
+    label: t("account.emails.delete"),
+    danger: true,
+    divider: items.length > 0,
+  });
+  return items;
+}
+function onEmailMenu(email: string, key: string) {
+  if (key === "primary") void makePrimary(email);
+  else if (key === "delete") void removeEmail(email);
 }
 
 // ---------- preferences ----------
@@ -313,16 +375,6 @@ const sections = computed(() => [
 ]);
 
 onMounted(() => {
-  // Verification link landing: /settings?section=emails&verified=1|0
-  const v = route.query.verified;
-  if (typeof v === "string") {
-    if (v === "1") toast.success(t("account.emails.verifyOk"));
-    else toast.error(t("account.emails.verifyBad"));
-    navigateTo(
-      { path: "/settings", query: { section: "emails" } },
-      { replace: true },
-    );
-  }
   void refreshPasskeys();
   void refreshEmails();
   void refreshAccounts();
@@ -378,69 +430,138 @@ watch(section, (v) => {
       <TitleManager :owner-type="isAdmin ? 'site' : 'user'" />
     </div>
 
-    <!-- ============ emails ============ -->
-    <div v-else-if="section === 'emails'" class="flex flex-col gap-3">
-      <h3 class="text-base font-semibold">{{ t("account.emails.title") }}</h3>
-      <p class="text-sm text-muted-foreground">
-        {{ t("account.emails.desc") }}
-      </p>
-      <div
-        v-for="e in emails"
-        :key="e.email"
-        class="flex flex-wrap items-center gap-2 rounded-lg border p-3 sm:gap-3"
-      >
-        <Icon spec="Mail" :size="18" class="text-muted-foreground" />
-        <span class="min-w-0 flex-1 truncate text-sm font-medium">{{
-          e.email
-        }}</span>
-        <span
-          v-if="e.primary"
-          class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
-          >{{ t("account.emails.primaryTag") }}</span
-        >
-        <span
-          v-else-if="e.verified"
-          class="rounded-full border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-600"
-          >{{ t("account.emails.verifiedTag") }}</span
-        >
-        <span
-          v-else
-          class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
-          >{{ t("account.emails.unverifiedTag") }}</span
-        >
-        <template v-if="!e.primary">
-          <Button
-            v-if="e.verified"
-            variant="outline"
-            size="sm"
-            @click="makePrimary(e.email)"
-          >
-            {{ t("account.emails.makePrimary") }}
-          </Button>
-          <Button
-            v-else
-            variant="outline"
-            size="sm"
-            @click="resendVerification(e.email)"
-          >
-            {{ t("account.emails.resend") }}
-          </Button>
-          <Button variant="ghost" size="sm" @click="removeEmail(e.email)">
-            {{ t("account.emails.remove") }}
-          </Button>
-        </template>
+    <!-- ============ emails (GitHub settings/emails layout) ============ -->
+    <div v-else-if="section === 'emails'" class="flex flex-col gap-4">
+      <div>
+        <h3 class="text-base font-semibold">{{ t("account.emails.title") }}</h3>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {{ t("account.emails.desc") }}
+        </p>
       </div>
-      <form class="flex gap-2" @submit.prevent="addEmail">
-        <Input
-          v-model="newEmail"
-          type="email"
-          :placeholder="t('account.emails.placeholder')"
-          class="flex-1"
-        />
-        <Button type="submit" variant="outline" :disabled="emailBusy">
-          {{ t("account.emails.add") }}
-        </Button>
+
+      <!-- linked emails: one Box, divider rows, kebab menu on the row end -->
+      <div class="overflow-hidden rounded-xl border">
+        <div
+          v-for="(e, i) in emails"
+          :key="e.email"
+          class="flex items-start justify-between gap-3 p-3.5"
+          :class="i > 0 ? 'border-t' : ''"
+        >
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="break-all text-sm font-medium">{{ e.email }}</span>
+              <span
+                v-if="e.primary"
+                class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
+                >{{ t("account.emails.primaryTag") }}</span
+              >
+              <span
+                v-else-if="e.verified"
+                class="rounded-full border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400"
+                >{{ t("account.emails.verifiedTag") }}</span
+              >
+              <span
+                v-else
+                class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+                >{{ t("account.emails.unverifiedTag") }}</span
+              >
+            </div>
+            <p v-if="e.primary" class="mt-1.5 text-xs text-muted-foreground">
+              {{ t("account.emails.primaryNote") }}
+            </p>
+            <!-- Verify link enters the code flow: it emails the 6-digit code
+                 and arms the inline input below (unverified rows only). -->
+            <div v-else class="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                v-if="codeSentFor !== e.email"
+                type="button"
+                class="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                :disabled="codeBusy"
+                @click="sendCode(e.email)"
+              >
+                {{ t("account.emails.verify") }}
+              </button>
+              <template v-else>
+                <Input
+                  v-model="codeInput[e.email]"
+                  inputmode="numeric"
+                  maxlength="6"
+                  :placeholder="t('account.emails.codePh')"
+                  class="h-8 w-28 text-sm"
+                  @keyup.enter="verifyCode(e.email)"
+                />
+                <Button
+                  size="sm"
+                  class="h-8"
+                  :disabled="codeBusy"
+                  @click="verifyCode(e.email)"
+                >
+                  {{ t("account.emails.verifySubmit") }}
+                </Button>
+                <button
+                  type="button"
+                  class="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+                  :disabled="codeBusy"
+                  @click="sendCode(e.email)"
+                >
+                  {{ t("account.emails.resend") }}
+                </button>
+              </template>
+            </div>
+          </div>
+          <KebabMenu
+            v-if="emailMenu(e).length"
+            :items="emailMenu(e)"
+            :label="t('account.emails.manage')"
+            @select="onEmailMenu(e.email, $event)"
+          />
+        </div>
+      </div>
+
+      <!-- add email address -->
+      <form class="flex max-w-md flex-col gap-2" @submit.prevent="addEmail">
+        <Label>
+          {{ t("account.emails.addLabel") }}
+          <span class="text-red-600">*</span>
+        </Label>
+        <div class="flex gap-2">
+          <Input
+            v-model="newEmail"
+            type="email"
+            required
+            :placeholder="t('account.emails.placeholder')"
+            class="flex-1"
+          />
+          <Button type="submit" variant="outline" :disabled="emailBusy">
+            {{ t("account.emails.add") }}
+          </Button>
+        </div>
       </form>
+
+      <!-- primary email select (bottom card) -->
+      <div v-if="verifiedEmails.length > 1" class="rounded-xl border p-4">
+        <div
+          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0">
+            <div class="text-sm font-medium">
+              {{ t("account.emails.primarySelectLabel") }}
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ t("account.emails.primarySelectNote") }}
+            </p>
+          </div>
+          <select
+            class="shrink-0 rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            :value="primaryEmail"
+            @change="onPrimarySelect"
+          >
+            <option v-for="e in verifiedEmails" :key="e.email" :value="e.email">
+              {{ e.email }}
+            </option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- ============ preferences ============ -->
