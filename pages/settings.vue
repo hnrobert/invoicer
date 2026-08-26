@@ -4,7 +4,6 @@
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
 import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
-import type { KebabMenuItemSpec } from "~/components/ui/KebabMenu.vue";
 import { useColorMode } from "@vueuse/core";
 
 definePageMeta({ layout: "default" });
@@ -185,30 +184,6 @@ const verifiedEmails = computed(() => emails.value.filter((e) => e.verified));
 function onPrimarySelect(ev: Event) {
   const v = (ev.target as HTMLSelectElement).value;
   if (v && v !== primaryEmail.value) void makePrimary(v);
-}
-
-// Per-row kebab menu (primary rows keep none — the primary is managed via the
-// select card and cannot be deleted).
-function emailMenu(e: {
-  email: string;
-  primary: boolean;
-  verified: boolean;
-}): KebabMenuItemSpec[] {
-  if (e.primary) return [];
-  const items: KebabMenuItemSpec[] = [];
-  if (e.verified)
-    items.push({ key: "primary", label: t("account.emails.makePrimary") });
-  items.push({
-    key: "delete",
-    label: t("account.emails.delete"),
-    danger: true,
-    divider: items.length > 0,
-  });
-  return items;
-}
-function onEmailMenu(email: string, key: string) {
-  if (key === "primary") void makePrimary(email);
-  else if (key === "delete") void removeEmail(email);
 }
 
 // ---------- preferences ----------
@@ -509,12 +484,31 @@ watch(section, (v) => {
               </template>
             </div>
           </div>
-          <KebabMenu
-            v-if="emailMenu(e).length"
-            :items="emailMenu(e)"
-            :label="t('account.emails.manage')"
-            @select="onEmailMenu(e.email, $event)"
-          />
+          <!-- kebab menu (shadcn-vue dropdown-menu); primary rows keep none —
+               the primary is managed via the select card and cannot be deleted -->
+          <DropdownMenu v-if="!e.primary">
+            <DropdownMenuTrigger
+              class="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :aria-label="t('account.emails.manage')"
+            >
+              <Icon spec="Ellipsis" :size="16" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                v-if="e.verified"
+                @select="makePrimary(e.email)"
+              >
+                {{ t("account.emails.makePrimary") }}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator v-if="e.verified" />
+              <DropdownMenuItem
+                variant="destructive"
+                @select="removeEmail(e.email)"
+              >
+                {{ t("account.emails.delete") }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

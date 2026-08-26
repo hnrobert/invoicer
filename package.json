@@ -21,6 +21,7 @@
     "fetch:tessdata": "tsx scripts/fetch-tessdata.ts"
   },
   "dependencies": {
+    "@lucide/vue": "^1.34.0",
     "@nuxtjs/i18n": "^10.6.0",
     "@simplewebauthn/server": "^13.3.2",
     "@tailwindcss/vite": "^4.1.0",
@@ -38,7 +39,7 @@
     "nuxt": "^4.4.8",
     "pdfjs-dist": "^6.2.108",
     "reflect-metadata": "^0.2.2",
-    "reka-ui": "^2.0.2",
+    "reka-ui": "^2.10.3",
     "tailwind-merge": "^3.0.0",
     "tailwindcss": "^4.1.0",
     "tesseract.js": "^5.1.1",
