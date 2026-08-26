@@ -26,6 +26,14 @@ export class OrgCustomRole {
   @Column({ name: "base_role", type: "text", nullable: false })
   baseRole!: "admin" | "editor" | "viewer" | "member";
 
+  /**
+   * JSON array of org permission keys (server/utils/orgPermissions.ts) —
+   * every permission individually toggleable per role. baseRole is only the
+   * creation template; effective rights come from here alone. '[]' = none.
+   */
+  @Column({ type: "text", nullable: false, default: "[]" })
+  permissions!: string;
+
   @Column({
     name: "created_at",
     type: "datetime",

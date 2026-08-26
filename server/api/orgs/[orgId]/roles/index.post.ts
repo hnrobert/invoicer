@@ -1,7 +1,8 @@
 import { AppDataSource } from "#server/utils/database";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
-import { getOrgRole, getSessionUser } from "#server/utils/campaign";
+import { getSessionUser } from "#server/utils/campaign";
 import { logAudit } from "#server/utils/audit";
+import { getOrgPermissions } from "#server/utils/orgPermissions";
 
 const BASES = [
   "admin",
@@ -20,14 +21,17 @@ const BASES = [
 export default defineEventHandler(async (event) => {
   const orgId = getRouterParam(event, "orgId")!;
   const user = await getSessionUser(event);
-  const role = await getOrgRole(orgId, user.id);
-  if (role !== "owner") {
+  if (!(await getOrgPermissions(orgId, user.id)).has("org.role.manage")) {
     throw createError({
       statusCode: 403,
       statusMessage: "Only the organization owner can manage custom roles",
     });
   }
-  const body = await readBody<{ name?: string; baseRole?: string }>(event);
+  const body = await readBody<{
+    name?: string;
+    baseRole?: string;
+    permissions?: string[];
+  }>(event);
   const name = (body?.name ?? "").trim().slice(0, 30);
   const baseRole = body?.baseRole ?? "";
   if (!name) {
@@ -68,10 +72,34 @@ export default defineEventHandler(async (event) => {
       statusMessage: "A role with this name already exists",
     });
   }
+  // Explicit permission set (position-based) — defaults to the template
+  // preset when omitted so "pick a base role" still works one-shot.
+  const perms = Array.isArray(body?.permissions)
+    ? body!.permissions.filter((p) =>
+        (PERMISSIONS as readonly string[]).includes(p),
+      )
+    : null;
+  // Default bundle = the chosen template's preset; an explicit permissions
+  // array overrides (position-based, per-permission customization).
+  const preset = {
+    admin: PERMISSIONS.slice(),
+    editor: [
+      "campaign.create",
+      "campaign.upload",
+      "campaign.viewAll",
+      "campaign.review",
+      "campaign.export",
+    ],
+    reviewer: [],
+    supervisor: ["campaign.viewAll", "campaign.export"],
+    viewer: ["campaign.viewAll"],
+    member: ["campaign.create", "campaign.upload"],
+  }[baseRole as (typeof BASES)[number]];
   await repo.save({
     organizationId: orgId,
     name,
     baseRole: baseRole as OrgCustomRole["baseRole"],
+    permissions: JSON.stringify(perms ?? preset),
   });
   logAudit({
     organizationId: orgId,

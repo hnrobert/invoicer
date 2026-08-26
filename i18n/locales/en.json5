@@ -202,6 +202,21 @@
     selectOrg: "Select",
   },
 
+  perms: {
+    "campaign.create": "Create campaigns",
+    "campaign.upload": "Upload invoices",
+    "campaign.viewAll": "View all invoices",
+    "campaign.review": "Review submissions",
+    "campaign.export": "Export / reports",
+    "campaign.manage": "Campaign settings / groups / collaborators",
+    "org.member.manage": "Member management",
+    "org.role.manage": "Custom role management",
+    "org.title.manage": "Org title management",
+    "org.visibility.manage": "Org visibility management",
+    "org.transfer.accept": "Accept campaign transfers",
+    "org.audit.view": "View audit log",
+  },
+
   // ── invoice titles ───────────────────────────────────────────
   titles: {
     title: "Invoice titles",
@@ -214,6 +229,7 @@
     delete: "Delete",
     save: "Save",
     needOne: "Pick at least one invoice title or check custom",
+    permLabel: "Permissions (any combination)",
     pickLabel: "Allowed invoice titles (multi-select)",
     useCustom: "Use a one-off custom title",
     groupPersonal: "Personal titles",

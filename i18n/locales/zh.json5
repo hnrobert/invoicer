@@ -203,6 +203,21 @@
     selectOrg: "选择",
   },
 
+  perms: {
+    "campaign.create": "创建活动",
+    "campaign.upload": "上传发票",
+    "campaign.viewAll": "查看全部发票",
+    "campaign.review": "审核提交",
+    "campaign.export": "导出 / 报告",
+    "campaign.manage": "活动设置 / 分组 / 协作者",
+    "org.member.manage": "成员管理",
+    "org.role.manage": "自定义角色管理",
+    "org.title.manage": "组织抬头管理",
+    "org.visibility.manage": "组织可见性管理",
+    "org.transfer.accept": "接受活动转让",
+    "org.audit.view": "查看审计日志",
+  },
+
   // ── 发票抬头 ─────────────────────────────────────────────────
   titles: {
     title: "发票抬头",
@@ -215,6 +230,7 @@
     delete: "删除",
     save: "保存",
     needOne: "请至少选择一个发票抬头或勾选自定义",
+    permLabel: "权限（可任意组合）",
     pickLabel: "选择发票抬头（可多选）",
     useCustom: "使用自定义抬头（一次性）",
     groupPersonal: "个人抬头",

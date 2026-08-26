@@ -15,6 +15,10 @@ export default defineEventHandler(async (event) => {
   });
   return {
     ok: true,
-    roles: rows.map((r) => ({ name: r.name, baseRole: r.baseRole })),
+    roles: rows.map((r) => ({
+      name: r.name,
+      baseRole: r.baseRole,
+      permissions: JSON.parse(r.permissions || "[]") as string[],
+    })),
   };
 });

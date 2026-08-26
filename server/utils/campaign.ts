@@ -6,6 +6,7 @@ import { CampaignCollaborator } from "#server/entities/campaignCollaborator.enti
 import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import { GroupReviewer } from "#server/entities/groupReviewer.entity";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
+import { getCustomRolePermissions } from "./orgPermissions";
 import type { SessionUser } from "./auth";
 import type { CampaignRights, OrgRole } from "#shared/types";
 
@@ -158,6 +159,32 @@ export async function resolveCampaignRights(
   const role = await getOrgRole(campaign.organizationId, user.id);
   const collaborator = await isCollaborator(campaign.id, user.id);
   const isManager = campaign.userId === user.id;
+  // Custom roles normalize to "member" above — their real rights come from
+  // the role's stored permission bundle, resolved here.
+  if (role === "member") {
+    const raw = authDb
+      .prepare(
+        "SELECT role FROM member WHERE organizationId = ? AND userId = ?",
+      )
+      .get(campaign.organizationId, user.id) as { role: string } | undefined;
+    const customPerms = raw
+      ? await getCustomRolePermissions(campaign.organizationId, raw.role)
+      : null;
+    if (customPerms) {
+      if (!role && !collaborator) return NO_ACCESS;
+      const uploadOpen = campaign.status === "active";
+      return {
+        ...NO_ACCESS,
+        legacy: false,
+        canViewCampaign: true,
+        canViewAll: customPerms.has("campaign.viewAll"),
+        canUpload: customPerms.has("campaign.upload") && uploadOpen,
+        canReview: customPerms.has("campaign.review"),
+        canExport: customPerms.has("campaign.export"),
+        canManage: customPerms.has("campaign.manage"),
+      };
+    }
+  }
 
   // Migration grace: unconfirmed org campaigns keep the old semantics — every
   // org member could view-all / upload / review.
