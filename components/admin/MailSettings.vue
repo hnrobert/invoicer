@@ -134,8 +134,11 @@ function makeSchemaStore(c: MailConfigClient): UseSchemaStoreResult {
   });
 }
 
+const lastConfig = ref<MailConfigClient | null>(null);
+
 function applyConfig(c: MailConfigClient | null) {
   if (!c) return;
+  lastConfig.value = c;
   provider.value = c.provider === "post" ? "post" : "smtp";
   smtpServer.value = c.smtpServer;
   smtpPort.value = c.smtpPort;
@@ -153,7 +156,45 @@ function applyConfig(c: MailConfigClient | null) {
   hasPostAuthToken.value = c.hasPostAuthToken;
   fieldMap.value = effectiveFieldMap(c);
   schemaStore.value = makeSchemaStore(c);
+  originalSnapshot.value = formSnapshot();
 }
+
+// ---------- unsaved-changes machinery (SettingsSaveBar pattern) ----------
+/** JSON snapshot of every displayed form field (passwords excluded — they are
+ * handled separately since only their non-emptiness is meaningful). */
+function formSnapshot(): string {
+  return JSON.stringify([
+    provider.value,
+    smtpServer.value,
+    smtpPort.value,
+    useSsl.value,
+    useTls.value,
+    usePassword.value,
+    senderEmail.value,
+    senderEmailDisplay.value,
+    senderDomain.value,
+    maxLenRecipientEmail.value,
+    maxLenSubject.value,
+    maxLenBody.value,
+    postUrl.value,
+    fieldMap.value,
+  ]);
+}
+const originalSnapshot = ref("");
+const mailDirty = computed(
+  () =>
+    originalSnapshot.value !== "" &&
+    (formSnapshot() !== originalSnapshot.value ||
+      senderPassword.value !== "" ||
+      postAuthToken.value !== ""),
+);
+const savedFlash = ref(false);
+function discardChanges() {
+  applyConfig(lastConfig.value);
+  senderPassword.value = "";
+  postAuthToken.value = "";
+}
+const { confirmLeave, proceed } = useUnsavedLeaveGuard(mailDirty, saving);
 
 async function load() {
   loading.value = true;
@@ -224,6 +265,9 @@ async function save() {
     hasPostAuthToken.value = !!data.config?.hasPostAuthToken;
     senderPassword.value = "";
     postAuthToken.value = "";
+    originalSnapshot.value = formSnapshot();
+    savedFlash.value = true;
+    setTimeout(() => (savedFlash.value = false), 2000);
     toast.success(t("settings.saved"));
   } catch (e) {
     toast.error(t("settings.saveFailed") + (e as Error).message);
@@ -512,12 +556,7 @@ onMounted(load);
           </div>
         </details>
 
-        <div class="flex flex-wrap gap-2">
-          <Button :disabled="saving" @click="save">
-            <Icon spec="Save" :size="16" />
-            {{ saving ? t("settings.saving") : t("settings.save") }}
-          </Button>
-        </div>
+        <!-- Save affordance: sticky SettingsSaveBar appears when dirty. -->
       </CardContent>
     </Card>
 
@@ -537,5 +576,30 @@ onMounted(load);
         </Button>
       </CardContent>
     </Card>
+
+    <SettingsSaveBar
+      :dirty="mailDirty"
+      :saving="saving"
+      :saved="savedFlash"
+      @save="save"
+      @discard="discardChanges"
+    />
+    <UnsavedLeaveDialog
+      :open="confirmLeave"
+      :saving="saving"
+      @stay="confirmLeave = false"
+      @discard="
+        () => {
+          discardChanges();
+          proceed();
+        }
+      "
+      @save="
+        async () => {
+          await save();
+          if (!mailDirty) proceed();
+        }
+      "
+    />
   </div>
 </template>

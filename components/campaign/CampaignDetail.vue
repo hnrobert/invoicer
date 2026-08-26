@@ -401,6 +401,7 @@ async function loadSettings() {
   } catch {
     // keep defaults
   }
+  sdOrig.value = sdSnapshot();
   try {
     const data = await $fetch<{ collaborators: typeof collaborators.value }>(
       `/api/campaigns/${props.campaignId}/collaborators`,
@@ -410,6 +411,82 @@ async function loadSettings() {
     collaborators.value = [];
   }
 }
+// ---------- settings general: unsaved-changes machinery ----------
+/** Baseline of the staged general form (server state at last load/save). */
+const sdOrig = ref<{ v: string; s: string; q: boolean } | null>(null);
+function sdSnapshot() {
+  return {
+    v: setVisibility.value,
+    s: setStatus.value,
+    q: setSearchable.value,
+  };
+}
+const sdDirty = computed(
+  () =>
+    !!sdOrig.value &&
+    JSON.stringify(sdSnapshot()) !== JSON.stringify(sdOrig.value),
+);
+const sdSavedFlash = ref(false);
+function discardSettings() {
+  if (!sdOrig.value) return;
+  setVisibility.value = sdOrig.value.v as typeof setVisibility.value;
+  setStatus.value = sdOrig.value.s as typeof setStatus.value;
+  setSearchable.value = sdOrig.value.q;
+}
+const { confirmLeave: sdConfirmLeave, proceed: sdProceed } =
+  useUnsavedLeaveGuard(sdDirty, setSaving);
+// Leaving the settings TAB is not a route change (tabs are component state),
+// so the router guard can't cover it — intercept tab / sub-section clicks the
+// same way and route them through the same dialog.
+const confirmTabLeave = ref(false);
+const pendingLeave = ref<
+  | { kind: "tab"; key: "invoices" | "settings" | "audit" }
+  | {
+      kind: "setSection";
+      key: "general" | "groups" | "collab" | "transfer";
+    }
+  | null
+>(null);
+function leaveBlocked(): boolean {
+  if (tab.value !== "settings" || !sdDirty.value || setSaving.value)
+    return false;
+  confirmTabLeave.value = true;
+  return true;
+}
+function switchTab(key: "invoices" | "settings" | "audit") {
+  if (key === tab.value) return;
+  const stash = pendingLeave.value;
+  pendingLeave.value = { kind: "tab", key };
+  if (leaveBlocked()) return;
+  pendingLeave.value = stash;
+  tab.value = key;
+}
+function switchSetSection(key: "general" | "groups" | "collab" | "transfer") {
+  if (key === setSection.value) return;
+  if (setSection.value !== "general") {
+    setSection.value = key; // staging lives only on general — nothing dirty
+    return;
+  }
+  const stash = pendingLeave.value;
+  pendingLeave.value = { kind: "setSection", key };
+  if (leaveBlocked()) return;
+  pendingLeave.value = stash;
+  setSection.value = key;
+}
+function performPendingLeave() {
+  const p = pendingLeave.value;
+  pendingLeave.value = null;
+  confirmTabLeave.value = false;
+  if (p?.kind === "tab") tab.value = p.key;
+  else if (p?.kind === "setSection") setSection.value = p.key;
+  else sdProceed();
+}
+async function onLeaveDialogSave() {
+  await saveSettings();
+  if (sdDirty.value) return; // save failed — stay put
+  performPendingLeave();
+}
+
 async function saveSettings() {
   setSaving.value = true;
   try {
@@ -421,7 +498,10 @@ async function saveSettings() {
         status: setStatus.value,
       },
     });
-    toast.success(t("settings.saved"));
+    sdOrig.value = sdSnapshot();
+    sdSavedFlash.value = true;
+    setTimeout(() => (sdSavedFlash.value = false), 2000);
+    toast.success(t("campaign.settingsSaved"));
     await inv.refresh();
   } catch (e) {
     toast.error((e as Error).message);
@@ -624,7 +704,7 @@ async function loadAudit() {
               ? 'border-t-2 border-primary font-medium text-foreground'
               : 'border-t-2 border-transparent text-muted-foreground hover:bg-accent/50 hover:text-foreground'
           "
-          @click="tab = tb.key as typeof tab"
+          @click="switchTab(tb.key as typeof tab)"
         >
           {{ tb.label }}
         </button>
@@ -981,12 +1061,34 @@ async function loadAudit() {
                 ? 'bg-accent font-medium text-foreground'
                 : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
             "
-            @click="setSection = ss.key"
+            @click="switchSetSection(ss.key)"
           >
             {{ ss.label }}
           </button>
         </nav>
       </aside>
+
+      <!-- fixed overlays: present for the whole settings tab, not just the
+           general sub-section -->
+      <SettingsSaveBar
+        :dirty="sdDirty"
+        :saving="setSaving"
+        :saved="sdSavedFlash"
+        @save="saveSettings"
+        @discard="discardSettings"
+      />
+      <UnsavedLeaveDialog
+        :open="sdConfirmLeave || confirmTabLeave"
+        :saving="setSaving"
+        @stay="
+          () => {
+            sdConfirmLeave = false;
+            confirmTabLeave = false;
+          }
+        "
+        @discard="(discardSettings(), performPendingLeave())"
+        @save="onLeaveDialogSave"
+      />
 
       <div
         v-if="setSection === 'general'"
@@ -1047,9 +1149,8 @@ async function loadAudit() {
             {{ t(`home.settings.stDesc.${setStatus}`) }}
           </p>
         </div>
-        <Button :disabled="setSaving" class="self-start" @click="saveSettings">
-          {{ setSaving ? t("settings.saving") : t("settings.save") }}
-        </Button>
+        <!-- Save affordance: sticky SettingsSaveBar appears when the staged
+             form differs from the server state. -->
       </div>
 
       <!-- groups & reviewers -->

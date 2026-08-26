@@ -30,19 +30,44 @@ const { org, full, loading, notFound, isPrivileged, myRole, visibility, load } =
 const { leave, remove } = useOrgs();
 
 // ---------- general: visibility ----------
-async function setVisibility(v: "public" | "private") {
+// Staged: clicking Public/Private only updates the local pick; the PUT fires
+// from the shared SettingsSaveBar (save / discard / leave-guard below).
+const visPick = ref<"public" | "private">("public");
+const visSaving = ref(false);
+watch(
+  visibility,
+  (v) => {
+    if (v === "public" || v === "private") visPick.value = v;
+  },
+  { immediate: true },
+);
+const visDirty = computed(
+  () =>
+    !!visibility.value &&
+    !visSaving.value &&
+    visPick.value !== visibility.value,
+);
+async function applyVisibility() {
   if (!org.value) return;
+  visSaving.value = true;
   try {
     await $fetch(`/api/orgs/${org.value.id}/visibility`, {
       method: "PUT",
-      body: { visibility: v },
+      body: { visibility: visPick.value },
     });
-    visibility.value = v;
-    toast.success(t("settings.saved"));
+    visibility.value = visPick.value;
+    toast.success(t("orgs.settings.savedToast"));
   } catch (e) {
     toast.error((e as Error).message);
+  } finally {
+    visSaving.value = false;
   }
 }
+function discardVisibility() {
+  visPick.value = visibility.value === "private" ? "private" : "public";
+}
+const { confirmLeave: visConfirmLeave, proceed: visProceed } =
+  useUnsavedLeaveGuard(visDirty, visSaving);
 
 // ---------- migration ----------
 const unconfirmed = ref<CampaignPublic[]>([]);
@@ -311,18 +336,44 @@ onMounted(async () => {
         </p>
         <div class="flex flex-wrap gap-2">
           <Button
-            :variant="visibility === 'public' ? 'default' : 'outline'"
+            :variant="visPick === 'public' ? 'default' : 'outline'"
             size="sm"
-            @click="setVisibility('public')"
+            :disabled="visSaving"
+            @click="visPick = 'public'"
             >{{ t("orgs.vis.public") }}</Button
           >
           <Button
-            :variant="visibility === 'private' ? 'default' : 'outline'"
+            :variant="visPick === 'private' ? 'default' : 'outline'"
             size="sm"
-            @click="setVisibility('private')"
+            :disabled="visSaving"
+            @click="visPick = 'private'"
             >{{ t("orgs.vis.private") }}</Button
           >
         </div>
+
+        <SettingsSaveBar
+          :dirty="visDirty"
+          :saving="visSaving"
+          @save="applyVisibility"
+          @discard="discardVisibility"
+        />
+        <UnsavedLeaveDialog
+          :open="visConfirmLeave"
+          :saving="visSaving"
+          @stay="visConfirmLeave = false"
+          @discard="
+            () => {
+              discardVisibility();
+              visProceed();
+            }
+          "
+          @save="
+            async () => {
+              await applyVisibility();
+              visProceed();
+            }
+          "
+        />
       </div>
 
       <!-- roles -->

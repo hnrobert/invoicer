@@ -4,7 +4,6 @@
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
 import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
-import { useColorMode } from "@vueuse/core";
 
 definePageMeta({ layout: "default" });
 const { t } = useI18n();
@@ -75,6 +74,27 @@ async function submitChangePassword() {
     pwBusy.value = false;
   }
 }
+
+// Save-bar wiring for the password form: any typed field counts as an
+// unsaved change; success is detected by the fields being cleared.
+const pwDirty = computed(
+  () => !!(currentPw.value || newPw.value || confirmPw.value),
+);
+const pwSavedFlash = ref(false);
+function discardPassword() {
+  currentPw.value = "";
+  newPw.value = "";
+  confirmPw.value = "";
+}
+async function savePassword() {
+  await submitChangePassword();
+  if (!pwDirty.value && !pwBusy.value) {
+    pwSavedFlash.value = true;
+    setTimeout(() => (pwSavedFlash.value = false), 2000);
+  }
+}
+const { confirmLeave: pwConfirmLeave, proceed: pwProceed } =
+  useUnsavedLeaveGuard(pwDirty, pwBusy);
 
 // ---------- profile ----------
 // The username is chosen at sign-up; the primary email is managed under Emails.
@@ -187,11 +207,7 @@ function onPrimarySelect(ev: Event) {
 }
 
 // ---------- preferences ----------
-const colorMode = useColorMode({ storageKey: "vg.theme" });
-const { locale, locales, setLocale } = useI18n();
-const localeList = computed(
-  () => locales.value as { code: "zh" | "en"; name?: string }[],
-);
+// Staged theme/language picks live in components/settings/PrefsSection.vue.
 
 // ---------- security: passkeys ----------
 const passkeys = ref<PasskeyInfo[]>([]);
@@ -559,52 +575,7 @@ watch(section, (v) => {
     </div>
 
     <!-- ============ preferences ============ -->
-    <div v-else-if="section === 'preferences'" class="flex flex-col gap-4">
-      <h3 class="text-base font-semibold">{{ t("account.prefsTitle") }}</h3>
-      <p class="text-sm text-muted-foreground">{{ t("account.prefsDesc") }}</p>
-      <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="w-20 shrink-0 text-muted-foreground">{{
-          t("account.themeLabel")
-        }}</span>
-        <div class="inline-flex rounded-lg border p-1">
-          <button
-            v-for="m in ['light', 'dark'] as const"
-            :key="m"
-            type="button"
-            class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
-            :class="
-              (colorMode === 'dark') === (m === 'dark')
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            "
-            @click="colorMode = m"
-          >
-            {{ t(`theme.${m}`) }}
-          </button>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="w-20 shrink-0 text-muted-foreground">{{
-          t("account.langLabel")
-        }}</span>
-        <div class="inline-flex rounded-lg border p-1">
-          <button
-            v-for="l in localeList"
-            :key="l.code"
-            type="button"
-            class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
-            :class="
-              locale === l.code
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            "
-            @click="setLocale(l.code)"
-          >
-            {{ t(`lang.${l.code}`) }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <div v-else-if="section === 'preferences'"><PrefsSection /></div>
 
     <!-- ============ security: password + linked providers ============ -->
     <div v-else-if="section === 'security'" class="flex flex-col gap-6">
@@ -625,7 +596,7 @@ watch(section, (v) => {
         <form
           v-else
           class="flex max-w-md flex-col gap-3"
-          @submit.prevent="submitChangePassword"
+          @submit.prevent="savePassword"
         >
           <div class="flex flex-col gap-2">
             <Label>{{ t("settings.security.currentPw") }}</Label>
@@ -659,11 +630,34 @@ watch(section, (v) => {
               autocomplete="new-password"
             />
           </div>
-          <Button type="submit" :disabled="pwBusy" class="self-start">
-            <Icon spec="KeyRound" :size="14" />
-            {{ pwBusy ? t("settings.saving") : t("settings.security.submit") }}
-          </Button>
+          <!-- Submit affordance: sticky SettingsSaveBar appears when the form
+               has typed (unsaved) fields; Enter also submits. -->
         </form>
+
+        <SettingsSaveBar
+          :dirty="pwDirty"
+          :saving="pwBusy"
+          :saved="pwSavedFlash"
+          @save="savePassword"
+          @discard="discardPassword"
+        />
+        <UnsavedLeaveDialog
+          :open="pwConfirmLeave"
+          :saving="pwBusy"
+          @stay="pwConfirmLeave = false"
+          @discard="
+            () => {
+              discardPassword();
+              pwProceed();
+            }
+          "
+          @save="
+            async () => {
+              await savePassword();
+              if (!pwDirty) pwProceed();
+            }
+          "
+        />
       </div>
 
       <!-- passkeys -->

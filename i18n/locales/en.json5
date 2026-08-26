@@ -133,6 +133,7 @@
       general: "General",
       visibility: "Organization visibility",
       visibilityDesc: "Private orgs stay off the plaza/search; their public campaigns remain reachable by link.",
+      savedToast: "Organization visibility updated",
       ownersOnly: "Only Owner / Admin can access organization settings.",
     },
     migration: {
@@ -329,6 +330,7 @@
   // ── campaign detail (repo-style) ─────────────────────────────
   campaign: {
     notFound: "Campaign not found or not accessible.",
+    settingsSaved: "Campaign settings saved",
     einvoice: "Digital-invoice structured file (XML / OFD) — fields parsed directly, no OCR.",
     viewSource: "View parsed source",
     tabs: { invoices: "Invoices", settings: "Settings", audit: "Audit" },
@@ -535,6 +537,17 @@
       pwChanged: "Password changed",
       pwFailed: "Password change failed: ",
       linkedTag: "Linked",
+    },
+    savebar: {
+      unsaved: "You have unsaved changes",
+      saved: "Saved",
+      save: "Save changes",
+      saving: "Saving…",
+      discard: "Discard",
+      dialogTitle: "Unsaved changes",
+      dialogDesc: "Save or discard before leaving?",
+      stay: "Stay",
+      saveLeave: "Save & leave",
     },
     desc: "Delivery configuration for audit-report emails. Passwords / tokens are overwritten only when re-entered; leave them blank to keep the current values.",
     provider: { smtp: "SMTP", post: "POST Webhook" },

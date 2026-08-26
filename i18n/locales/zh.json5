@@ -133,6 +133,7 @@
       general: "通用",
       visibility: "组织可见性",
       visibilityDesc: "私密组织不进入广场/搜索；其公开活动仍可通过链接访问。",
+      savedToast: "组织可见性已更新",
       ownersOnly: "仅 Owner / Admin 可访问组织设置。",
     },
     migration: {
@@ -330,6 +331,7 @@
   // ── 活动详情页（仓库式）──────────────────────────────────────
   campaign: {
     notFound: "活动不存在或无权访问。",
+    settingsSaved: "活动设置已保存",
     einvoice: "数电票结构化文件（XML / OFD）——字段直接解析，无需 OCR。",
     viewSource: "查看解析原文",
     tabs: { invoices: "发票", settings: "设置", audit: "审计" },
@@ -536,6 +538,17 @@
       pwChanged: "密码已修改",
       pwFailed: "修改密码失败：",
       linkedTag: "已绑定",
+    },
+    savebar: {
+      unsaved: "你有未保存的更改",
+      saved: "已保存",
+      save: "保存更改",
+      saving: "保存中…",
+      discard: "放弃更改",
+      dialogTitle: "未保存的更改",
+      dialogDesc: "离开前要保存还是放弃当前更改？",
+      stay: "留下",
+      saveLeave: "保存并离开",
     },
     desc: "用于发送审核报告的邮件发送配置。密码 / 令牌仅在重新输入时覆盖，留空则保留原值。",
     provider: { smtp: "SMTP", post: "POST Webhook" },
