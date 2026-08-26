@@ -20,7 +20,9 @@ export default defineEventHandler(async (event) => {
 
   const title = (body?.title ?? "").trim();
   const taxId = (body?.tax_id ?? "").trim();
-  const titleIds = Array.isArray(body?.title_ids) ? body.title_ids.filter((n) => Number.isFinite(n)) : [];
+  const titleIds = Array.isArray(body?.title_ids)
+    ? body.title_ids.filter((n) => Number.isFinite(n))
+    : [];
   // Either a custom title/tax pair OR at least one stored title suffices.
   if (!title && !taxId && !titleIds.length) {
     throw createError({

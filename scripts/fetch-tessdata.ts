@@ -48,7 +48,7 @@ for (const lang of LANGS) {
     );
   } catch (e) {
     const msg = `✗ ${lang}: ${e instanceof Error ? e.message : e} (${url})`;
-    if (STRICT) throw new Error(msg);
+    if (STRICT) throw new Error(msg, { cause: e });
     console.warn(msg, "— continuing; run `pnpm fetch:tessdata` when online");
   }
 }
