@@ -182,29 +182,49 @@ async function removeEmail(email: string) {
     toast.error((e as Error).message);
   }
 }
-async function makePrimary(email: string) {
-  try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
-      "/api/account/emails/primary",
-      { method: "PUT", body: { email } },
-    );
-    emails.value = data.emails;
-    toast.success(t("account.emails.primarySet"));
-    await refreshUser();
-  } catch (e) {
-    toast.error((e as Error).message);
-  }
-}
-
-// GitHub-style bottom card: pick the primary among VERIFIED emails.
+// GitHub-style bottom card: STAGED primary pick among VERIFIED emails — the
+// select and the kebab "make primary" action only stage; the switch actually
+// fires from the SettingsSaveBar below (save / discard / leave-guard).
 const primaryEmail = computed(
   () => emails.value.find((e) => e.primary)?.email ?? "",
 );
 const verifiedEmails = computed(() => emails.value.filter((e) => e.verified));
-function onPrimarySelect(ev: Event) {
-  const v = (ev.target as HTMLSelectElement).value;
-  if (v && v !== primaryEmail.value) void makePrimary(v);
+const primaryPick = ref<string | null>(null);
+const primaryBusy = ref(false);
+const primarySavedFlash = ref(false);
+function stagePrimary(email: string) {
+  if (!email || email === primaryEmail.value) return;
+  primaryPick.value = email;
 }
+const primaryDirty = computed(
+  () => !!primaryPick.value && primaryPick.value !== primaryEmail.value,
+);
+function discardPrimary() {
+  primaryPick.value = null;
+}
+async function savePrimary() {
+  const target = primaryPick.value;
+  if (!target || target === primaryEmail.value) return;
+  primaryBusy.value = true;
+  try {
+    const data = await $fetch<{ emails: typeof emails.value }>(
+      "/api/account/emails/primary",
+      { method: "PUT", body: { email: target } },
+    );
+    emails.value = data.emails;
+    primaryPick.value = null;
+    toast.success(t("account.emails.primarySet"));
+    await refreshUser();
+    primarySavedFlash.value = true;
+    setTimeout(() => (primarySavedFlash.value = false), 2000);
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    primaryBusy.value = false;
+  }
+}
+const { confirmLeave: primaryConfirmLeave, proceed: primaryProceed } =
+  useUnsavedLeaveGuard(primaryDirty, primaryBusy);
 
 // ---------- preferences ----------
 // Staged theme/language picks live in components/settings/PrefsSection.vue.
@@ -441,13 +461,15 @@ watch(section, (v) => {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <span class="break-all text-sm font-medium">{{ e.email }}</span>
+              <!-- GitHub labels the primary row with BOTH badges (Primary +
+                   Verified) — a primary is inherently verified. -->
               <span
                 v-if="e.primary"
                 class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
                 >{{ t("account.emails.primaryTag") }}</span
               >
               <span
-                v-else-if="e.verified"
+                v-if="e.verified"
                 class="rounded-full border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400"
                 >{{ t("account.emails.verifiedTag") }}</span
               >
@@ -512,7 +534,7 @@ watch(section, (v) => {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 v-if="e.verified"
-                @select="makePrimary(e.email)"
+                @select="stagePrimary(e.email)"
               >
                 {{ t("account.emails.makePrimary") }}
               </DropdownMenuItem>
@@ -563,8 +585,8 @@ watch(section, (v) => {
           </div>
           <select
             class="shrink-0 rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :value="primaryEmail"
-            @change="onPrimarySelect"
+            :value="primaryPick ?? primaryEmail"
+            @change="stagePrimary(($event.target as HTMLSelectElement).value)"
           >
             <option v-for="e in verifiedEmails" :key="e.email" :value="e.email">
               {{ e.email }}
@@ -572,6 +594,32 @@ watch(section, (v) => {
           </select>
         </div>
       </div>
+
+      <!-- primary switch goes through the shared save bar -->
+      <SettingsSaveBar
+        :dirty="primaryDirty"
+        :saving="primaryBusy"
+        :saved="primarySavedFlash"
+        @save="savePrimary"
+        @discard="discardPrimary"
+      />
+      <UnsavedLeaveDialog
+        :open="primaryConfirmLeave"
+        :saving="primaryBusy"
+        @stay="primaryConfirmLeave = false"
+        @discard="
+          () => {
+            discardPrimary();
+            primaryProceed();
+          }
+        "
+        @save="
+          async () => {
+            await savePrimary();
+            if (!primaryDirty) primaryProceed();
+          }
+        "
+      />
     </div>
 
     <!-- ============ preferences ============ -->

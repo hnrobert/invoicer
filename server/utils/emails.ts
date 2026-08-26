@@ -179,8 +179,14 @@ export async function setPrimaryEmail(
     .prepare("UPDATE user SET email = ?, emailVerified = 1 WHERE id = ?")
     .run(e, userId);
   await repo.remove(target);
-  // Keep the old primary linked as a secondary (unless somehow already taken).
+  // Keep the old primary linked as a secondary (unless somehow already taken)
+  // — it was the account's address all along, so it stays VERIFIED; dropping
+  // it back to pending would lock the owner out of their own former address.
   if (!(await findEmailOwner(oldPrimary))) {
-    await repo.save({ userId, email: oldPrimary.toLowerCase() });
+    await repo.save({
+      userId,
+      email: oldPrimary.toLowerCase(),
+      verifiedAt: new Date(),
+    });
   }
 }
