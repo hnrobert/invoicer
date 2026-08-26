@@ -461,22 +461,23 @@ watch(section, (v) => {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <span class="break-all text-sm font-medium">{{ e.email }}</span>
-              <!-- GitHub labels the primary row with BOTH badges (Primary +
-                   Verified) — a primary is inherently verified. -->
-              <span
-                v-if="e.primary"
-                class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
-                >{{ t("account.emails.primaryTag") }}</span
-              >
+              <!-- Verified badge first; Primary trails it (GitHub puts
+                   Verified before Primary too) — a primary is inherently
+                   verified, so its row shows BOTH badges. -->
               <span
                 v-if="e.verified"
-                class="rounded-full border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400"
+                class="rounded-full border border-emerald-500/40 px-2 py-px text-xs text-emerald-600 dark:text-emerald-400"
                 >{{ t("account.emails.verifiedTag") }}</span
               >
               <span
                 v-else
-                class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+                class="rounded-full border border-amber-500/40 px-2 py-px text-xs text-amber-700 dark:text-amber-400"
                 >{{ t("account.emails.unverifiedTag") }}</span
+              >
+              <span
+                v-if="e.primary"
+                class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
+                >{{ t("account.emails.primaryTag") }}</span
               >
             </div>
             <p v-if="e.primary" class="mt-1.5 text-xs text-muted-foreground">
@@ -866,7 +867,7 @@ watch(section, (v) => {
               <td class="px-3 py-2 text-muted-foreground">{{ u.email }}</td>
               <td class="px-3 py-2">
                 <span
-                  class="rounded-full border px-2 py-0.5 text-xs"
+                  class="rounded-full border px-2 py-px text-xs"
                   :class="
                     u.verified
                       ? 'border-emerald-500/40 text-emerald-600'

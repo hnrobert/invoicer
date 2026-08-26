@@ -55,7 +55,7 @@ const activeKey = computed(() =>
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="truncate text-xl font-semibold">{{ name }}</h1>
           <span
-            class="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
+            class="rounded-full border px-2 py-px text-xs text-muted-foreground"
             >{{
               visibility === "public"
                 ? t("orgs.vis.public")

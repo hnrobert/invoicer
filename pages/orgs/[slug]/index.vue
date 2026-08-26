@@ -111,16 +111,16 @@ onMounted(async () => {
         }}</span>
         <span
           v-if="!c.visibilityConfirmed"
-          class="rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+          class="rounded-full border border-amber-500/40 px-2 py-px text-xs text-amber-700 dark:text-amber-400"
           >{{ t("orgs.migration.badge") }}</span
         >
         <span
-          class="rounded-full border px-2 py-0.5 text-xs"
+          class="rounded-full border px-2 py-px text-xs"
           :class="VIS_CLS[c.visibility]"
           >{{ t(`home.settings.vis.${c.visibility}`) }}</span
         >
         <span
-          class="rounded-full border px-2 py-0.5 text-xs"
+          class="rounded-full border px-2 py-px text-xs"
           :class="ST_CLS[c.status]"
           >{{ t(`home.settings.st.${c.status}`) }}</span
         >

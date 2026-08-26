@@ -181,7 +181,7 @@ onMounted(async () => {
         >
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <span
-              class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-muted-foreground"
+              class="flex items-center gap-1 rounded-full border border-border px-2 py-px text-muted-foreground"
             >
               <Icon
                 :spec="
@@ -202,12 +202,12 @@ onMounted(async () => {
               }}
             </span>
             <span
-              class="rounded-full border px-2 py-0.5"
+              class="rounded-full border px-2 py-px"
               :class="VIS_CLS[c.visibility]"
               >{{ t(`home.settings.vis.${c.visibility}`) }}</span
             >
             <span
-              class="rounded-full border px-2 py-0.5"
+              class="rounded-full border px-2 py-px"
               :class="ST_CLS[c.status]"
               >{{ t(`home.settings.st.${c.status}`) }}</span
             >

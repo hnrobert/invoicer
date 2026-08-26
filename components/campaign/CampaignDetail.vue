@@ -619,16 +619,16 @@ async function loadAudit() {
           </nav>
           <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
             <span
-              class="rounded-full border px-2 py-0.5 text-muted-foreground"
+              class="rounded-full border px-2 py-px text-muted-foreground"
               >{{ t(`home.settings.vis.${inv.visibility.value}`) }}</span
             >
             <span
-              class="rounded-full border px-2 py-0.5 text-muted-foreground"
+              class="rounded-full border px-2 py-px text-muted-foreground"
               >{{ t(`home.settings.st.${inv.status.value}`) }}</span
             >
             <span
               v-if="inv.rights.value?.legacy"
-              class="rounded-full border border-amber-500/40 px-2 py-0.5 text-amber-700 dark:text-amber-400"
+              class="rounded-full border border-amber-500/40 px-2 py-px text-amber-700 dark:text-amber-400"
               >{{ t("orgs.migration.badge") }}</span
             >
             <span class="text-muted-foreground">
@@ -886,7 +886,7 @@ async function loadAudit() {
                   <td class="max-w-55 truncate px-3 py-2" :title="i.filename">
                     <span
                       v-if="i.kind === 'receipt'"
-                      class="mr-1 rounded-full border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-700 dark:text-sky-400"
+                      class="mr-1 rounded-full border border-sky-500/40 px-2 py-px text-[11px] text-sky-700 dark:text-sky-400"
                       >{{ t("home.kind.receipt") }}</span
                     >{{ i.filename }}
                     <select
@@ -912,7 +912,7 @@ async function loadAudit() {
                     </select>
                     <span
                       v-else-if="groupName(i.groupId)"
-                      class="ml-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
+                      class="ml-1 rounded-full border px-2 py-px text-[11px] text-muted-foreground"
                       >{{ groupName(i.groupId) }}</span
                     >
                   </td>

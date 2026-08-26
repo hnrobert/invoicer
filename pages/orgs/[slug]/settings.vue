@@ -397,7 +397,7 @@ onMounted(async () => {
           <span
             v-for="p in r.permissions"
             :key="p"
-            class="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
+            class="rounded-full border px-2 py-px text-[11px] text-muted-foreground"
             >{{ t(`perms.${p}`) }}</span
           >
           <Button
