@@ -12,15 +12,6 @@ const { t } = useI18n();
 const titles = ref<InvoiceTitlePublic[]>([]);
 const loading = ref(true);
 const busy = ref(false);
-const editingId = ref<number | null>(null);
-const form = ref({
-  title: "",
-  taxId: "",
-  bankName: "",
-  bankAccount: "",
-  address: "",
-  phone: "",
-});
 
 async function load() {
   loading.value = true;
@@ -42,37 +33,31 @@ async function load() {
   }
 }
 
-function startEdit(t: InvoiceTitlePublic | null) {
-  editingId.value = t?.id ?? null;
-  form.value = {
-    title: t?.title ?? "",
-    taxId: t?.taxId ?? "",
-    bankName: t?.bankName ?? "",
-    bankAccount: t?.bankAccount ?? "",
-    address: t?.address ?? "",
-    phone: t?.phone ?? "",
-  };
+// Unified create/edit dialog (components/titles/TitleEditDialog.vue).
+const dialogOpen = ref(false);
+const editing = ref<InvoiceTitlePublic | null>(null);
+function openCreate() {
+  editing.value = null;
+  dialogOpen.value = true;
 }
-function resetForm() {
-  editingId.value = null;
-  form.value = {
-    title: "",
-    taxId: "",
-    bankName: "",
-    bankAccount: "",
-    address: "",
-    phone: "",
-  };
+function openEdit(row: InvoiceTitlePublic) {
+  editing.value = row;
+  dialogOpen.value = true;
 }
-
-async function submit() {
-  if (!form.value.title.trim() && !form.value.taxId.trim()) return;
+async function submitDialog(form: {
+  title: string;
+  taxId: string;
+  bankName: string;
+  bankAccount: string;
+  address: string;
+  phone: string;
+}) {
   busy.value = true;
   try {
-    if (editingId.value) {
-      await $fetch(`/api/titles/${editingId.value}`, {
+    if (editing.value) {
+      await $fetch(`/api/titles/${editing.value.id}`, {
         method: "PUT",
-        body: form.value,
+        body: form,
       });
     } else {
       await $fetch("/api/titles", {
@@ -80,11 +65,11 @@ async function submit() {
         body: {
           ownerType: props.ownerType,
           orgId: props.orgId,
-          ...form.value,
+          ...form,
         },
       });
     }
-    resetForm();
+    dialogOpen.value = false;
     await load();
   } catch (e) {
     toast.error((e as Error).message);
@@ -102,21 +87,18 @@ async function remove(id: number) {
   }
 }
 
-const FIELDS = [
-  ["title", "titles.fieldTitle", "titles.fieldTitlePh"],
-  ["taxId", "titles.fieldTax", "titles.fieldTaxPh"],
-  ["bankName", "titles.fieldBank", "titles.fieldBankPh"],
-  ["bankAccount", "titles.fieldAccount", "titles.fieldAccountPh"],
-  ["address", "titles.fieldAddress", "titles.fieldAddressPh"],
-  ["phone", "titles.fieldPhone", "titles.fieldPhonePh"],
-] as const;
-
 onMounted(load);
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
-    <p class="text-sm text-muted-foreground">{{ t("titles.desc") }}</p>
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-sm text-muted-foreground">{{ t("titles.desc") }}</p>
+      <Button size="sm" class="shrink-0" @click="openCreate">
+        <Icon spec="Plus" :size="14" />
+        {{ t("titles.add") }}
+      </Button>
+    </div>
     <div
       v-for="row in titles"
       :key="row.id"
@@ -139,7 +121,7 @@ onMounted(load);
           row.taxId || "—"
         }}</span>
         <div class="ml-auto flex gap-1">
-          <Button variant="outline" size="sm" @click="startEdit(row)">
+          <Button variant="outline" size="sm" @click="openEdit(row)">
             {{ t("titles.edit") }}
           </Button>
           <Button variant="ghost" size="sm" @click="remove(row.id)">
@@ -169,38 +151,12 @@ onMounted(load);
       {{ t("titles.none") }}
     </p>
 
-    <!-- add / edit form -->
-    <form
-      class="flex flex-col gap-3 rounded-lg border border-dashed p-3"
-      @submit.prevent="submit"
-    >
-      <div class="text-xs font-medium text-muted-foreground">
-        {{ editingId ? t("titles.editing") : t("titles.add") }}
-      </div>
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div
-          v-for="[key, label, ph] in FIELDS"
-          :key="key"
-          class="flex flex-col gap-1.5"
-        >
-          <Label>{{ t(label) }}</Label>
-          <Input v-model="form[key]" :placeholder="t(ph)" class="text-sm" />
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <Button type="submit" size="sm" :disabled="busy">
-          {{ editingId ? t("titles.save") : t("titles.add") }}
-        </Button>
-        <Button
-          v-if="editingId"
-          type="button"
-          variant="ghost"
-          size="sm"
-          @click="resetForm"
-        >
-          {{ t("common.cancel") }}
-        </Button>
-      </div>
-    </form>
+    <!-- unified add / edit dialog -->
+    <TitleEditDialog
+      v-model="dialogOpen"
+      :initial="editing"
+      :busy="busy"
+      @save="submitDialog"
+    />
   </div>
 </template>
