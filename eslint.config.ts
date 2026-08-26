@@ -8,11 +8,15 @@
 // auto-import globals (defineEventHandler, …) resolve via .nuxt/types.d.ts.
 // no-undef is off: TS files are type-checked by `pnpm typecheck`, and the
 // runtime globals below cover the few plain-JS escape hatches.
+//
+// `defineConfig` comes from ESLint core (eslint/config) — the variadic
+// `tseslint.config()` helper is deprecated now that core provides it.
+import { defineConfig } from "eslint/config";
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
 
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: [
       "**/*.vue",
