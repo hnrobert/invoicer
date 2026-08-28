@@ -45,42 +45,6 @@ const schemaStore = shallowRef<UseSchemaStoreResult | null>(null);
 /** The active format maps a `from` logical field — the sender address is required. */
 const needsFrom = computed(() => "from" in fieldMap.value);
 
-/**
- * Gateway format presets, named per email-poster's own docs (PRESETS):
- *   smtogo        SMToGo relay — {from, to, subject, html}
- *   generic       Resend-like relay — {from, to, subject, html, text}
- *   custom_example  "Custom Example" trigger shape (Power Automate) —
- *                   {email, subject, content}
- * Selecting one applies it to the editor's field map instantly; the map stays
- * editable below for tweaks.
- */
-const PRESET_CHOICES = [
-  { key: "smtogo", map: PRESETS.smtogo },
-  { key: "generic", map: PRESETS.generic },
-  { key: "custom_example", map: PRESETS.custom_example },
-] as const;
-/** Active format: a preset key, "blank" (empty map), or "custom" (edited). */
-type PresetKey = (typeof PRESET_CHOICES)[number]["key"] | "blank" | "custom";
-
-const sameMap = (a: FieldMap, b: FieldMap) =>
-  JSON.stringify(a) === JSON.stringify(b);
-
-const activePreset = computed<PresetKey>(() => {
-  for (const p of PRESET_CHOICES)
-    if (sameMap(fieldMap.value, p.map as FieldMap)) return p.key;
-  if (Object.keys(fieldMap.value).length === 0) return "blank";
-  return "custom"; // edited — matches none
-});
-
-function applyPreset(key: PresetKey) {
-  if (key === "blank" || key === "custom") {
-    fieldMap.value = {};
-    return;
-  }
-  const preset = PRESET_CHOICES.find((p) => p.key === key);
-  fieldMap.value = preset ? { ...preset.map } : {};
-}
-
 const testTo = ref("");
 
 const providers = ["smtp", "post"] as const;
@@ -243,12 +207,10 @@ async function save() {
       maxLenSubject: Number(maxLenSubject.value),
       maxLenBody: Number(maxLenBody.value),
       postUrl: postUrl.value.trim(),
-      // Gateway discriminator for send-time fallback (postFieldMap stays
-      // authoritative); '' lets the server legacy-migrate.
-      postSchema:
-        activePreset.value === "custom" || activePreset.value === "blank"
-          ? ""
-          : activePreset.value,
+      // Legacy discriminator, kept empty: the Payload interface editor above
+      // always writes the authoritative postFieldMap, so the server never
+      // needs the send-time legacy migration this field once fed.
+      postSchema: "",
       postFieldMap: JSON.stringify(fieldMap.value),
     };
     if (senderPassword.value) body.senderPassword = senderPassword.value;
@@ -455,46 +417,6 @@ onMounted(load);
             </div>
           </div>
 
-          <!-- gateway format preset (email-poster PRESETS naming) -->
-          <div class="flex flex-col gap-1.5">
-            <Label>{{ t("settings.formatLabel") }}</Label>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="p in PRESET_CHOICES"
-                :key="p.key"
-                type="button"
-                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-                :class="
-                  activePreset === p.key
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
-                "
-                @click="applyPreset(p.key)"
-              >
-                {{ t(`settings.format.${p.key}`) }}
-              </button>
-              <button
-                type="button"
-                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-                :class="
-                  activePreset === 'blank'
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
-                "
-                @click="applyPreset('blank')"
-              >
-                {{ t("settings.format.blank") }}
-              </button>
-            </div>
-            <p class="text-xs text-muted-foreground">
-              {{
-                activePreset === "custom"
-                  ? t("settings.format.customActive")
-                  : t("settings.formatHint")
-              }}
-            </p>
-          </div>
-
           <!-- sender address only needed when the active format maps `from` -->
           <div v-if="needsFrom" class="grid gap-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2">
@@ -513,26 +435,17 @@ onMounted(load);
             </div>
           </div>
 
-          <!-- email-poster built-in visual editor for the POST payload format -->
-          <div class="flex flex-col gap-2">
-            <div>
-              <h3 class="text-sm font-medium">
-                {{ t("settings.editorTitle") }}
-              </h3>
-              <p class="text-xs text-muted-foreground">
-                {{ t("settings.editorDesc") }}
-              </p>
-            </div>
-            <MailInterfaceEditor
-              v-if="schemaStore"
-              v-model="fieldMap"
-              :schema-store="schemaStore"
-              @error="(e) => toast.error(e.message)"
-              @detected="(e) => toast.success(e.message)"
-              @imported="(e) => toast.success(e.message)"
-              @success="(e) => toast.success(e.message)"
-            />
-          </div>
+          <!-- email-poster built-in visual editor — self-titled "Payload
+               interface" with its own preset row; the only format UI here. -->
+          <MailInterfaceEditor
+            v-if="schemaStore"
+            v-model="fieldMap"
+            :schema-store="schemaStore"
+            @error="(e) => toast.error(e.message)"
+            @detected="(e) => toast.success(e.message)"
+            @imported="(e) => toast.success(e.message)"
+            @success="(e) => toast.success(e.message)"
+          />
         </template>
 
         <!-- Limits (shared by both providers) -->

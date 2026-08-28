@@ -209,3 +209,41 @@
   --ep-radius-sm: var(--radius-sm);
   --ep-radius: var(--radius);
 }
+
+/*
+ * Payload interface editor: hover feedback + motion — the upstream component
+ * ships neither. Selectors out-specify the scoped defaults where needed
+ * (.ep-editor prefix), tokens keep them monochrome and dark-mode aware.
+ */
+.ep-editor .ep-btn,
+.ep-editor .ep-schema,
+.ep-editor .ep-schema__select,
+.ep-editor .ep-schema__dot,
+.ep-editor .ep-input,
+.ep-editor .ep-schema__rename {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.ep-editor .ep-btn:hover:not(:disabled) {
+  background: var(--ep-color-muted-bg);
+  border-color: var(--ep-color-muted-fg);
+}
+.ep-editor .ep-btn--ghost:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--ep-color-fg);
+}
+.ep-editor .ep-btn--primary:hover:not(:disabled),
+.ep-editor .ep-btn[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--ep-color-primary);
+  border-color: var(--ep-color-primary-border);
+  opacity: 0.85;
+}
+.ep-editor .ep-schema:hover {
+  border-color: var(--ep-color-muted-fg);
+}
+.ep-editor .ep-input:hover {
+  border-color: var(--ep-color-muted-fg);
+}
