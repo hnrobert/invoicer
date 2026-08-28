@@ -455,7 +455,7 @@ watch(section, (v) => {
         <div
           v-for="(e, i) in emails"
           :key="e.email"
-          class="flex items-start justify-between gap-3 p-3.5"
+          class="flex items-center justify-between gap-3 p-3.5"
           :class="i > 0 ? 'border-t' : ''"
         >
           <div class="min-w-0 flex-1">
@@ -484,8 +484,12 @@ watch(section, (v) => {
               {{ t("account.emails.primaryNote") }}
             </p>
             <!-- Verify link enters the code flow: it emails the 6-digit code
-                 and arms the inline input below (unverified rows only). -->
-            <div v-else class="mt-2 flex flex-wrap items-center gap-2">
+                 and arms the inline input below (unverified SECONDARY rows
+                 only — verified rows need no action, primary shows its note). -->
+            <div
+              v-else-if="!e.verified"
+              class="mt-2 flex flex-wrap items-center gap-2"
+            >
               <button
                 v-if="codeSentFor !== e.email"
                 type="button"
