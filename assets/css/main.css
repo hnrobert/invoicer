@@ -188,3 +188,24 @@
 .vg-prose td {
   @apply border border-border px-3 py-1.5 text-left;
 }
+
+/*
+ * email-poster's Payload interface editor (admin mail settings): re-map its
+ * `--ep-*` design tokens onto the site theme. The component ships
+ * zero-specificity :where() defaults precisely so a plain .ep-editor rule
+ * wins; values reference our tokens, so light/dark follow automatically.
+ */
+.ep-editor {
+  --ep-color-fg: var(--foreground);
+  --ep-color-muted-fg: var(--muted-foreground);
+  --ep-color-subtle-fg: var(--muted-foreground);
+  --ep-color-border: var(--border);
+  --ep-color-muted-bg: var(--muted);
+  --ep-color-primary: var(--primary);
+  --ep-color-primary-fg: var(--primary-foreground);
+  --ep-color-primary-border: var(--primary);
+  --ep-color-ring: var(--ring);
+  --ep-color-destructive: var(--destructive);
+  --ep-radius-sm: var(--radius-sm);
+  --ep-radius: var(--radius);
+}
