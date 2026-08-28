@@ -247,15 +247,18 @@
     groupOrg: "Organization titles",
     groupSite: "Site titles",
     fieldTitle: "Invoice title",
-    fieldTitlePh: "University of Nottingham Ningbo",
+    // Placeholders intentionally show a real Chinese invoice example in BOTH
+    // locales — invoices being entered are Chinese fapiao, so the EN page
+    // still demos the expected CJK input shape.
+    fieldTitlePh: "宁波诺丁汉大学",
     fieldTax: "Tax ID",
     fieldTaxPh: "1233000077647510XG",
     fieldBank: "Bank",
-    fieldBankPh: "Bank of China, Ningbo",
+    fieldBankPh: "中国银行宁波分行",
     fieldAccount: "Bank account",
     fieldAccountPh: "376658330575",
     fieldAddress: "Address",
-    fieldAddressPh: "199 Taikang East Road, Ningbo",
+    fieldAddressPh: "宁波市泰康东路199号",
     fieldPhone: "Phone",
     fieldPhonePh: "0574-88180000",
   },
