@@ -229,7 +229,8 @@
   // ── invoice titles ───────────────────────────────────────────
   titles: {
     title: "Invoice titles",
-    siteTitle: "Site titles",
+    personalTitle: "Personal invoice titles",
+    siteTitle: "Site invoice titles",
     desc: "Store reimbursement titles (name, tax ID, bank, account, address, phone) and pick them when creating campaigns.",
     dialogDesc: "Fill in at least the title name or the tax ID; every other field is optional.",
     none: "No titles yet.",

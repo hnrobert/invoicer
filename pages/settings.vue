@@ -18,6 +18,7 @@ const ALL = [
   "security",
   "mail",
   "users",
+  "siteTitles",
 ] as const;
 const section = computed<(typeof ALL)[number]>(() =>
   (ALL as readonly string[]).includes(String(route.query.section))
@@ -344,7 +345,7 @@ const sections = computed(() => [
   },
   {
     key: "titles",
-    label: t("titles.title"),
+    label: t("titles.personalTitle"),
     to: secUrl("titles"),
     icon: "ReceiptText",
   },
@@ -380,6 +381,12 @@ const sections = computed(() => [
           label: t("admin.sections.users"),
           to: secUrl("users"),
           icon: "Users",
+        },
+        {
+          key: "siteTitles",
+          label: t("titles.siteTitle"),
+          to: secUrl("siteTitles"),
+          icon: "Landmark",
         },
       ]
     : []),
@@ -436,15 +443,9 @@ watch(section, (v) => {
       </p>
     </div>
 
-    <!-- ============ titles: personal always; superadmins also get the
-         site-owned titles block ============ -->
-    <div v-else-if="section === 'titles'" class="flex flex-col gap-6">
-      <TitleManager owner-type="user" :heading="t('titles.title')" />
-      <TitleManager
-        v-if="isAdmin"
-        owner-type="site"
-        :heading="t('titles.siteTitle')"
-      />
+    <!-- ============ titles (personal scope only) ============ -->
+    <div v-else-if="section === 'titles'">
+      <TitleManager owner-type="user" :heading="t('titles.personalTitle')" />
     </div>
 
     <!-- ============ emails (GitHub settings/emails layout) ============ -->
@@ -900,9 +901,16 @@ watch(section, (v) => {
       </div>
     </div>
 
+    <!-- ============ admin: site titles ============ -->
+    <div v-else-if="section === 'siteTitles' && isAdmin">
+      <TitleManager owner-type="site" :heading="t('titles.siteTitle')" />
+    </div>
+
     <!-- admin section requested by a non-admin -->
     <div
-      v-else-if="section === 'mail' || section === 'users'"
+      v-else-if="
+        section === 'mail' || section === 'users' || section === 'siteTitles'
+      "
       class="py-16 text-center text-sm text-muted-foreground"
     >
       <Icon
