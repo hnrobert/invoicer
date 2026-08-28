@@ -436,9 +436,15 @@ watch(section, (v) => {
       </p>
     </div>
 
-    <!-- ============ titles ============ -->
-    <div v-else-if="section === 'titles'">
-      <TitleManager :owner-type="isAdmin ? 'site' : 'user'" />
+    <!-- ============ titles: personal always; superadmins also get the
+         site-owned titles block ============ -->
+    <div v-else-if="section === 'titles'" class="flex flex-col gap-6">
+      <TitleManager owner-type="user" :heading="t('titles.title')" />
+      <TitleManager
+        v-if="isAdmin"
+        owner-type="site"
+        :heading="t('titles.siteTitle')"
+      />
     </div>
 
     <!-- ============ emails (GitHub settings/emails layout) ============ -->

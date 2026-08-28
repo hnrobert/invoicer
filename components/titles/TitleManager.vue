@@ -6,6 +6,8 @@ import type { InvoiceTitlePublic } from "#shared/types";
 const props = defineProps<{
   ownerType: "user" | "org" | "site";
   orgId?: string;
+  /** Optional section heading (e.g. 发票抬头 / 站点抬头) above the toolbar. */
+  heading?: string;
 }>();
 const { t } = useI18n();
 
@@ -92,7 +94,9 @@ onMounted(load);
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="flex items-start justify-between gap-2">
+    <div v-if="heading" class="text-base font-semibold">{{ heading }}</div>
+    <!-- desc and the add button share one row, center-aligned on its midline -->
+    <div class="flex items-center justify-between gap-2">
       <p class="text-sm text-muted-foreground">{{ t("titles.desc") }}</p>
       <Button size="sm" class="shrink-0" @click="openCreate">
         <Icon spec="Plus" :size="14" />
