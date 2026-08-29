@@ -1,7 +1,7 @@
-import { unlink } from "node:fs/promises";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
+import { storage } from "#server/utils/storage";
 
 /**
  * Remove uploaded files + records in a campaign, keeping the campaign itself.
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const repo = AppDataSource.getRepository(Invoice);
   const where = clearAll ? { campaignId } : { campaignId, uploaderId: user.id };
   const rows = await repo.find({ where });
-  for (const r of rows) await unlink(r.savedPath).catch(() => {});
+  for (const r of rows) await storage.remove(r.savedPath);
   await repo.delete(where);
   return {
     ok: true,

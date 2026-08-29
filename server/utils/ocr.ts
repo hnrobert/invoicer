@@ -166,11 +166,12 @@ async function tesseractOcr(buf: Buffer): Promise<string> {
 }
 
 /**
- * OCR an image file: PaddleOCR sidecar when configured, tesseract.js
- * otherwise (and as the automatic fallback).
+ * OCR an image: PaddleOCR sidecar when configured, tesseract.js otherwise
+ * (and as the automatic fallback). Accepts a path (read from disk) or an
+ * already-loaded Buffer (object-storage flows).
  */
-export async function ocrImage(path: string): Promise<string> {
-  const buf = await readFile(path);
+export async function ocrImage(src: string | Buffer): Promise<string> {
+  const buf = typeof src === "string" ? await readFile(src) : src;
   const paddle = await paddleOcr(buf);
   if (paddle != null) return paddle;
   return tesseractOcr(buf);

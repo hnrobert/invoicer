@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { basename, extname } from "node:path";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
 import { processInvoice } from "#server/utils/process";
 import { invoiceToPublic } from "#server/utils/serialize";
+import { buildKey, mimeFor, storage } from "#server/utils/storage";
 
 const IMAGE_EXTS = new Set([
   ".jpg",
@@ -49,9 +49,6 @@ export default defineEventHandler(async (event) => {
   if (files.length === 0)
     throw createError({ statusCode: 400, statusMessage: "No files uploaded" });
 
-  const uploadsDir = useRuntimeConfig().uploadsDir;
-  await mkdir(uploadsDir, { recursive: true });
-
   const created: Invoice[] = [];
   for (const f of files) {
     const ext = extname(f.filename!).toLowerCase();
@@ -64,8 +61,9 @@ export default defineEventHandler(async (event) => {
 
     const pureName = basename(f.filename!.replace(/\\/g, "/"));
     const safeName = `${randomUUID().slice(0, 8)}_${pureName}`;
-    const savedPath = join(uploadsDir, safeName);
-    await writeFile(savedPath, f.data);
+    // Storage key (fs backend resolves it under uploadsDir; S3 uses it as-is).
+    const savedPath = buildKey(campaignId, safeName);
+    await storage.putObject(savedPath, f.data, mimeFor(safeName));
 
     const inv = await AppDataSource.getRepository(Invoice).save({
       campaignId,

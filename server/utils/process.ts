@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { storage } from "./storage";
 import { AppDataSource } from "./database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { Campaign } from "#server/entities/campaign.entity";
@@ -39,7 +39,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
     let directFields: ReturnType<typeof extractInvoiceFields> | null = null;
     if (inv.fileType === "xml" || inv.fileType === "ofd") {
       const parsed = parseElectronicInvoice(
-        await readFile(inv.savedPath),
+        await storage.getBuffer(inv.savedPath),
         inv.fileType,
       );
       if (!parsed) {
@@ -57,7 +57,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       directFields = parsed.fields;
       text = parsed.rawText;
     } else if (inv.fileType === "pdf") {
-      const buf = await readFile(inv.savedPath);
+      const buf = await storage.getBuffer(inv.savedPath);
       text = await extractPdfText(new Uint8Array(buf));
       if (!text.trim()) {
         await repo.update(
@@ -72,7 +72,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
         return;
       }
     } else {
-      text = await ocrImage(inv.savedPath);
+      text = await ocrImage(await storage.getBuffer(inv.savedPath));
     }
 
     // ---- receipt / order-screenshot branch (OCR'd images) ----

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { storage } from "#server/utils/storage";
 import { basename } from "node:path";
 import ExcelJS from "exceljs";
 import AdmZip from "adm-zip";
@@ -221,7 +221,7 @@ export default defineEventHandler(async (event) => {
   // zip: original files grouped by review state, then uploader.
   const zip = new AdmZip();
   for (const i of invoices) {
-    const data = await readFile(i.savedPath).catch(() => null);
+    const data = await storage.getBuffer(i.savedPath).catch(() => null);
     if (!data) continue;
     const group = flow === "submit" ? (i.reviewState ?? "draft") : i.status;
     const upDir =

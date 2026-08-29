@@ -1,21 +1,14 @@
-import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
-import { extname } from "node:path";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
+import { mimeFor, storage } from "#server/utils/storage";
 
-const MIME: Record<string, string> = {
-  ".pdf": "application/pdf",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".gif": "image/gif",
-  ".bmp": "image/bmp",
-};
-
-/** Stream the original uploaded file for inline preview (campaign + invoice access checked). */
+/**
+ * Serve the original uploaded file for inline preview (campaign + invoice
+ * access checked). In S3 mode the browser is redirected to a short-lived
+ * presigned URL — bytes never touch the node process; otherwise (and for
+ * legacy local paths) the file streams through as before.
+ */
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, "invoiceId"));
   const inv = await AppDataSource.getRepository(Invoice).findOneBy({ id });
@@ -29,17 +22,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
 
-  try {
-    const s = await stat(inv.savedPath);
-    setHeader(
-      event,
-      "Content-Type",
-      MIME[extname(inv.savedPath).toLowerCase()] ?? "application/octet-stream",
-    );
-    setHeader(event, "Content-Length", s.size);
-  } catch {
-    throw createError({ statusCode: 404, statusMessage: "File not found" });
-  }
+  // S3 object: hand the browser a presigned URL (SeaweedFS serves it with the
+  // content type captured at upload).
+  const presigned = await storage.presignGet(inv.savedPath);
+  if (presigned) return sendRedirect(event, presigned);
 
-  return sendStream(event, createReadStream(inv.savedPath));
+  const info = await storage.stat(inv.savedPath);
+  if (!info)
+    throw createError({ statusCode: 404, statusMessage: "File not found" });
+  setHeader(event, "Content-Type", mimeFor(inv.filename || inv.savedPath));
+  setHeader(event, "Content-Length", info.size);
+  return sendStream(event, await storage.getStream(inv.savedPath));
 });
