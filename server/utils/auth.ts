@@ -1,5 +1,4 @@
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { Pool } from "pg";
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import {
@@ -7,7 +6,6 @@ import {
   memberAc,
   ownerAc,
 } from "better-auth/plugins/organization/access";
-import Database from "better-sqlite3";
 import { passkeyPlugin } from "./passkeyPlugin";
 
 const githubId = process.env.GITHUB_CLIENT_ID;
@@ -19,49 +17,44 @@ const wechatAppSecret = process.env.WECHAT_APP_SECRET;
 // aliases, no runtimeConfig) so the Better Auth CLI can load it directly to
 // generate/migrate tables: `npx auth@latest migrate --config server/utils/auth.ts`.
 //
-// It opens a SECOND better-sqlite3 connection to the same SQLite file TypeORM
-// uses. WAL is a per-file setting, so enabling it here lets both connections
-// read/write concurrently (multiple readers + one writer) without "database is
-// locked" under load.
+// better-auth shares the app's PostgreSQL database (a node-postgres Pool —
+// natively accepted as better-auth's database adapter). Its tables
+// (user/session/account/verification + organization plugin) are created by the
+// Init migration in server/migrations/, quoted camelCase identifiers included.
 
-const dbPath = process.env.DB_PATH || "./data/app.db";
+export const authDb = new Pool({
+  connectionString:
+    process.env.DATABASE_URL ||
+    "postgres://invoicer:invoicer@localhost:5432/invoicer",
+  // auth flows + raw cross-table reads stay well under this
+  max: 10,
+});
 
-// better-sqlite3 won't create the data directory itself.
-mkdirSync(dirname(dbPath), { recursive: true });
-
-/** better-auth's own connection — owns the user/session/account/verification tables. */
-export const authDb = new Database(dbPath);
-authDb.pragma("journal_mode = WAL");
-
-/**
- * Startup self-check: better-auth does NOT auto-create its tables (unlike
- * TypeORM's synchronize), so a fresh/rebuilt DB file makes every auth call die
- * with "no such table: user". Ensure the schema exists — DDL is byte-identical
- * to what `@better-auth/cli migrate` generates (incl. the organization plugin
- * tables), kept idempotent via CREATE TABLE IF NOT EXISTS so upgrades should
- * still run the CLI. Executed as one batch; better-sqlite3 exec() accepts
- * multi-statement strings.
- */
-function ensureAuthTables(): void {
-  const hasUser = authDb
-    .prepare(
-      "SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='user'",
-    )
-    .get() as { ok: number } | undefined;
-  if (hasUser) return;
-  console.log("[auth] better-auth tables missing — creating schema…");
-  authDb.exec(`
-    CREATE TABLE IF NOT EXISTS "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" integer not null, "image" text, "createdAt" date not null, "updatedAt" date not null);
-    CREATE TABLE IF NOT EXISTS "session" ("id" text not null primary key, "expiresAt" date not null, "token" text not null unique, "createdAt" date not null, "updatedAt" date not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade, "activeOrganizationId" text);
-    CREATE TABLE IF NOT EXISTS "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" date, "refreshTokenExpiresAt" date, "scope" text, "password" text, "createdAt" date not null, "updatedAt" date not null);
-    CREATE TABLE IF NOT EXISTS "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" date not null, "createdAt" date not null, "updatedAt" date not null);
-    CREATE TABLE IF NOT EXISTS "organization" ("id" text not null primary key, "name" text not null, "slug" text not null unique, "logo" text, "createdAt" date not null, "metadata" text);
-    CREATE TABLE IF NOT EXISTS "member" ("id" text not null primary key, "organizationId" text not null references "organization" ("id") on delete cascade, "userId" text not null references "user" ("id") on delete cascade, "role" text not null, "createdAt" date not null);
-    CREATE TABLE IF NOT EXISTS "invitation" ("id" text not null primary key, "organizationId" text not null references "organization" ("id") on delete cascade, "email" text not null, "role" text, "status" text not null, "expiresAt" date not null, "createdAt" date not null, "inviterId" text not null references "user" ("id") on delete cascade);
-  `);
-  console.log("[auth] better-auth schema created (7 tables)");
+/** Run a raw query and return all rows (success of better-sqlite3's .all()). */
+export async function sqlAll<T = Record<string, unknown>>(
+  sql: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const res = await authDb.query(sql, params);
+  return res.rows as T[];
 }
-ensureAuthTables();
+
+/** Run a raw query and return the first row, or undefined (as .get()). */
+export async function sqlGet<T = Record<string, unknown>>(
+  sql: string,
+  params: unknown[] = [],
+): Promise<T | undefined> {
+  const res = await authDb.query(sql, params);
+  return res.rows[0] as T | undefined;
+}
+
+/** Run a raw mutating statement (as .run()); returns the pg result. */
+export async function sqlRun(
+  sql: string,
+  params: unknown[] = [],
+): Promise<void> {
+  await authDb.query(sql, params);
+}
 
 export const auth = betterAuth({
   database: authDb,

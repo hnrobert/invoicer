@@ -3,24 +3,25 @@ import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
 import { getSessionUser, getUserOrgIds } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlGet } from "#server/utils/auth";
 import type { CampaignPublic } from "#shared/types";
 
 /** org slug lookup (for client-side /orgs/[slug]/campaigns/[id] links). */
-function orgSlug(organizationId: string | null): string | null {
+async function orgSlug(organizationId: string | null): Promise<string | null> {
   if (!organizationId) return null;
-  const row = authDb
-    .prepare("SELECT slug FROM organization WHERE id = ?")
-    .get(organizationId) as { slug: string } | undefined;
+  const row = await sqlGet<{ slug: string }>(
+    "SELECT slug FROM organization WHERE id = $1",
+    [organizationId],
+  );
   return row?.slug ?? null;
 }
 
-function toPublic(c: Campaign): CampaignPublic {
+async function toPublic(c: Campaign): Promise<CampaignPublic> {
   return {
     id: c.id,
     userId: c.userId,
     organizationId: c.organizationId,
-    orgSlug: orgSlug(c.organizationId),
+    orgSlug: await orgSlug(c.organizationId),
     name: c.name,
     expectedTitle: c.expectedTitle,
     expectedTaxId: c.expectedTaxId,
@@ -41,7 +42,7 @@ function toPublic(c: Campaign): CampaignPublic {
  */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
-  const orgIds = getUserOrgIds(user.id);
+  const orgIds = await getUserOrgIds(user.id);
 
   // Personal campaigns (organizationId IS NULL) OR campaigns owned by any org
   // the user is a member of. TypeORM needs IsNull() to match a NULL column.
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event) => {
   const personal: CampaignPublic[] = [];
   const byOrg: CampaignPublic[] = [];
   for (const c of all) {
-    (c.organizationId ? byOrg : personal).push(toPublic(c));
+    (c.organizationId ? byOrg : personal).push(await toPublic(c));
   }
 
   // Collaborations: campaigns the user was added to directly. Archived ones
@@ -68,12 +69,14 @@ export default defineEventHandler(async (event) => {
   ).find({ where: { userId: user.id } });
   const collabIds = collabRows.map((r) => r.campaignId);
   const collaborations = collabIds.length
-    ? (
-        await AppDataSource.getRepository(Campaign).find({
-          where: { id: In(collabIds), status: In(["active", "closed"]) },
-          order: { createdAt: "desc" },
-        })
-      ).map((c) => toPublic(c))
+    ? await Promise.all(
+        (
+          await AppDataSource.getRepository(Campaign).find({
+            where: { id: In(collabIds), status: In(["active", "closed"]) },
+            order: { createdAt: "desc" },
+          })
+        ).map((c) => toPublic(c)),
+      )
     : [];
 
   return { ok: true, personal, organizations: byOrg, collaborations };

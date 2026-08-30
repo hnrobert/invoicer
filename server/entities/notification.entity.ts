@@ -30,12 +30,12 @@ export class Notification {
   @Column({ type: "text", nullable: false, default: "{}" })
   data!: string;
 
-  @Column({ name: "read_at", type: "datetime", nullable: true })
+  @Column({ name: "read_at", type: "timestamp", nullable: true })
   readAt!: Date | null;
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;

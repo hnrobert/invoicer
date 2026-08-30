@@ -26,7 +26,7 @@ export class Passkey {
   userId!: string;
 
   /** SPKI public key bytes (blob → Buffer; Uint8Array on read). */
-  @Column({ name: "public_key", type: "blob", nullable: false })
+  @Column({ name: "public_key", type: "bytea", nullable: false })
   publicKey!: Buffer;
 
   /** Signature counter — clone detection. */
@@ -51,7 +51,7 @@ export class Passkey {
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;

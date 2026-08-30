@@ -6,7 +6,7 @@ import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess, usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal } from "#server/utils/serialize";
-import { authDb } from "#server/utils/auth";
+import { sqlAll } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -72,11 +72,10 @@ export default defineEventHandler(async (event) => {
     ),
   ];
   const uploaderRows = uploaderIds.length
-    ? (authDb
-        .prepare(
-          `SELECT id, name, email FROM user WHERE id IN (${uploaderIds.map(() => "?").join(",")})`,
-        )
-        .all(...uploaderIds) as { id: string; name: string; email: string }[])
+    ? await sqlAll<{ id: string; name: string; email: string }>(
+        `SELECT id, name, email FROM "user" WHERE id IN (${uploaderIds.map((_, i) => `$${i + 1}`).join(",")})`,
+        uploaderIds,
+      )
     : [];
   const uploaders = new Map(uploaderRows.map((u) => [u.id, u]));
   const upLabel = (i: Invoice) => {

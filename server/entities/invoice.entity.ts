@@ -80,11 +80,15 @@ export class Invoice {
   extractedTaxId!: string | null;
 
   /** 价税合计 / 小写金额. SQLite `real`. */
-  @Column({ name: "extracted_amount", type: "real", nullable: true })
+  @Column({
+    name: "extracted_amount",
+    type: "double precision",
+    nullable: true,
+  })
   extractedAmount!: number | null;
 
   /** Operator-entered amount when extraction found none. */
-  @Column({ name: "manual_amount", type: "real", nullable: true })
+  @Column({ name: "manual_amount", type: "double precision", nullable: true })
   manualAmount!: number | null;
 
   /** Whether this invoice's amount is included in the session total. */
@@ -104,11 +108,11 @@ export class Invoice {
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;
 
-  @Column({ name: "processed_at", type: "datetime", nullable: true })
+  @Column({ name: "processed_at", type: "timestamp", nullable: true })
   processedAt!: Date | null;
 }

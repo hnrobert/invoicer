@@ -1,6 +1,6 @@
 import { AppDataSource } from "./database";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
-import { authDb } from "./auth";
+import { sqlGet } from "./auth";
 
 /**
  * Atomic org permissions — custom roles are POSITION-style named bundles of
@@ -76,9 +76,10 @@ export async function getOrgPermissions(
   organizationId: string,
   userId: string,
 ): Promise<Set<OrgPermission>> {
-  const row = authDb
-    .prepare("SELECT role FROM member WHERE organizationId = ? AND userId = ?")
-    .get(organizationId, userId) as { role: string } | undefined;
+  const row = await sqlGet<{ role: string }>(
+    "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+    [organizationId, userId],
+  );
   if (!row) return new Set();
   if (isBuiltInRole(row.role)) return new Set(PRESETS[row.role]);
   const custom = await AppDataSource.getRepository(OrgCustomRole).findOneBy({

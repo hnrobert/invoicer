@@ -23,7 +23,7 @@ export class CampaignGroup {
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;

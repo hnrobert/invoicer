@@ -2,7 +2,7 @@ import { AppDataSource } from "#server/utils/database";
 import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import { GroupReviewer } from "#server/entities/groupReviewer.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
 
@@ -25,10 +25,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Group not found" });
   }
   const { email } = await readBody<{ email?: string }>(event);
-  const u = authDb
-    .prepare("SELECT id, name, email FROM user WHERE lower(email) = ?")
-    .get((email ?? "").trim().toLowerCase()) as
-    { id: string; name: string; email: string } | undefined;
+  const u = await sqlGet<{ id: string; name: string; email: string }>(
+    'SELECT id, name, email FROM "user" WHERE lower(email) = $1',
+    [(email ?? "").trim().toLowerCase()],
+  );
   if (!u) {
     throw createError({ statusCode: 404, statusMessage: "User not found" });
   }

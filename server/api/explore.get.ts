@@ -3,7 +3,7 @@ import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { OrgSetting } from "#server/entities/orgSetting.entity";
 import { getSessionUser } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlAll } from "#server/utils/auth";
 import type { CampaignPublic } from "#shared/types";
 
 function toPublic(
@@ -77,11 +77,10 @@ export default defineEventHandler(async (event) => {
   // Resolve org names + slugs from Better Auth's organization table for display.
   const orgIds = [...new Set(filtered.map((c) => c.organizationId!))];
   const nameRows = orgIds.length
-    ? (authDb
-        .prepare(
-          `SELECT id, name, slug FROM organization WHERE id IN (${orgIds.map(() => "?").join(",")})`,
-        )
-        .all(...orgIds) as { id: string; name: string; slug: string }[])
+    ? await sqlAll<{ id: string; name: string; slug: string }>(
+        `SELECT id, name, slug FROM organization WHERE id IN (${orgIds.map((_, i) => `$${i + 1}`).join(",")})`,
+        orgIds,
+      )
     : [];
   const names = new Map(nameRows.map((r) => [r.id, r]));
 

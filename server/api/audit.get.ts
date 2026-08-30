@@ -2,7 +2,7 @@ import { AppDataSource } from "#server/utils/database";
 import { AuditLog } from "#server/entities/auditLog.entity";
 import { Campaign } from "#server/entities/campaign.entity";
 import { getOrgRole, getSessionUser } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlAll } from "#server/utils/auth";
 
 /**
  * Query the audit trail. `?campaignId=` scopes to one campaign (its manager,
@@ -54,11 +54,10 @@ export default defineEventHandler(async (event) => {
 
   const ids = [...new Set(rows.map((r) => r.actorId))];
   const users = ids.length
-    ? (authDb
-        .prepare(
-          `SELECT id, name, email FROM user WHERE id IN (${ids.map(() => "?").join(",")})`,
-        )
-        .all(...ids) as { id: string; name: string; email: string }[])
+    ? await sqlAll<{ id: string; name: string; email: string }>(
+        `SELECT id, name, email FROM "user" WHERE id IN (${ids.map((_, i) => `$${i + 1}`).join(",")})`,
+        ids,
+      )
     : [];
   const byId = new Map(users.map((u) => [u.id, u]));
 

@@ -1,7 +1,7 @@
 import { AppDataSource } from "#server/utils/database";
 import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
 import { getSessionUser } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlRun } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { getOrgPermissions } from "#server/utils/orgPermissions";
 
@@ -26,11 +26,10 @@ export default defineEventHandler(async (event) => {
   }
   await repo.delete({ organizationId: orgId, name });
   // Demote anyone still assigned the deleted name (Better Auth member table).
-  authDb
-    .prepare(
-      "UPDATE member SET role = 'member' WHERE organizationId = ? AND role = ?",
-    )
-    .run(orgId, name);
+  await sqlRun(
+    "UPDATE member SET role = 'member' WHERE organizationId = $1 AND role = $2",
+    [orgId, name],
+  );
   logAudit({
     organizationId: orgId,
     actorId: user.id,

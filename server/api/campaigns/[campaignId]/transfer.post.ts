@@ -1,7 +1,7 @@
 import { AppDataSource } from "#server/utils/database";
 import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { getOrgRole, requireCampaignAccess } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlAll, sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
 
@@ -41,9 +41,10 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Invalid target organization",
     });
   }
-  const targetOrg = authDb
-    .prepare("SELECT id, name FROM organization WHERE id = ?")
-    .get(targetOrgId) as { id: string; name: string } | undefined;
+  const targetOrg = await sqlGet<{ id: string; name: string }>(
+    "SELECT id, name FROM organization WHERE id = $1",
+    [targetOrgId],
+  );
   if (!targetOrg) {
     throw createError({
       statusCode: 404,
@@ -80,19 +81,20 @@ export default defineEventHandler(async (event) => {
   });
 
   // Notify the target org's owners/admins to accept.
-  const admins = authDb
-    .prepare(
-      "SELECT userId FROM member WHERE organizationId = ? AND role IN ('owner','admin')",
-    )
-    .all(targetOrgId) as { userId: string }[];
+  const admins = await sqlAll<{ userId: string }>(
+    "SELECT userId FROM member WHERE organizationId = $1 AND role IN ('owner','admin')",
+    [targetOrgId],
+  );
+  const fromOrg = await sqlGet<{ name: string }>(
+    "SELECT name FROM organization WHERE id = $1",
+    [campaign.organizationId!],
+  );
   for (const a of admins) {
     notify(a.userId, "transfer.incoming", {
       link: "/organizations",
       data: {
         campaign: campaign.name || campaign.expectedTitle,
-        from: authDb
-          .prepare("SELECT name FROM organization WHERE id = ?")
-          .get(campaign.organizationId) as { name: string } | undefined,
+        from: fromOrg,
       },
     });
   }

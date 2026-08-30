@@ -52,7 +52,7 @@ export class Campaign {
   status!: "active" | "closed" | "archived";
 
   /** Optional upload deadline; when reached the campaign behaves as closed. */
-  @Column({ name: "deadline", type: "datetime", nullable: true })
+  @Column({ name: "deadline", type: "timestamp", nullable: true })
   deadline!: Date | null;
 
   /**
@@ -72,7 +72,7 @@ export class Campaign {
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;

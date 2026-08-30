@@ -25,7 +25,7 @@ export class OrgSetting {
 
   @Column({
     name: "updated_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
     onUpdate: "CURRENT_TIMESTAMP",
   })

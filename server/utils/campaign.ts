@@ -1,5 +1,5 @@
 import type { H3Event } from "h3";
-import { auth, authDb } from "./auth";
+import { auth, sqlAll, sqlGet } from "./auth";
 import { AppDataSource } from "./database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
@@ -58,12 +58,14 @@ export async function getSessionUser(event: H3Event): Promise<SessionUser> {
 }
 
 /** True if `userId` is a member of `organizationId` (any role). */
-export function isOrgMember(organizationId: string, userId: string): boolean {
-  const row = authDb
-    .prepare(
-      "SELECT 1 AS ok FROM member WHERE organizationId = ? AND userId = ?",
-    )
-    .get(organizationId, userId) as { ok: number } | undefined;
+export async function isOrgMember(
+  organizationId: string,
+  userId: string,
+): Promise<boolean> {
+  const row = await sqlGet(
+    "SELECT 1 AS ok FROM member WHERE organizationId = $1 AND userId = $2",
+    [organizationId, userId],
+  );
   return !!row;
 }
 
@@ -77,9 +79,10 @@ export async function getOrgRole(
   organizationId: string,
   userId: string,
 ): Promise<OrgRole | null> {
-  const row = authDb
-    .prepare("SELECT role FROM member WHERE organizationId = ? AND userId = ?")
-    .get(organizationId, userId) as { role: string } | undefined;
+  const row = await sqlGet<{ role: string }>(
+    "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+    [organizationId, userId],
+  );
   if (!row) return null;
   switch (row.role) {
     case "owner":
@@ -103,10 +106,11 @@ export async function getOrgRole(
 }
 
 /** The set of organization ids the user belongs to. */
-export function getUserOrgIds(userId: string): string[] {
-  const rows = authDb
-    .prepare("SELECT organizationId AS id FROM member WHERE userId = ?")
-    .all(userId) as { id: string }[];
+export async function getUserOrgIds(userId: string): Promise<string[]> {
+  const rows = await sqlAll<{ id: string }>(
+    "SELECT organizationId AS id FROM member WHERE userId = $1",
+    [userId],
+  );
   return rows.map((r) => r.id);
 }
 
@@ -162,11 +166,10 @@ export async function resolveCampaignRights(
   // Custom roles normalize to "member" above — their real rights come from
   // the role's stored permission bundle, resolved here.
   if (role === "member") {
-    const raw = authDb
-      .prepare(
-        "SELECT role FROM member WHERE organizationId = ? AND userId = ?",
-      )
-      .get(campaign.organizationId, user.id) as { role: string } | undefined;
+    const raw = await sqlGet<{ role: string }>(
+      "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+      [campaign.organizationId, user.id],
+    );
     const customPerms = raw
       ? await getCustomRolePermissions(campaign.organizationId, raw.role)
       : null;

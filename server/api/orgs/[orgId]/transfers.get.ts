@@ -3,7 +3,7 @@ import { AppDataSource } from "#server/utils/database";
 import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { Campaign } from "#server/entities/campaign.entity";
 import { getOrgRole, getSessionUser } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlGet } from "#server/utils/auth";
 
 /**
  * Pending transfers TO one org (for the accept/reject UI) plus outgoing
@@ -33,11 +33,21 @@ export default defineEventHandler(async (event) => {
   const campaignName = new Map(
     campaigns.map((c) => [c.id, c.name || c.expectedTitle]),
   );
-  const orgName = (id: string) =>
-    (
-      authDb.prepare("SELECT name FROM organization WHERE id = ?").get(id) as
-        { name: string } | undefined
-    )?.name ?? id;
+  const orgIds = [
+    ...new Set(rows.flatMap((r) => [r.fromOrganizationId, r.toOrganizationId])),
+  ];
+  const orgNames = new Map(
+    orgIds.map((id) => [id, id]), // fallback: the id itself
+  );
+  await Promise.all(
+    orgIds.map(async (id) => {
+      const row = await sqlGet<{ name: string }>(
+        "SELECT name FROM organization WHERE id = $1",
+        [id],
+      );
+      if (row) orgNames.set(id, row.name);
+    }),
+  );
 
   return {
     ok: true,
@@ -46,8 +56,8 @@ export default defineEventHandler(async (event) => {
       campaignId: r.campaignId,
       campaign: campaignName.get(r.campaignId) ?? `#${r.campaignId}`,
       incoming: r.toOrganizationId === orgId,
-      fromOrg: orgName(r.fromOrganizationId),
-      toOrg: orgName(r.toOrganizationId),
+      fromOrg: orgNames.get(r.fromOrganizationId) ?? r.fromOrganizationId,
+      toOrg: orgNames.get(r.toOrganizationId) ?? r.toOrganizationId,
       createdAt: r.createdAt.toISOString(),
     })),
   };

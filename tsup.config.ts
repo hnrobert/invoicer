@@ -11,6 +11,9 @@ export default defineConfig({
   format: ["esm"],
   target: "node24",
   platform: "node",
+  // TypeORM entities use legacy decorators; every column declares an explicit
+  // type so emitDecoratorMetadata is unnecessary (gateway pattern).
+  tsconfig: "tsup.tsconfig.json",
   banner: {
     js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
   },

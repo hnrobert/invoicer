@@ -2,7 +2,7 @@ import { In } from "typeorm";
 import { AppDataSource } from "#server/utils/database";
 import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import { GroupReviewer } from "#server/entities/groupReviewer.entity";
-import { authDb } from "#server/utils/auth";
+import { sqlAll } from "#server/utils/auth";
 import { requireCampaignAccess } from "#server/utils/campaign";
 
 /** List the campaign's groups with their reviewer assignments. */
@@ -22,11 +22,10 @@ export default defineEventHandler(async (event) => {
     : [];
   const uids = [...new Set(assigns.map((a) => a.userId))];
   const users = uids.length
-    ? (authDb
-        .prepare(
-          `SELECT id, name, email FROM user WHERE id IN (${uids.map(() => "?").join(",")})`,
-        )
-        .all(...uids) as { id: string; name: string; email: string }[])
+    ? await sqlAll<{ id: string; name: string; email: string }>(
+        `SELECT id, name, email FROM "user" WHERE id IN (${uids.map((_, i) => `$${i + 1}`).join(",")})`,
+        uids,
+      )
     : [];
   const byId = new Map(users.map((u) => [u.id, u]));
 

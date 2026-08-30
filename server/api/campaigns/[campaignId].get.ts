@@ -5,7 +5,7 @@ import {
   requireCampaignAccess,
   usesSubmitFlow,
 } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlGet } from "#server/utils/auth";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 import { campaignTitleRows } from "#server/utils/campaignTitles";
 
@@ -75,9 +75,10 @@ export default defineEventHandler(async (event) => {
 
   const orgSlug = campaign.organizationId
     ? ((
-        authDb
-          .prepare("SELECT slug FROM organization WHERE id = ?")
-          .get(campaign.organizationId) as { slug: string } | undefined
+        await sqlGet<{ slug: string }>(
+          "SELECT slug FROM organization WHERE id = $1",
+          [campaign.organizationId],
+        )
       )?.slug ?? null)
     : null;
 

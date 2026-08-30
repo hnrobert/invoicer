@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   // An org-scoped campaign requires the caller to be a member of that org.
   let organizationId: string | null = null;
   if (body?.organization_id) {
-    if (!isOrgMember(body.organization_id, user.id)) {
+    if (!(await isOrgMember(body.organization_id, user.id))) {
       throw createError({ statusCode: 403, statusMessage: "Forbidden" });
     }
     organizationId = body.organization_id;

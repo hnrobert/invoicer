@@ -26,9 +26,9 @@ export default defineEventHandler(async (event) => {
   const q = getQuery(event);
   const repo = AppDataSource.getRepository(InvoiceTitle);
 
-  const orgIds = (await import("#server/utils/campaign")).getUserOrgIds(
-    user.id,
-  );
+  const orgIds = await (
+    await import("#server/utils/campaign")
+  ).getUserOrgIds(user.id);
   if (q.scope === "personal")
     return {
       ok: true,

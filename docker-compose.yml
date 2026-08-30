@@ -10,14 +10,22 @@ services:
       # PADDLEOCR_URL / BETTER_AUTH_URL defaults).
       - "10752:10752"
     volumes:
-      # Persist the SQLite database and uploaded invoices across container rebuilds.
-      - ./data:/app/data
+      # Persist uploaded invoices across container rebuilds (the database lives
+      # in the postgres service below).
       - ./uploads:/app/uploads
       # Expose the host timezone so timestamps/emails resolve in local time.
       - /etc/localtime:/etc/localtime:ro
     environment:
       NODE_ENV: production
-      DB_PATH: /app/data/app.db
+      # PostgreSQL — derived from the same POSTGRES_* variables the postgres
+      # service below uses, so overriding one side can never desync them.
+      # (Set DATABASE_URL outright for exotic cases; special characters in
+      # user/password must be percent-encoded to appear in a URL.)
+      # Migrations apply automatically on boot (server/migrations). Migrating
+      # an existing SQLite deployment:
+      #   1. pnpm migration:run --url=<url>
+      #   2. pnpm tsx scripts/migrate-sqlite-to-pg.ts --url=<url>
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-invoicer}:${POSTGRES_PASSWORD:-invoicer}@postgres:5432/${POSTGRES_DB:-invoicer}}
       UPLOADS_DIR: /app/uploads
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       # Better Auth: ≥32-char secret (falls back to a dev-only value if unset).
@@ -50,7 +58,10 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
     restart: unless-stopped
     depends_on:
-      - seaweedfs
+      seaweedfs:
+        condition: service_started
+      postgres:
+        condition: service_healthy
 
   # PP-OCR sidecar (optional, profile "ocr" so the default stack stays light).
   # Reachable only over the compose-internal network — no host port exposed;
@@ -94,6 +105,24 @@ services:
       - seaweed-data:/data
     restart: unless-stopped
 
+  # PostgreSQL — the application database (replaced SQLite). Data survives
+  # rebuilds in the named volume; migrations run automatically on app boot.
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-invoicer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-invoicer}
+      POSTGRES_DB: ${POSTGRES_DB:-invoicer}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-invoicer}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
 volumes:
   paddle-models:
   seaweed-data:
+  pg-data:

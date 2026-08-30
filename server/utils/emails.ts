@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { AppDataSource } from "./database";
 import { UserEmail } from "#server/entities/userEmail.entity";
-import { authDb } from "./auth";
+import { sqlGet, sqlRun } from "./auth";
 
 /**
  * Multi-email account management (GitHub-style). The PRIMARY email is Better
@@ -24,9 +24,10 @@ const norm = (e: string) => e.trim().toLowerCase();
 /** Which account (user id) owns this email, if any — primary or secondary. */
 export async function findEmailOwner(email: string): Promise<string | null> {
   const e = norm(email);
-  const primary = authDb
-    .prepare("SELECT id FROM user WHERE lower(email) = ?")
-    .get(e) as { id: string } | undefined;
+  const primary = await sqlGet<{ id: string }>(
+    'SELECT id FROM "user" WHERE lower(email) = $1',
+    [e],
+  );
   if (primary) return primary.id;
   const row = await AppDataSource.getRepository(UserEmail).findOneBy({
     email: e,
@@ -41,26 +42,29 @@ export async function findEmailOwner(email: string): Promise<string | null> {
  */
 export async function primaryForLogin(email: string): Promise<string | null> {
   const e = norm(email);
-  const isPrimary = authDb
-    .prepare("SELECT 1 AS ok FROM user WHERE lower(email) = ?")
-    .get(e) as { ok: number } | undefined;
+  const isPrimary = await sqlGet(
+    'SELECT 1 AS ok FROM "user" WHERE lower(email) = $1',
+    [e],
+  );
   if (isPrimary) return null;
   const row = await AppDataSource.getRepository(UserEmail).findOneBy({
     email: e,
   });
   // Only VERIFIED secondaries sign in — an unverified link proves nothing.
   if (!row?.verifiedAt) return null;
-  const user = authDb
-    .prepare("SELECT email FROM user WHERE id = ?")
-    .get(row.userId) as { email: string } | undefined;
+  const user = await sqlGet<{ email: string }>(
+    'SELECT email FROM "user" WHERE id = $1',
+    [row.userId],
+  );
   return user?.email ?? null;
 }
 
 /** All of a user's emails: the primary first, then secondaries (oldest first). */
 export async function listEmails(userId: string): Promise<AccountEmail[]> {
-  const user = authDb
-    .prepare("SELECT email FROM user WHERE id = ?")
-    .get(userId) as { email: string } | undefined;
+  const user = await sqlGet<{ email: string }>(
+    'SELECT email FROM "user" WHERE id = $1',
+    [userId],
+  );
   const rows = await AppDataSource.getRepository(UserEmail).find({
     where: { userId },
     order: { id: "asc" },
@@ -139,9 +143,10 @@ export async function removeEmail(
   email: string,
 ): Promise<void> {
   const e = norm(email);
-  const user = authDb
-    .prepare("SELECT email FROM user WHERE id = ?")
-    .get(userId) as { email: string } | undefined;
+  const user = await sqlGet<{ email: string }>(
+    'SELECT email FROM "user" WHERE id = $1',
+    [userId],
+  );
   if (user?.email?.toLowerCase() === e) {
     throw new Error(
       "The primary email cannot be removed — switch primary first",
@@ -160,9 +165,10 @@ export async function setPrimaryEmail(
   email: string,
 ): Promise<void> {
   const e = norm(email);
-  const user = authDb
-    .prepare("SELECT email FROM user WHERE id = ?")
-    .get(userId) as { email: string } | undefined;
+  const user = await sqlGet<{ email: string }>(
+    'SELECT email FROM "user" WHERE id = $1',
+    [userId],
+  );
   if (!user) throw new Error("User not found");
   if (user.email.toLowerCase() === e) return; // already primary
 
@@ -175,9 +181,10 @@ export async function setPrimaryEmail(
 
   const oldPrimary = user.email;
   // The target already proved control — the new primary stays verified.
-  authDb
-    .prepare("UPDATE user SET email = ?, emailVerified = 1 WHERE id = ?")
-    .run(e, userId);
+  await sqlRun(
+    'UPDATE "user" SET email = $1, "emailVerified" = true WHERE id = $2',
+    [e, userId],
+  );
   await repo.remove(target);
   // Keep the old primary linked as a secondary (unless somehow already taken)
   // — it was the account's address all along, so it stays VERIFIED; dropping

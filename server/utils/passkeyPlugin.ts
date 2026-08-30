@@ -17,7 +17,7 @@ import {
 import { setSessionCookie } from "better-auth/cookies";
 import { AppDataSource } from "./database";
 import { Passkey } from "#server/entities/passkey.entity";
-import { authDb } from "./auth";
+import { sqlGet } from "./auth";
 import {
   bufferToUint8,
   clearChallengeCookie,
@@ -50,10 +50,8 @@ interface UserRow {
   email: string;
 }
 
-const getUser = (userId: string): UserRow | undefined =>
-  authDb
-    .prepare("SELECT id, name, email FROM user WHERE id = ?")
-    .get(userId) as UserRow | undefined;
+const getUser = async (userId: string): Promise<UserRow | undefined> =>
+  sqlGet<UserRow>('SELECT id, name, email FROM "user" WHERE id = $1', [userId]);
 
 export function passkeyPlugin(): BetterAuthPlugin {
   return {
@@ -124,18 +122,17 @@ export function passkeyPlugin(): BetterAuthPlugin {
               counter: verification.authenticationInfo.newCounter,
             });
 
-            const user = getUser(passkey!.userId);
+            const user = await getUser(passkey!.userId);
             if (!user) fail(404, "User not found");
 
             // Same session + cookie path as password login.
             const session = await ctx.context.internalAdapter.createSession(
               user!.id,
             );
-            const fullUser = authDb
-              .prepare(
-                "SELECT id, name, email, emailVerified, image, createdAt, updatedAt FROM user WHERE id = ?",
-              )
-              .get(user!.id) as Record<string, unknown>;
+            const fullUser = (await sqlGet(
+              'SELECT id, name, email, "emailVerified", image, "createdAt", "updatedAt" FROM "user" WHERE id = $1',
+              [user!.id],
+            )) as Record<string, unknown>;
             await setSessionCookie(ctx, {
               session,
               user: {
@@ -171,7 +168,7 @@ export function passkeyPlugin(): BetterAuthPlugin {
             });
           }
           const { rpID, rpName } = getRelyingParty(ctx);
-          const user = getUser(session.user.id);
+          const user = await getUser(session.user.id);
           if (!user) {
             throw new APIError("NOT_FOUND", {
               message: "User not found",

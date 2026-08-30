@@ -92,7 +92,6 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     sessionSecret: process.env.SESSION_SECRET || "dev-secret-change-me",
-    dbPath: process.env.DB_PATH || "./data/app.db",
     uploadsDir: process.env.UPLOADS_DIR || "./uploads",
     siteUrl: process.env.SITE_URL || "",
     emailLogo,

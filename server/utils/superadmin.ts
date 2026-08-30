@@ -1,5 +1,5 @@
 import type { H3Event } from "h3";
-import { authDb } from "./auth";
+import { sqlAll, sqlGet } from "./auth";
 import { AppDataSource } from "./database";
 import { SiteAdmin } from "#server/entities/siteAdmin.entity";
 import { UserEmail } from "#server/entities/userEmail.entity";
@@ -36,9 +36,9 @@ export async function ensureBootstrapAdmin(): Promise<void> {
     bootstrapChecked = true;
     return;
   }
-  const first = authDb
-    .prepare("SELECT id FROM user ORDER BY createdAt ASC, rowid ASC LIMIT 1")
-    .get() as { id: string } | undefined;
+  const first = await sqlGet<{ id: string }>(
+    'SELECT id FROM "user" ORDER BY "createdAt" ASC, ctid ASC LIMIT 1',
+  );
   if (first) {
     await repo
       .insert({ userId: first.id, source: "bootstrap" })
@@ -58,9 +58,10 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
   // Env grants (runtime), matched against any linked email.
   const list = superadminEmails();
   if (list.length) {
-    const primaries = authDb
-      .prepare("SELECT lower(email) AS e FROM user WHERE id = ?")
-      .all(userId) as { e: string }[];
+    const primaries = await sqlAll<{ e: string }>(
+      'SELECT lower(email) AS e FROM "user" WHERE id = $1',
+      [userId],
+    );
     if (primaries.some((r) => list.includes(r.e))) return true;
     const linked = await AppDataSource.getRepository(UserEmail).find({
       where: { userId },

@@ -3,8 +3,8 @@ RUN corepack enable
 WORKDIR /app
 
 # --- deps ---
-# No apt toolchain: better-sqlite3 v13 ships official node-24 prebuilds, and
-# everything else (exceljs / adm-zip / tesseract.js) is pure JS/WASM.
+# No apt toolchain: everything (exceljs / adm-zip / tesseract.js / pg) is pure
+# JS/WASM — no native modules in production.
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # The postinstall hook runs this script — copy it before install.
@@ -38,11 +38,9 @@ COPY --from=build /app/package.json ./package.json
 # tessdata on disk; `COPY . .` in the build stage can't provide it).
 COPY --from=deps /app/tessdata ./tessdata
 
-# better-sqlite3's native binary is bundled by Nitro into .output.
-RUN mkdir -p /app/data /app/uploads
+RUN mkdir -p /app/uploads
 
 ENV NODE_ENV=production
-ENV DB_PATH=/app/data/app.db
 ENV UPLOADS_DIR=/app/uploads
 ENV TESSDATA_DIR=/app/tessdata
 ENV HOST=0.0.0.0

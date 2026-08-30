@@ -1,7 +1,7 @@
 import { AppDataSource } from "#server/utils/database";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
 import { getOrgRole, requireCampaignAccess } from "#server/utils/campaign";
-import { authDb } from "#server/utils/auth";
+import { sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
 
@@ -27,9 +27,10 @@ export default defineEventHandler(async (event) => {
   if (!norm) {
     throw createError({ statusCode: 400, statusMessage: "Email is required" });
   }
-  const u = authDb
-    .prepare("SELECT id, name, email FROM user WHERE lower(email) = ?")
-    .get(norm) as { id: string; name: string; email: string } | undefined;
+  const u = await sqlGet<{ id: string; name: string; email: string }>(
+    'SELECT id, name, email FROM "user" WHERE lower(email) = $1',
+    [norm],
+  );
   if (!u) {
     throw createError({
       statusCode: 404,

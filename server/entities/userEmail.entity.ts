@@ -26,26 +26,26 @@ export class UserEmail {
   email!: string;
 
   /** When the owner proved control of this address (null = pending). */
-  @Column({ name: "verified_at", type: "datetime", nullable: true })
+  @Column({ name: "verified_at", type: "timestamp", nullable: true })
   verifiedAt!: Date | null;
 
   /** SHA-256 of the pending verification token (null once verified/expired). */
   @Column({ name: "token_hash", type: "text", nullable: true })
   tokenHash!: string | null;
 
-  @Column({ name: "token_expires_at", type: "datetime", nullable: true })
+  @Column({ name: "token_expires_at", type: "timestamp", nullable: true })
   tokenExpiresAt!: Date | null;
 
   /** SHA-256 of the pending 6-digit verification code (code flow). */
   @Column({ name: "code_hash", type: "text", nullable: true })
   codeHash!: string | null;
 
-  @Column({ name: "code_expires_at", type: "datetime", nullable: true })
+  @Column({ name: "code_expires_at", type: "timestamp", nullable: true })
   codeExpiresAt!: Date | null;
 
   @Column({
     name: "created_at",
-    type: "datetime",
+    type: "timestamp",
     default: () => "CURRENT_TIMESTAMP",
   })
   createdAt!: Date;
