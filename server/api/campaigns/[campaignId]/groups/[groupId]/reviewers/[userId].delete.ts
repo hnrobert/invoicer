@@ -1,10 +1,8 @@
-import { AppDataSource } from "#server/utils/database";
-import { CampaignGroup } from "#server/entities/campaignGroup.entity";
-import { GroupReviewer } from "#server/entities/groupReviewer.entity";
+// API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { logAudit } from "#server/utils/audit";
+import { removeGroupReviewer } from "#server/service/campaigns/groups";
 
-/** Remove a reviewer from a group (manager only). */
+/** DELETE .../reviewers/:userId — remove a reviewer from a group. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const groupId = Number(getRouterParam(event, "groupId"));
@@ -13,23 +11,5 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "Managers only" });
-  }
-  const group = await AppDataSource.getRepository(CampaignGroup).findOneBy({
-    id: groupId,
-    campaignId,
-  });
-  if (!group) {
-    throw createError({ statusCode: 404, statusMessage: "Group not found" });
-  }
-  await AppDataSource.getRepository(GroupReviewer).delete({ groupId, userId });
-  logAudit({
-    organizationId: campaign.organizationId,
-    campaignId,
-    actorId: user.id,
-    action: "campaign.group.reviewer.remove",
-    target: `${group.name}: ${userId}`,
-  });
-  return { ok: true };
+  return removeGroupReviewer(user, campaign, rights, groupId, userId);
 });

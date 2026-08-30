@@ -1,16 +1,10 @@
-import { IsNull } from "typeorm";
-import { AppDataSource } from "#server/utils/database";
-import { Notification } from "#server/entities/notification.entity";
+// API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
+import { markNotificationsRead } from "#server/service/notifications/notifications";
 
-/** Mark notifications read: `?id=` one, or all unread when omitted. */
+/** PUT /api/notifications/read?id= — mark one (or all) notifications read. */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
   const id = getQuery(event).id ? Number(getQuery(event).id) : null;
-  const repo = AppDataSource.getRepository(Notification);
-  await repo.update(
-    id ? { id, userId: user.id } : { userId: user.id, readAt: IsNull() },
-    { readAt: new Date() },
-  );
-  return { ok: true };
+  return markNotificationsRead(user, id);
 });

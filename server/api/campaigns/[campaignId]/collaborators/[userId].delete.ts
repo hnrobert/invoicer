@@ -1,9 +1,8 @@
-import { AppDataSource } from "#server/utils/database";
-import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
+// API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { logAudit } from "#server/utils/audit";
+import { removeCollaborator } from "#server/service/campaigns/collaborators";
 
-/** Remove a collaborator (manager-only). */
+/** DELETE /api/campaigns/:id/collaborators/:userId — remove a collaborator. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const userId = getRouterParam(event, "userId")!;
@@ -11,22 +10,5 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  if (!rights.canManage) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Only campaign managers can remove collaborators",
-    });
-  }
-  await AppDataSource.getRepository(CampaignCollaborator).delete({
-    campaignId,
-    userId,
-  });
-  logAudit({
-    organizationId: campaign.organizationId,
-    campaignId,
-    actorId: user.id,
-    action: "campaign.collaborator.remove",
-    target: userId,
-  });
-  return { ok: true };
+  return removeCollaborator(user, campaign, rights, userId);
 });

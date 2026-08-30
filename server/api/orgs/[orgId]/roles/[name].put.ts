@@ -1,42 +1,12 @@
-import { AppDataSource } from "#server/utils/database";
-import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
+// API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { PERMISSIONS } from "#server/utils/orgPermissions";
-import { logAudit } from "#server/utils/audit";
+import { updateRolePermissions } from "#server/service/orgs/roles";
 
-/** Edit a custom role's permission bundle (Owner only). */
+/** PUT /api/orgs/:orgId/roles/:name — edit a role's permission bundle. */
 export default defineEventHandler(async (event) => {
   const orgId = getRouterParam(event, "orgId")!;
   const name = getRouterParam(event, "name")!;
   const user = await getSessionUser(event);
-  if (!(await getOrgPermissions(orgId, user.id)).has("org.role.manage")) {
-    throw createError({ statusCode: 403, statusMessage: "Owner only" });
-  }
-  const repo = AppDataSource.getRepository(OrgCustomRole);
-  const existing = await repo.findOneBy({ organizationId: orgId, name });
-  if (!existing) {
-    throw createError({ statusCode: 404, statusMessage: "Role not found" });
-  }
   const body = await readBody<{ permissions?: string[] }>(event);
-  if (!Array.isArray(body?.permissions)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "permissions required",
-    });
-  }
-  const clean = body.permissions.filter((p) =>
-    (PERMISSIONS as readonly string[]).includes(p),
-  );
-  await repo.update(
-    { organizationId: orgId, name },
-    { permissions: JSON.stringify(clean) },
-  );
-  logAudit({
-    organizationId: orgId,
-    actorId: user.id,
-    action: "org.customRole.update",
-    target: name,
-    meta: { permissions: clean },
-  });
-  return { ok: true };
+  return updateRolePermissions(user, orgId, name, body?.permissions);
 });

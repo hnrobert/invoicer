@@ -1,35 +1,11 @@
-import { AppDataSource } from "#server/utils/database";
-import { OrgSetting } from "#server/entities/orgSetting.entity";
-import { getOrgRole, getSessionUser } from "#server/utils/campaign";
+// API layer: parse the request, delegate to server/service.
+import { getSessionUser } from "#server/utils/campaign";
+import { setOrgVisibility } from "#server/service/orgs/org";
 
-/**
- * Set an organization's platform visibility (public / private). Owner or Admin
- * only. Private orgs keep their campaigns off the explore plaza; their public
- * campaigns stay reachable by direct link.
- */
+/** PUT /api/orgs/:orgId/visibility — set org visibility (Owner/Admin). */
 export default defineEventHandler(async (event) => {
   const orgId = getRouterParam(event, "orgId")!;
   const user = await getSessionUser(event);
-  const role = await getOrgRole(orgId, user.id);
-  if (role !== "owner" && role !== "admin") {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Only Owner/Admin can change organization visibility",
-    });
-  }
   const body = await readBody<{ visibility?: string }>(event);
-  if (body?.visibility !== "public" && body?.visibility !== "private") {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "visibility must be public or private",
-    });
-  }
-
-  const repo = AppDataSource.getRepository(OrgSetting);
-  const existing = await repo.findOneBy({ organizationId: orgId });
-  const saved = await repo.save({
-    ...(existing ?? { organizationId: orgId }),
-    visibility: body.visibility,
-  });
-  return { ok: true, visibility: saved.visibility };
+  return setOrgVisibility(orgId, user.id, body?.visibility);
 });

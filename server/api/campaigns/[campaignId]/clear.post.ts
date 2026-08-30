@@ -1,28 +1,10 @@
-import { AppDataSource } from "#server/utils/database";
-import { Invoice } from "#server/entities/invoice.entity";
+// API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { storage } from "#server/utils/storage";
+import { clearUploads } from "#server/service/campaigns/clear";
 
-/**
- * Remove uploaded files + records in a campaign, keeping the campaign itself.
- * Privileged users (canManage / canReview / legacy mode) clear the WHOLE
- * campaign; everyone else (plain member / collaborator / public uploader)
- * clears only their own uploads.
- */
+/** POST /api/campaigns/:id/clear — remove uploads (all or own, by rights). */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const { user, rights } = await requireCampaignAccess(event, campaignId);
-  const clearAll = rights.canManage || rights.canReview;
-
-  const repo = AppDataSource.getRepository(Invoice);
-  const where = clearAll ? { campaignId } : { campaignId, uploaderId: user.id };
-  const rows = await repo.find({ where });
-  for (const r of rows) await storage.remove(r.savedPath);
-  await repo.delete(where);
-  return {
-    ok: true,
-    msg: clearAll
-      ? "All uploaded files cleared"
-      : "Your uploaded files cleared",
-  };
+  return clearUploads(user, campaignId, rights);
 });

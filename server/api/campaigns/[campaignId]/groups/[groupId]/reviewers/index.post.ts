@@ -1,12 +1,8 @@
-import { AppDataSource } from "#server/utils/database";
-import { CampaignGroup } from "#server/entities/campaignGroup.entity";
-import { GroupReviewer } from "#server/entities/groupReviewer.entity";
+// API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { sqlGet } from "#server/utils/auth";
-import { logAudit } from "#server/utils/audit";
-import { notify } from "#server/utils/notify";
+import { addGroupReviewer } from "#server/service/campaigns/groups";
 
-/** Assign a reviewer (by email) to a group (manager only). */
+/** POST /api/campaigns/:id/groups/:groupId/reviewers — assign a reviewer. */
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const groupId = Number(getRouterParam(event, "groupId"));
@@ -14,42 +10,6 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  if (!rights.canManage) {
-    throw createError({ statusCode: 403, statusMessage: "Managers only" });
-  }
-  const group = await AppDataSource.getRepository(CampaignGroup).findOneBy({
-    id: groupId,
-    campaignId,
-  });
-  if (!group) {
-    throw createError({ statusCode: 404, statusMessage: "Group not found" });
-  }
   const { email } = await readBody<{ email?: string }>(event);
-  const u = await sqlGet<{ id: string; name: string; email: string }>(
-    'SELECT id, name, email FROM "user" WHERE lower(email) = $1',
-    [(email ?? "").trim().toLowerCase()],
-  );
-  if (!u) {
-    throw createError({ statusCode: 404, statusMessage: "User not found" });
-  }
-  const repo = AppDataSource.getRepository(GroupReviewer);
-  if (await repo.findOneBy({ groupId, userId: u.id })) {
-    throw createError({ statusCode: 400, statusMessage: "Already assigned" });
-  }
-  await repo.save({ groupId, userId: u.id });
-  logAudit({
-    organizationId: campaign.organizationId,
-    campaignId,
-    actorId: user.id,
-    action: "campaign.group.reviewer.add",
-    target: `${group.name}: ${u.email}`,
-  });
-  notify(u.id, "group.assigned", {
-    link: `/orgs/undefined/campaigns/${campaignId}`,
-    data: {
-      group: group.name,
-      campaign: campaign.name || campaign.expectedTitle,
-    },
-  });
-  return { ok: true };
+  return addGroupReviewer(user, campaign, rights, groupId, email);
 });

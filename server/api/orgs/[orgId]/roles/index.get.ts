@@ -1,24 +1,13 @@
-import { AppDataSource } from "#server/utils/database";
-import { OrgCustomRole } from "#server/entities/orgCustomRole.entity";
+// API layer: parse the request, delegate to server/service.
 import { getOrgRole, getSessionUser } from "#server/utils/campaign";
+import { listRoles } from "#server/service/orgs/roles";
 
-/** List the org's custom roles (any member may read — assignment UI needs it). */
+/** GET /api/orgs/:orgId/roles — list custom roles (members only). */
 export default defineEventHandler(async (event) => {
   const orgId = getRouterParam(event, "orgId")!;
   const user = await getSessionUser(event);
   if (!(await getOrgRole(orgId, user.id))) {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
-  const rows = await AppDataSource.getRepository(OrgCustomRole).find({
-    where: { organizationId: orgId },
-    order: { id: "asc" },
-  });
-  return {
-    ok: true,
-    roles: rows.map((r) => ({
-      name: r.name,
-      baseRole: r.baseRole,
-      permissions: JSON.parse(r.permissions || "[]") as string[],
-    })),
-  };
+  return listRoles(orgId);
 });

@@ -1,16 +1,10 @@
-import { AppDataSource } from "#server/utils/database";
-import { OrgSetting } from "#server/entities/orgSetting.entity";
-import { getOrgRole, getSessionUser } from "#server/utils/campaign";
+// API layer: parse the request, delegate to server/service.
+import { getSessionUser } from "#server/utils/campaign";
+import { getOrgVisibility } from "#server/service/orgs/org";
 
-/** Read an org's platform visibility (members only; defaults to public). */
+/** GET /api/orgs/:orgId/visibility — read org visibility (members). */
 export default defineEventHandler(async (event) => {
   const orgId = getRouterParam(event, "orgId")!;
   const user = await getSessionUser(event);
-  if (!(await getOrgRole(orgId, user.id))) {
-    throw createError({ statusCode: 403, statusMessage: "Forbidden" });
-  }
-  const setting = await AppDataSource.getRepository(OrgSetting).findOneBy({
-    organizationId: orgId,
-  });
-  return { ok: true, visibility: setting?.visibility ?? "public" };
+  return getOrgVisibility(orgId, user.id);
 });
