@@ -387,7 +387,7 @@
     filters: {
       all: "全部",
       qualified: "合格",
-      review: "二次审核",
+      manual: "内部复核",
       unqualified: "不合格",
     },
     table: {
@@ -401,7 +401,7 @@
     },
     status: {
       qualified: "合格",
-      review: "二次审核",
+      manual: "内部复核",
       unqualified: "不合格",
       pending: "等待",
       processing: "识别中",

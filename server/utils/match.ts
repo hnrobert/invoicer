@@ -1,7 +1,7 @@
 import type { InvoiceFields } from "./fields";
 
 export interface MatchResult {
-  status: "qualified" | "review" | "unqualified";
+  status: "qualified" | "manual" | "unqualified";
   reason: string;
   titleOk: boolean;
   taxOk: boolean;
@@ -13,7 +13,8 @@ export interface MatchResult {
  * buyer title / tax id. Ported from the original Python `_match_invoice`.
  *
  * - title + tax id both match → qualified (counts toward total)
- * - partial match, or no amount recognized → review (human decides)
+ * - partial match, or no amount recognized → manual (internal review — the
+ *   uploader enters/fixes data; NOT the reviewer's submit/approve flow)
  * - neither matches → unqualified
  */
 export interface AllowedTitle {
@@ -53,7 +54,7 @@ export function matchInvoiceMulti(
   let reason: string;
   if (anyTitleOk && anyTaxOk) {
     if (amount == null) {
-      status = "review";
+      status = "manual";
       reason =
         "Title and tax ID matched, but no amount recognized — enter it manually";
     } else {
@@ -61,7 +62,7 @@ export function matchInvoiceMulti(
       reason = "Title and tax ID both matched";
     }
   } else if (anyTitleOk || anyTaxOk) {
-    status = "review";
+    status = "manual";
     reason = anyTitleOk
       ? "Title matched, tax ID mismatched"
       : "Tax ID matched, title mismatched";
@@ -104,7 +105,7 @@ export function matchInvoice(
 
   if (titleOk && taxOk) {
     if (amount == null) {
-      status = "review";
+      status = "manual";
       reason =
         "Title and tax ID matched, but no amount recognized — enter it manually";
     } else {
@@ -112,7 +113,7 @@ export function matchInvoice(
       reason = "Title and tax ID both matched";
     }
   } else if (titleOk || taxOk) {
-    status = "review";
+    status = "manual";
     if (titleOk && !taxOk) reason = "Title matched, tax ID mismatched";
     else if (taxOk && !titleOk) reason = "Tax ID matched, title mismatched";
     else reason = "Partial match";

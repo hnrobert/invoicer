@@ -11,7 +11,7 @@ import { logAudit } from "#server/utils/audit";
 
 const STATUS_LABEL: Record<string, string> = {
   qualified: "Qualified",
-  review: "Needs review",
+  manual: "Internal review",
   unqualified: "Unqualified",
   pending: "Pending",
   processing: "Processing",

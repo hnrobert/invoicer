@@ -389,7 +389,7 @@
     filters: {
       all: "All",
       qualified: "Qualified",
-      review: "Review",
+      manual: "Internal review",
       unqualified: "Unqualified",
     },
     table: {
@@ -403,7 +403,7 @@
     },
     status: {
       qualified: "Qualified",
-      review: "Review",
+      manual: "Internal review",
       unqualified: "Unqualified",
       pending: "Pending",
       processing: "Processing",

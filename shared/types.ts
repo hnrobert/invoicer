@@ -77,7 +77,8 @@ export type InvoiceStatus =
   | "pending" // queued, not yet processed
   | "processing" // extraction / OCR in progress
   | "qualified" // title + tax id both match → counts toward total
-  | "review" // partial match, or amount not recognized → needs a human
+  | "manual" // partial match, or amount not recognized → internal review by
+  // the uploader (distinct from the reviewer's submit/approve flow)
   | "unqualified" // neither title nor tax id matches
   | "error"; // extraction failed
 

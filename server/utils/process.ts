@@ -46,7 +46,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
         await repo.update(
           { id: invoiceId },
           {
-            status: "review",
+            status: "manual",
             reason:
               "Digital-invoice file recognized, but no invoice fields found — review manually",
             processedAt: new Date(),
@@ -63,7 +63,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
         await repo.update(
           { id: invoiceId },
           {
-            status: "review",
+            status: "manual",
             reason:
               "No text extracted from the PDF (likely a scan — upload as an image or review manually)",
             processedAt: new Date(),
@@ -88,7 +88,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
           { id: invoiceId },
           {
             kind: "receipt",
-            status: ok ? "review" : "unqualified",
+            status: ok ? "manual" : "unqualified",
             reason: ok
               ? "Receipt/order screenshot recognized — pending invoice pairing"
               : "No receipt fields recognized (need paid amount / merchant / order no)",
@@ -111,7 +111,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
           await allowedPairs(campaign),
         )
       : {
-          status: "review" as const,
+          status: "manual" as const,
           reason: "No campaign context",
           titleOk: false,
           taxOk: false,

@@ -3,7 +3,7 @@ import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
 
-const TERMINAL = ["qualified", "review", "unqualified"] as const;
+const TERMINAL = ["qualified", "manual", "unqualified"] as const;
 
 /**
  * Submit every one of the caller's own submittable draft invoices in one go

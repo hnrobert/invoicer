@@ -204,8 +204,8 @@ function statusLabel(s: string): string {
   switch (s) {
     case "qualified":
       return t("home.status.qualified");
-    case "review":
-      return t("home.status.review");
+    case "manual":
+      return t("home.status.manual");
     case "unqualified":
       return t("home.status.unqualified");
     case "pending":
@@ -219,12 +219,12 @@ function statusLabel(s: string): string {
 const FILTERS = [
   { key: "all", labelKey: "home.filters.all" },
   { key: "qualified", labelKey: "home.filters.qualified" },
-  { key: "review", labelKey: "home.filters.review" },
+  { key: "manual", labelKey: "home.filters.manual" },
   { key: "unqualified", labelKey: "home.filters.unqualified" },
 ] as const;
 
 // ---------- submit/approve flow ----------
-const TERMINAL = new Set(["qualified", "review", "unqualified"]);
+const TERMINAL = new Set(["qualified", "manual", "unqualified"]);
 const submitFlow = computed(() => inv.flow.value === "submit");
 const canReview = computed(() => !!inv.rights.value?.canReview);
 const canExport = computed(
@@ -273,7 +273,7 @@ function reviewable(i: InvoicePublic): boolean {
   const mayReview = canReview.value || (isGroupReviewer.value && inMyGroup(i));
   if (!mayReview) return false;
   if (submitFlow.value) return i.reviewState === "submitted";
-  return i.status === "review";
+  return i.status === "manual";
 }
 const submittableCount = computed(
   () => inv.invoices.value.filter(submittable).length,
@@ -787,7 +787,7 @@ async function loadAudit() {
         </div>
         <div class="rounded-lg border bg-card p-3">
           <div class="text-xs text-muted-foreground">
-            {{ t("home.status.review") }}
+            {{ t("home.status.manual") }}
           </div>
           <div class="text-lg font-bold text-amber-600">
             {{ inv.counts.value.review }}

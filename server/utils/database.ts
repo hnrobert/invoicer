@@ -86,6 +86,11 @@ export async function initDataSource(): Promise<void> {
   await AppDataSource.query(
     "UPDATE invoices SET uploader_id=(SELECT user_id FROM campaigns WHERE campaigns.id=invoices.campaign_id) WHERE uploader_id IS NULL",
   );
+  // Rename the extraction-stage status "review" → "manual" so it no longer
+  // collides with the reviewer's submit/approve flow vocabulary.
+  await AppDataSource.query(
+    "UPDATE invoices SET status='manual' WHERE status='review'",
+  );
   console.log(`[db] ready · ${dbPath}`);
 }
 

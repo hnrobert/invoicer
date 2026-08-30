@@ -3,7 +3,7 @@ import { Invoice } from "#server/entities/invoice.entity";
 import { requireCampaignAccess } from "#server/utils/campaign";
 import { invoiceToPublic } from "#server/utils/serialize";
 
-const TERMINAL = new Set(["qualified", "review", "unqualified"]);
+const TERMINAL = new Set(["qualified", "manual", "unqualified"]);
 
 /**
  * Submit one of the caller's own draft invoices for review (submit/approve
