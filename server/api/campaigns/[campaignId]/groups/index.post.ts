@@ -1,6 +1,7 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
 import { createGroup } from "#server/service/campaigns/groups";
+import type { GroupCreateBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/groups — create a group. */
 export default defineEventHandler(async (event) => {
@@ -9,6 +10,6 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  const { name } = await readBody<{ name?: string }>(event);
+  const { name } = await readBody<GroupCreateBody>(event);
   return createGroup(user, campaign, rights, name);
 });

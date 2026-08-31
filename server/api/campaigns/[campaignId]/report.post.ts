@@ -1,6 +1,7 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
 import { sendCampaignReport } from "#server/service/campaigns/report";
+import type { RecipientBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/report — email the audit report to a recipient. */
 export default defineEventHandler(async (event) => {
@@ -9,6 +10,6 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  const { to } = await readBody<{ to?: string }>(event);
+  const { to } = await readBody<RecipientBody>(event);
   return sendCampaignReport(user, campaign, rights, (to ?? "").trim());
 });

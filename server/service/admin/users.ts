@@ -1,7 +1,8 @@
+import type { AdminUsersResponse } from "#shared/api";
 import { sqlAll } from "#server/utils/auth";
 
 /** Superadmin: list all registered users (id/name/email/verified/created). */
-export async function listUsers() {
+export async function listUsers(): Promise<AdminUsersResponse> {
   const rows = await sqlAll<{
     id: string;
     name: string;
@@ -12,7 +13,7 @@ export async function listUsers() {
     'SELECT id, name, email, "emailVerified", "createdAt" FROM "user" ORDER BY "createdAt" DESC LIMIT 500',
   );
   return {
-    ok: true as const,
+    ok: true,
     users: rows.map((r) => ({
       id: r.id,
       name: r.name,

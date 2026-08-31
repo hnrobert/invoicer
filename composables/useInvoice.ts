@@ -1,5 +1,14 @@
 import type {
-  CampaignPublic,
+  CampaignDetailResponse,
+  CampaignsResponse,
+  CreateCampaignResponse,
+  ReportResponse,
+  ReviewResponse,
+  SubmitAllResponse,
+  SubmitResponse,
+  UploadResponse,
+} from "#shared/api";
+import type {
   CampaignRights,
   CampaignStatus,
   CampaignVisibility,
@@ -70,11 +79,7 @@ export function useInvoice() {
     taxId: string,
     opts: CreateCampaignOptions = {},
   ): Promise<number> {
-    const data = await $fetch<{
-      ok: boolean;
-      campaign_id: number;
-      msg?: string;
-    }>("/api/campaign", {
+    const data = await $fetch<CreateCampaignResponse>("/api/campaign", {
       method: "POST",
       body: {
         title,
@@ -84,7 +89,7 @@ export function useInvoice() {
         title_ids: opts.titleIds ?? [],
       },
     });
-    if (!data.ok) throw new Error(data.msg || "创建征集活动失败");
+    if (!data.ok) throw new Error("创建征集活动失败");
     campaignId.value = data.campaign_id;
     organizationId.value = opts.organizationId ?? null;
     name.value = opts.name?.trim() || title;
@@ -98,21 +103,7 @@ export function useInvoice() {
 
   /** Resume an existing campaign by id (loads its header + invoices). */
   async function resume(id: number) {
-    const data = await $fetch<{
-      name: string;
-      expected_title: string;
-      expected_tax_id: string | null;
-      organization_id: string | null;
-      invoices: InvoicePublic[];
-      total_amount: number;
-      has_pending: boolean;
-      rights: CampaignRights;
-      flow: "direct" | "submit";
-      scoped_to_me: boolean;
-      my_group_ids?: number[];
-      visibility: CampaignVisibility;
-      status: CampaignStatus;
-    }>(`/api/campaigns/${id}`);
+    const data: CampaignDetailResponse = await $fetch(`/api/campaigns/${id}`);
     campaignId.value = id;
     organizationId.value = data.organization_id;
     name.value = data.name;
@@ -133,17 +124,9 @@ export function useInvoice() {
 
   async function refresh() {
     if (!campaignId.value) return;
-    const data = await $fetch<{
-      invoices: InvoicePublic[];
-      total_amount: number;
-      has_pending: boolean;
-      rights: CampaignRights;
-      flow: "direct" | "submit";
-      scoped_to_me: boolean;
-      my_group_ids?: number[];
-      visibility: CampaignVisibility;
-      status: CampaignStatus;
-    }>(`/api/campaigns/${campaignId.value}`);
+    const data: CampaignDetailResponse = await $fetch(
+      `/api/campaigns/${campaignId.value}`,
+    );
     invoices.value = data.invoices;
     totalAmount.value = data.total_amount;
     hasPending.value = data.has_pending;
@@ -172,7 +155,7 @@ export function useInvoice() {
     if (!campaignId.value) return;
     const fd = new FormData();
     for (const f of files) fd.append("files", f);
-    const data = await $fetch<{ ok: boolean; results: InvoicePublic[] }>(
+    const data = await $fetch<UploadResponse>(
       `/api/campaigns/${campaignId.value}/upload`,
       { method: "POST", body: fd },
     );
@@ -200,16 +183,14 @@ export function useInvoice() {
     if (!campaignId.value) return;
     const body: { decision: string; manual_amount?: number } = { decision };
     if (manualAmount != null) body.manual_amount = manualAmount;
-    const data = await $fetch<{
-      ok: boolean;
-      record: InvoicePublic;
-      total_amount: number;
-      msg?: string;
-    }>(`/api/campaigns/${campaignId.value}/review/${id}`, {
-      method: "POST",
-      body,
-    });
-    if (!data.ok) throw new Error(data.msg || "审核失败");
+    const data = await $fetch<ReviewResponse>(
+      `/api/campaigns/${campaignId.value}/review/${id}`,
+      {
+        method: "POST",
+        body,
+      },
+    );
+    if (!data.ok) throw new Error("审核失败");
     const idx = invoices.value.findIndex((i) => i.id === id);
     if (idx >= 0) invoices.value[idx] = data.record;
     totalAmount.value = data.total_amount;
@@ -218,7 +199,7 @@ export function useInvoice() {
   /** Submit one of the caller's own draft invoices for review (submit flow). */
   async function submitInvoice(id: number) {
     if (!campaignId.value) return;
-    const data = await $fetch<{ ok: boolean; record: InvoicePublic }>(
+    const data = await $fetch<SubmitResponse>(
       `/api/campaigns/${campaignId.value}/invoices/${id}/submit`,
       { method: "POST" },
     );
@@ -230,7 +211,7 @@ export function useInvoice() {
   /** Submit all of the caller's own submittable drafts, then refresh. */
   async function submitAll() {
     if (!campaignId.value) return;
-    const data = await $fetch<{ ok: boolean; submitted: number }>(
+    const data = await $fetch<SubmitAllResponse>(
       `/api/campaigns/${campaignId.value}/submit-all`,
       { method: "POST" },
     );
@@ -241,15 +222,13 @@ export function useInvoice() {
 
   async function emailReport(to: string) {
     if (!campaignId.value) return;
-    return await $fetch<{
-      ok: boolean;
-      total: number;
-      count: number;
-      msg?: string;
-    }>(`/api/campaigns/${campaignId.value}/report`, {
-      method: "POST",
-      body: { to },
-    });
+    return await $fetch<ReportResponse>(
+      `/api/campaigns/${campaignId.value}/report`,
+      {
+        method: "POST",
+        body: { to },
+      },
+    );
   }
 
   const counts = computed(() => {
@@ -316,19 +295,6 @@ export function useInvoice() {
 }
 
 /** Fetch the caller's accessible campaigns: personal / org / collaborations. */
-export async function listCampaigns(): Promise<{
-  personal: CampaignPublic[];
-  organizations: CampaignPublic[];
-  collaborations: CampaignPublic[];
-}> {
-  const data = await $fetch<{
-    personal: CampaignPublic[];
-    organizations: CampaignPublic[];
-    collaborations: CampaignPublic[];
-  }>("/api/campaigns");
-  return {
-    personal: data.personal,
-    organizations: data.organizations,
-    collaborations: data.collaborations,
-  };
+export async function listCampaigns(): Promise<CampaignsResponse> {
+  return $fetch<CampaignsResponse>("/api/campaigns");
 }

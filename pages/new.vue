@@ -8,15 +8,11 @@ useHead({ title: () => t("nav.new") });
 const route = useRoute();
 const inv = useInvoice();
 const { organizations, refresh: refreshOrgs, create: createOrg } = useOrgs();
-import type { InvoiceTitlePublic } from "#shared/types";
+import type { TitlesGroupedResponse } from "#shared/api";
 
 // Stored-title picker: personal + site + (for the selected org scope) that
 // org's titles. Multi-select — the campaign allows every checked title.
-interface TitleGroups {
-  personal: InvoiceTitlePublic[];
-  site: InvoiceTitlePublic[];
-  organizations: { orgId: string; titles: InvoiceTitlePublic[] }[];
-}
+type TitleGroups = Omit<TitlesGroupedResponse, "ok">;
 const titleGroups = ref<TitleGroups>({
   personal: [],
   site: [],

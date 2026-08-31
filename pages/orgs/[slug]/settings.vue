@@ -2,6 +2,11 @@
 // GitHub org → Settings: left section nav (General / Roles / Migration /
 // Transfers / Audit / Danger zone) + right content, driven by ?section=.
 // Owner/Admin only (server enforces every endpoint used here).
+import type {
+  AuditResponse,
+  OrgTransfersResponse,
+  RolesResponse,
+} from "#shared/api";
 import type { CampaignPublic } from "#shared/types";
 
 definePageMeta({ layout: "default" });
@@ -139,9 +144,7 @@ async function saveRolePerms(name: string) {
 async function loadRoles() {
   if (!org.value) return;
   try {
-    const r = await $fetch<{ roles: typeof customRoles.value }>(
-      `/api/orgs/${org.value.id}/roles`,
-    );
+    const r = await $fetch<RolesResponse>(`/api/orgs/${org.value.id}/roles`);
     customRoles.value = r.roles;
   } catch {
     customRoles.value = [];
@@ -209,7 +212,7 @@ const transfers = ref<
 async function loadTransfers() {
   if (!org.value) return;
   try {
-    const tr = await $fetch<{ transfers: typeof transfers.value }>(
+    const tr = await $fetch<OrgTransfersResponse>(
       `/api/orgs/${org.value.id}/transfers`,
     );
     transfers.value = tr.transfers;
@@ -250,7 +253,7 @@ async function loadAudit() {
   if (!org.value) return;
   auditLoading.value = true;
   try {
-    const data = await $fetch<{ logs: typeof auditLogs.value }>("/api/audit", {
+    const data = await $fetch<AuditResponse>("/api/audit", {
       query: { orgId: org.value.id },
     });
     auditLogs.value = data.logs;

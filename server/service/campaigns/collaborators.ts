@@ -5,13 +5,19 @@ import { getOrgRole } from "#server/utils/campaign";
 import { sqlAll, sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type {
+  CollaboratorAddResponse,
+  CollaboratorsResponse,
+  EmailBody,
+  OkResponse,
+} from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 /** List the campaign's collaborators (name/email for display). Manager-visible. */
 export async function listCollaborators(
   campaignId: number,
   rights: CampaignRights,
-) {
+): Promise<CollaboratorsResponse> {
   if (!rights.canManage && !rights.canReview) {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
@@ -28,7 +34,7 @@ export async function listCollaborators(
     : [];
   const byId = new Map(users.map((u) => [u.id, u]));
   return {
-    ok: true as const,
+    ok: true,
     collaborators: rows.map((r) => ({
       userId: r.userId,
       name: byId.get(r.userId)?.name ?? r.userId,
@@ -47,8 +53,8 @@ export async function addCollaborator(
   user: Pick<AuthUser, "id" | "name">,
   campaign: Campaign,
   rights: CampaignRights,
-  email: string | undefined,
-) {
+  email: EmailBody["email"],
+): Promise<CollaboratorAddResponse> {
   const campaignId = campaign.id;
   if (!rights.canManage) {
     throw createError({
@@ -102,7 +108,7 @@ export async function addCollaborator(
     data: { campaign: campaign.name || campaign.expectedTitle, by: user.name },
   });
   return {
-    ok: true as const,
+    ok: true,
     collaborator: { userId: u.id, name: u.name, email: u.email },
   };
 }
@@ -113,7 +119,7 @@ export async function removeCollaborator(
   campaign: Campaign,
   rights: CampaignRights,
   userId: string,
-) {
+): Promise<OkResponse> {
   const campaignId = campaign.id;
   if (!rights.canManage) {
     throw createError({
@@ -132,5 +138,5 @@ export async function removeCollaborator(
     action: "campaign.collaborator.remove",
     target: userId,
   });
-  return { ok: true as const };
+  return { ok: true };
 }

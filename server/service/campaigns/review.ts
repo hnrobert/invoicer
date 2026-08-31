@@ -5,12 +5,8 @@ import { myReviewGroups, usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type { ReviewBody, ReviewResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
-
-export interface ReviewInput {
-  decision?: string;
-  manual_amount?: number | string;
-}
 
 /**
  * Manual review of an invoice. Requires review rights (org Editor+, the
@@ -26,8 +22,8 @@ export async function reviewInvoice(
   campaign: Campaign,
   rights: CampaignRights,
   invoiceId: number,
-  body: ReviewInput,
-) {
+  body: ReviewBody,
+): Promise<ReviewResponse> {
   const campaignId = campaign.id;
   // Group reviewers hold no campaign-wide canReview — they may review only
   // invoices inside their assigned groups, checked per invoice.
@@ -129,7 +125,7 @@ export async function reviewInvoice(
     });
   }
   return {
-    ok: true as const,
+    ok: true,
     record: invoiceToPublic(updated),
     total_amount: await calcTotal(campaignId, {
       flow: submitFlow ? "submit" : "direct",

@@ -4,6 +4,7 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { CampaignCollaborator } from "#server/entities/campaignCollaborator.entity";
 import { getUserOrgIds } from "#server/utils/campaign";
 import { sqlGet } from "#server/utils/auth";
+import type { CampaignsResponse } from "#shared/api";
 import type { AuthUser, CampaignPublic } from "#shared/types";
 
 /** org slug lookup (for client-side /orgs/[slug]/campaigns/[id] links). */
@@ -42,11 +43,9 @@ export async function campaignToPublic(c: Campaign): Promise<CampaignPublic> {
  * (typically org outsiders). Personal and org campaigns are returned in
  * separate arrays so the client can group them; collaborations get their own.
  */
-export async function listCampaignsFor(user: Pick<AuthUser, "id">): Promise<{
-  personal: CampaignPublic[];
-  organizations: CampaignPublic[];
-  collaborations: CampaignPublic[];
-}> {
+export async function listCampaignsFor(
+  user: Pick<AuthUser, "id">,
+): Promise<CampaignsResponse> {
   const orgIds = await getUserOrgIds(user.id);
 
   // Personal campaigns (organizationId IS NULL) OR campaigns owned by any org
@@ -84,5 +83,5 @@ export async function listCampaignsFor(user: Pick<AuthUser, "id">): Promise<{
       )
     : [];
 
-  return { personal, organizations: byOrg, collaborations };
+  return { ok: true, personal, organizations: byOrg, collaborations };
 }

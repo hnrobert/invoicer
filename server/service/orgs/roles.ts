@@ -7,6 +7,12 @@ import {
 } from "#server/utils/orgPermissions";
 import { sqlRun } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
+import type {
+  OkResponse,
+  RoleCreateBody,
+  RoleUpdateBody,
+  RolesResponse,
+} from "#shared/api";
 import type { AuthUser } from "#shared/types";
 
 const BASES = [
@@ -44,13 +50,13 @@ async function requireRoleManage(orgId: string, userId: string) {
 }
 
 /** List the org's custom roles (any member may read — assignment UI needs it). */
-export async function listRoles(orgId: string) {
+export async function listRoles(orgId: string): Promise<RolesResponse> {
   const rows = await AppDataSource.getRepository(OrgCustomRole).find({
     where: { organizationId: orgId },
     order: { id: "asc" },
   });
   return {
-    ok: true as const,
+    ok: true,
     roles: rows.map((r) => ({
       name: r.name,
       baseRole: r.baseRole,
@@ -67,8 +73,8 @@ export async function listRoles(orgId: string) {
 export async function createRole(
   user: Pick<AuthUser, "id">,
   orgId: string,
-  body: { name?: string; baseRole?: string; permissions?: string[] },
-) {
+  body: RoleCreateBody,
+): Promise<OkResponse> {
   await requireRoleManage(orgId, user.id);
   const name = (body?.name ?? "").trim().slice(0, 30);
   const baseRole = body?.baseRole ?? "";
@@ -122,7 +128,7 @@ export async function createRole(
     target: name,
     meta: { baseRole },
   });
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /** Edit a custom role's permission bundle (org.role.manage). */
@@ -130,21 +136,21 @@ export async function updateRolePermissions(
   user: Pick<AuthUser, "id">,
   orgId: string,
   name: string,
-  permissions: string[] | undefined,
-) {
+  body: RoleUpdateBody,
+): Promise<OkResponse> {
   await requireRoleManage(orgId, user.id);
   const repo = AppDataSource.getRepository(OrgCustomRole);
   const existing = await repo.findOneBy({ organizationId: orgId, name });
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: "Role not found" });
   }
-  if (!Array.isArray(permissions)) {
+  if (!Array.isArray(body?.permissions)) {
     throw createError({
       statusCode: 400,
       statusMessage: "permissions required",
     });
   }
-  const clean = permissions.filter((p) =>
+  const clean = body.permissions.filter((p) =>
     (PERMISSIONS as readonly string[]).includes(p),
   );
   await repo.update(
@@ -158,7 +164,7 @@ export async function updateRolePermissions(
     target: name,
     meta: { permissions: clean },
   });
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /** Delete a custom role; members still holding it are demoted to member. */
@@ -166,7 +172,7 @@ export async function deleteRole(
   user: Pick<AuthUser, "id">,
   orgId: string,
   name: string,
-) {
+): Promise<OkResponse> {
   await requireRoleManage(orgId, user.id);
   await AppDataSource.getRepository(OrgCustomRole).delete({
     organizationId: orgId,
@@ -183,5 +189,5 @@ export async function deleteRole(
     action: "org.customRole.delete",
     target: name,
   });
-  return { ok: true as const };
+  return { ok: true };
 }

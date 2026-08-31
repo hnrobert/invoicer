@@ -11,6 +11,7 @@ import {
   checkEmailSend,
   emailLimitError,
 } from "#server/utils/emailLimit";
+import type { ReportResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 function esc(s: string | null | undefined): string {
@@ -32,7 +33,7 @@ export async function sendCampaignReport(
   campaign: Campaign,
   rights: CampaignRights,
   to: string,
-) {
+): Promise<ReportResponse> {
   const campaignId = campaign.id;
   // The report contains everyone's invoices — an export-grade action. Legacy
   // campaigns keep the old behavior (any member may send it).
@@ -104,7 +105,7 @@ export async function sendCampaignReport(
     html: true,
   });
   return {
-    ok: true as const,
+    ok: true,
     messageId,
     total,
     count: invoices.length,

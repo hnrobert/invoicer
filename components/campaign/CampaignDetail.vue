@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import type {
+  AuditResponse,
+  CampaignDetailResponse,
+  CollaboratorsResponse,
+  GroupsResponse,
+} from "#shared/api";
 import type { InvoicePublic } from "#shared/types";
 
 // GitHub repo-style campaign page: breadcrumb header (org / campaign) with
@@ -98,7 +104,7 @@ const groupReviewerEmail = ref<Record<number, string>>({});
 
 async function loadGroups() {
   try {
-    const data = await $fetch<{ groups: GroupInfo[] }>(
+    const data = await $fetch<GroupsResponse>(
       `/api/campaigns/${props.campaignId}/groups`,
     );
     groups.value = data.groups;
@@ -390,11 +396,9 @@ const otherOrgs = computed(() =>
 
 async function loadSettings() {
   try {
-    const data = await $fetch<{
-      visibility: "public" | "internal" | "private";
-      status: "active" | "closed" | "archived";
-      searchable?: boolean;
-    }>(`/api/campaigns/${props.campaignId}`);
+    const data = await $fetch<CampaignDetailResponse>(
+      `/api/campaigns/${props.campaignId}`,
+    );
     setVisibility.value = data.visibility;
     setStatus.value = data.status;
     setSearchable.value = !!data.searchable;
@@ -403,7 +407,7 @@ async function loadSettings() {
   }
   sdOrig.value = sdSnapshot();
   try {
-    const data = await $fetch<{ collaborators: typeof collaborators.value }>(
+    const data = await $fetch<CollaboratorsResponse>(
       `/api/campaigns/${props.campaignId}/collaborators`,
     );
     collaborators.value = data.collaborators;
@@ -571,7 +575,7 @@ const auditLoading = ref(false);
 async function loadAudit() {
   auditLoading.value = true;
   try {
-    const data = await $fetch<{ logs: typeof auditLogs.value }>("/api/audit", {
+    const data = await $fetch<AuditResponse>("/api/audit", {
       query: { campaignId: props.campaignId },
     });
     auditLogs.value = data.logs;

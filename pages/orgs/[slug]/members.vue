@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // GitHub org → Members tab: invite / change role / remove (ported from the
 // old /organizations page). Custom roles appear as base role + name.
+import type { RolesResponse } from "#shared/api";
 import type { OrgRole } from "#shared/types";
 
 definePageMeta({ layout: "default" });
@@ -61,9 +62,7 @@ async function reload() {
   await load();
   if (!org.value) return;
   try {
-    const r = await $fetch<{ roles: typeof customRoles.value }>(
-      `/api/orgs/${org.value.id}/roles`,
-    );
+    const r = await $fetch<RolesResponse>(`/api/orgs/${org.value.id}/roles`);
     customRoles.value = r.roles;
   } catch {
     customRoles.value = [];

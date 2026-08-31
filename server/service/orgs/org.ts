@@ -5,16 +5,24 @@ import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { Campaign } from "#server/entities/campaign.entity";
 import { getOrgRole } from "#server/utils/campaign";
 import { sqlGet } from "#server/utils/auth";
+import type {
+  OrgTransfersResponse,
+  OrgVisibilityBody,
+  VisibilityResponse,
+} from "#shared/api";
 
 /** Read an org's platform visibility (members only; defaults to public). */
-export async function getOrgVisibility(orgId: string, userId: string) {
+export async function getOrgVisibility(
+  orgId: string,
+  userId: string,
+): Promise<VisibilityResponse> {
   if (!(await getOrgRole(orgId, userId))) {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
   const setting = await AppDataSource.getRepository(OrgSetting).findOneBy({
     organizationId: orgId,
   });
-  return { ok: true as const, visibility: setting?.visibility ?? "public" };
+  return { ok: true, visibility: setting?.visibility ?? "public" };
 }
 
 /**
@@ -25,8 +33,8 @@ export async function getOrgVisibility(orgId: string, userId: string) {
 export async function setOrgVisibility(
   orgId: string,
   userId: string,
-  visibility: string | undefined,
-) {
+  visibility: OrgVisibilityBody["visibility"],
+): Promise<VisibilityResponse> {
   const role = await getOrgRole(orgId, userId);
   if (role !== "owner" && role !== "admin") {
     throw createError({
@@ -47,14 +55,17 @@ export async function setOrgVisibility(
     ...(existing ?? { organizationId: orgId }),
     visibility,
   });
-  return { ok: true as const, visibility: saved.visibility };
+  return { ok: true, visibility: saved.visibility };
 }
 
 /**
  * Pending transfers TO one org (for the accept/reject UI) plus outgoing
  * pending ones FROM it. Owner/Admin only.
  */
-export async function listOrgTransfers(orgId: string, userId: string) {
+export async function listOrgTransfers(
+  orgId: string,
+  userId: string,
+): Promise<OrgTransfersResponse> {
   const role = await getOrgRole(orgId, userId);
   if (role !== "owner" && role !== "admin") {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
@@ -91,7 +102,7 @@ export async function listOrgTransfers(orgId: string, userId: string) {
   );
 
   return {
-    ok: true as const,
+    ok: true,
     transfers: rows.map((r) => ({
       id: r.id,
       campaignId: r.campaignId,

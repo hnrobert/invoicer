@@ -1,3 +1,4 @@
+import type { VisibilityResponse } from "#shared/api";
 import type { OrgFull, OrgRole } from "#shared/types";
 
 /**
@@ -39,7 +40,7 @@ export function useOrgContext(slug: string) {
         return;
       }
       full.value = await getFull(org.value.id);
-      const v = await $fetch<{ visibility: "public" | "private" }>(
+      const v = await $fetch<VisibilityResponse>(
         `/api/orgs/${org.value.id}/visibility`,
       ).catch(() => null);
       if (v) visibility.value = v.visibility;

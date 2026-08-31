@@ -5,7 +5,5 @@ import { listCampaignsFor } from "#server/service/campaigns/list";
 /** GET /api/campaigns — every campaign the caller may access, grouped. */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
-  const { personal, organizations, collaborations } =
-    await listCampaignsFor(user);
-  return { ok: true, personal, organizations, collaborations };
+  return listCampaignsFor(user);
 });

@@ -3,6 +3,7 @@ import { AuditLog } from "#server/entities/auditLog.entity";
 import { Campaign } from "#server/entities/campaign.entity";
 import { getOrgRole } from "#server/utils/campaign";
 import { sqlAll } from "#server/utils/auth";
+import type { AuditResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
 
 /**
@@ -14,7 +15,7 @@ export async function queryAudit(
   user: Pick<AuthUser, "id">,
   campaignId: number | null,
   orgId: string | null,
-) {
+): Promise<AuditResponse> {
   if (!campaignId && !orgId) {
     throw createError({
       statusCode: 400,
@@ -63,7 +64,7 @@ export async function queryAudit(
   const byId = new Map(users.map((u) => [u.id, u]));
 
   return {
-    ok: true as const,
+    ok: true,
     logs: rows.map((r) => ({
       id: r.id,
       action: r.action,

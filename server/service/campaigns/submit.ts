@@ -2,6 +2,7 @@ import { In } from "typeorm";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { invoiceToPublic } from "#server/utils/serialize";
+import type { SubmitAllResponse, SubmitResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 const TERMINAL = new Set(["qualified", "manual", "unqualified"]);
@@ -18,7 +19,7 @@ export async function submitInvoice(
   rights: CampaignRights,
   campaignId: number,
   invoiceId: number,
-) {
+): Promise<SubmitResponse> {
   const repo = AppDataSource.getRepository(Invoice);
   const inv = await repo.findOneBy({ id: invoiceId, campaignId });
   if (!inv)
@@ -52,7 +53,7 @@ export async function submitInvoice(
     { reviewState: "submitted", reason: "Submitted — awaiting review" },
   );
   const updated = (await repo.findOneBy({ id: invoiceId }))!;
-  return { ok: true as const, record: invoiceToPublic(updated) };
+  return { ok: true, record: invoiceToPublic(updated) };
 }
 
 /**
@@ -63,7 +64,7 @@ export async function submitInvoice(
 export async function submitAllInvoices(
   user: Pick<AuthUser, "id">,
   campaignId: number,
-) {
+): Promise<SubmitAllResponse> {
   const repo = AppDataSource.getRepository(Invoice);
   const res = await repo.update(
     {
@@ -74,5 +75,5 @@ export async function submitAllInvoices(
     },
     { reviewState: "submitted", reason: "Submitted — awaiting review" },
   );
-  return { ok: true as const, submitted: res.affected ?? 0 };
+  return { ok: true, submitted: res.affected ?? 0 };
 }

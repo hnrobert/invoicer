@@ -3,6 +3,7 @@ import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { OrgSetting } from "#server/entities/orgSetting.entity";
 import { sqlAll } from "#server/utils/auth";
+import type { ExploreResponse } from "#shared/api";
 import { campaignToPublic } from "#server/service/campaigns/list";
 
 /**
@@ -12,7 +13,7 @@ import { campaignToPublic } from "#server/service/campaigns/list";
  * `q` filters by campaign name or expected title (LIKE). Login is required —
  * public upload still only serves signed-in users.
  */
-export async function exploreCampaigns(q: string) {
+export async function exploreCampaigns(q: string): Promise<ExploreResponse> {
   // Private orgs are excluded from the plaza entirely.
   const privateOrgs = (
     await AppDataSource.getRepository(OrgSetting).find({
@@ -64,5 +65,5 @@ export async function exploreCampaigns(q: string) {
       ...(await campaignToPublic(c)),
     })),
   );
-  return { ok: true as const, campaigns };
+  return { ok: true, campaigns };
 }

@@ -5,6 +5,7 @@ import { getOrgRole } from "#server/utils/campaign";
 import { sqlAll, sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type { TransferRequestResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 /**
@@ -17,7 +18,7 @@ export async function requestCampaignTransfer(
   campaign: Campaign,
   rights: CampaignRights,
   targetOrgId: string | undefined,
-) {
+): Promise<TransferRequestResponse> {
   const campaignId = campaign.id;
   if (!campaign.organizationId) {
     throw createError({
@@ -98,5 +99,5 @@ export async function requestCampaignTransfer(
     });
   }
 
-  return { ok: true as const, transfer_id: tr.id };
+  return { ok: true, transfer_id: tr.id };
 }

@@ -2,6 +2,7 @@ import { AppDataSource } from "#server/utils/database";
 import { UserEmail } from "#server/entities/userEmail.entity";
 import { getSessionUser } from "#server/utils/campaign";
 import { issueEmailCode, listEmails } from "#server/utils/emails";
+import type { EmailBody } from "#shared/api";
 import { sendVerificationCodeEmail } from "#server/utils/emailVerificationMail";
 import {
   checkAccountSend,
@@ -12,7 +13,7 @@ import {
 /** Send a 6-digit verification code to one of the caller's UNVERIFIED emails. */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
-  const { email } = await readBody<{ email?: string }>(event);
+  const { email } = await readBody<EmailBody>(event);
   const e = (email ?? "").trim().toLowerCase();
   if (!e) {
     throw createError({ statusCode: 400, statusMessage: "Email is required" });

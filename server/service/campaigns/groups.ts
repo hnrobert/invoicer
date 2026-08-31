@@ -7,6 +7,14 @@ import type { Campaign } from "#server/entities/campaign.entity";
 import { sqlAll, sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type {
+  AssignGroupBody,
+  EmailBody,
+  GroupCreateBody,
+  GroupCreateResponse,
+  GroupsResponse,
+  OkResponse,
+} from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 function requireManage(rights: CampaignRights): void {
@@ -16,7 +24,7 @@ function requireManage(rights: CampaignRights): void {
 }
 
 /** List the campaign's groups with their reviewer assignments. */
-export async function listGroups(campaignId: number) {
+export async function listGroups(campaignId: number): Promise<GroupsResponse> {
   const groups = await AppDataSource.getRepository(CampaignGroup).find({
     where: { campaignId },
     order: { id: "asc" },
@@ -37,7 +45,7 @@ export async function listGroups(campaignId: number) {
   const byId = new Map(users.map((u) => [u.id, u]));
 
   return {
-    ok: true as const,
+    ok: true,
     groups: groups.map((g) => ({
       id: g.id,
       name: g.name,
@@ -57,8 +65,8 @@ export async function createGroup(
   user: Pick<AuthUser, "id">,
   campaign: Campaign,
   rights: CampaignRights,
-  name: string | undefined,
-) {
+  name: GroupCreateBody["name"],
+): Promise<GroupCreateResponse> {
   const campaignId = campaign.id;
   requireManage(rights);
   const n = (name ?? "").trim().slice(0, 40);
@@ -83,7 +91,7 @@ export async function createGroup(
     action: "campaign.group.create",
     target: n,
   });
-  return { ok: true as const, group: { id: g.id, name: g.name } };
+  return { ok: true, group: { id: g.id, name: g.name } };
 }
 
 /** Delete a group: its invoices become ungrouped, assignments removed. */
@@ -92,7 +100,7 @@ export async function deleteGroup(
   campaign: Campaign,
   rights: CampaignRights,
   groupId: number,
-) {
+): Promise<OkResponse> {
   const campaignId = campaign.id;
   requireManage(rights);
   const repo = AppDataSource.getRepository(CampaignGroup);
@@ -111,7 +119,7 @@ export async function deleteGroup(
     action: "campaign.group.delete",
     target: g.name,
   });
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /** Assign a reviewer to a group by email (manager only). */
@@ -120,8 +128,8 @@ export async function addGroupReviewer(
   campaign: Campaign,
   rights: CampaignRights,
   groupId: number,
-  email: string | undefined,
-) {
+  email: EmailBody["email"],
+): Promise<OkResponse> {
   const campaignId = campaign.id;
   requireManage(rights);
   const group = await AppDataSource.getRepository(CampaignGroup).findOneBy({
@@ -157,7 +165,7 @@ export async function addGroupReviewer(
       campaign: campaign.name || campaign.expectedTitle,
     },
   });
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /** Remove a reviewer from a group (manager only). */
@@ -167,7 +175,7 @@ export async function removeGroupReviewer(
   rights: CampaignRights,
   groupId: number,
   userId: string,
-) {
+): Promise<OkResponse> {
   const campaignId = campaign.id;
   requireManage(rights);
   const group = await AppDataSource.getRepository(CampaignGroup).findOneBy({
@@ -185,7 +193,7 @@ export async function removeGroupReviewer(
     action: "campaign.group.reviewer.remove",
     target: `${group.name}: ${userId}`,
   });
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /**
@@ -195,15 +203,14 @@ export async function removeGroupReviewer(
 export async function assignInvoicesToGroup(
   rights: CampaignRights,
   campaignId: number,
-  invoiceIds: number[] | undefined,
-  groupId: number | null | undefined,
-) {
+  body: AssignGroupBody,
+): Promise<OkResponse> {
   requireManage(rights);
-  const ids = (invoiceIds ?? []).filter((n) => Number.isFinite(n));
+  const ids = (body?.invoiceIds ?? []).filter((n) => Number.isFinite(n));
   if (!ids.length) {
     throw createError({ statusCode: 400, statusMessage: "No invoices given" });
   }
-  const gid = groupId == null ? null : Number(groupId);
+  const gid = body?.groupId == null ? null : Number(body.groupId);
   if (gid != null) {
     const g = await AppDataSource.getRepository(CampaignGroup).findOneBy({
       id: gid,
@@ -217,5 +224,5 @@ export async function assignInvoicesToGroup(
     { id: In(ids), campaignId },
     { groupId: gid },
   );
-  return { ok: true as const };
+  return { ok: true };
 }

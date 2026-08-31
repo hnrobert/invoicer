@@ -10,12 +10,9 @@ import { sqlGet, sqlRun } from "./auth";
  * in works with any linked email — see the auth forwarding handler.
  */
 
-export interface AccountEmail {
-  email: string;
-  primary: boolean;
-  /** Secondary emails: verified means control was proven via the emailed code. */
-  verified: boolean;
-}
+import type { AccountEmail } from "#shared/api";
+
+export type { AccountEmail };
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 

@@ -2,15 +2,8 @@ import { AppDataSource } from "#server/utils/database";
 import { Campaign } from "#server/entities/campaign.entity";
 import { isOrgMember } from "#server/utils/campaign";
 import { saveCampaignTitles } from "#server/utils/campaignTitles";
+import type { CreateCampaignBody, CreateCampaignResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
-
-export interface CreateCampaignInput {
-  title?: string;
-  tax_id?: string;
-  organization_id?: string;
-  name?: string;
-  title_ids?: number[];
-}
 
 /**
  * Create a reimbursement campaign: the expected buyer title + tax id to check
@@ -20,8 +13,8 @@ export interface CreateCampaignInput {
  */
 export async function createCampaign(
   user: Pick<AuthUser, "id">,
-  body: CreateCampaignInput,
-): Promise<number> {
+  body: CreateCampaignBody,
+): Promise<CreateCampaignResponse> {
   const title = (body?.title ?? "").trim();
   const taxId = (body?.tax_id ?? "").trim();
   const titleIds = Array.isArray(body?.title_ids)
@@ -60,5 +53,5 @@ export async function createCampaign(
   if (titleIds.length) {
     await saveCampaignTitles(campaign.id, organizationId, user.id, titleIds);
   }
-  return campaign.id;
+  return { ok: true, campaign_id: campaign.id };
 }

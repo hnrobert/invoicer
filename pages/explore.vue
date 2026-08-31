@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ExploreResponse } from "#shared/api";
 import type { CampaignPublic } from "#shared/types";
 
 type ExploreItem = CampaignPublic & { orgName: string | null };
@@ -14,7 +15,7 @@ const items = ref<ExploreItem[]>([]);
 async function load() {
   loading.value = true;
   try {
-    const data = await $fetch<{ campaigns: ExploreItem[] }>("/api/explore", {
+    const data = await $fetch<ExploreResponse>("/api/explore", {
       query: q.value.trim() ? { q: q.value.trim() } : {},
     });
     items.value = data.campaigns;

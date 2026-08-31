@@ -1,6 +1,7 @@
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { mimeFor, storage } from "#server/utils/storage";
+import type { InvoiceTextResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 import type { Readable } from "node:stream";
 
@@ -36,9 +37,9 @@ export async function invoiceRawText(
   user: Pick<AuthUser, "id">,
   rights: CampaignRights,
   invoiceId: number,
-) {
+): Promise<InvoiceTextResponse> {
   const inv = await loadAccessibleInvoice(user, rights, invoiceId);
-  return { ok: true as const, filename: inv.filename, text: inv.rawText ?? "" };
+  return { ok: true, filename: inv.filename, text: inv.rawText ?? "" };
 }
 
 /**

@@ -1,13 +1,16 @@
 import { IsNull } from "typeorm";
 import { AppDataSource } from "#server/utils/database";
 import { Notification } from "#server/entities/notification.entity";
+import type { NotificationsResponse, OkResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
 
 /**
  * The caller's notifications, newest-first (latest 50). `unread` count is
  * included so the bell badge can render without loading the list.
  */
-export async function listNotifications(user: Pick<AuthUser, "id">) {
+export async function listNotifications(
+  user: Pick<AuthUser, "id">,
+): Promise<NotificationsResponse> {
   const rows = await AppDataSource.getRepository(Notification).find({
     where: { userId: user.id },
     order: { id: "desc" },
@@ -15,7 +18,7 @@ export async function listNotifications(user: Pick<AuthUser, "id">) {
   });
   const unread = rows.filter((r) => !r.readAt).length;
   return {
-    ok: true as const,
+    ok: true,
     unread,
     notifications: rows.map((r) => ({
       id: r.id,
@@ -32,7 +35,7 @@ export async function listNotifications(user: Pick<AuthUser, "id">) {
 export async function markNotificationsRead(
   user: Pick<AuthUser, "id">,
   id: number | null,
-) {
+): Promise<OkResponse> {
   const repo = AppDataSource.getRepository(Notification);
   await repo.update(
     id ? { id, userId: user.id } : { userId: user.id, readAt: IsNull() },

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { NotificationsResponse } from "#shared/api";
 // In-app notification bell: unread badge, dropdown list, click-through to the
 // notification's link, mark-one / mark-all read.
 const { t } = useI18n();
@@ -19,9 +20,7 @@ const loaded = ref(false);
 
 async function load() {
   try {
-    const data = await $fetch<{ unread: number; notifications: Note[] }>(
-      "/api/notifications",
-    );
+    const data = await $fetch<NotificationsResponse>("/api/notifications");
     notes.value = data.notifications;
     unread.value = data.unread;
     loaded.value = true;

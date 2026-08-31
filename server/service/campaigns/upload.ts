@@ -5,6 +5,7 @@ import { Invoice } from "#server/entities/invoice.entity";
 import { processInvoice } from "#server/utils/process";
 import { buildKey, mimeFor, storage } from "#server/utils/storage";
 import { invoiceToPublic } from "#server/utils/serialize";
+import type { UploadResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
 
 const IMAGE_EXTS = new Set([
@@ -30,7 +31,7 @@ export async function uploadInvoices(
   user: Pick<AuthUser, "id">,
   campaignId: number,
   files: { filename: string; data: Buffer }[],
-) {
+): Promise<UploadResponse["results"]> {
   const created: Invoice[] = [];
   for (const f of files) {
     const ext = extname(f.filename).toLowerCase();

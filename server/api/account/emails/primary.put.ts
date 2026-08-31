@@ -1,5 +1,6 @@
 import { getSessionUser } from "#server/utils/campaign";
 import { listEmails, setPrimaryEmail } from "#server/utils/emails";
+import type { EmailBody } from "#shared/api";
 
 /**
  * Promote a linked secondary email to primary. The old primary stays linked
@@ -7,7 +8,7 @@ import { listEmails, setPrimaryEmail } from "#server/utils/emails";
  */
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event);
-  const { email } = await readBody<{ email?: string }>(event);
+  const { email } = await readBody<EmailBody>(event);
   if (!email?.trim()) {
     throw createError({ statusCode: 400, statusMessage: "Email is required" });
   }

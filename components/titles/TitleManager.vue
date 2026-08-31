@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TitlesListResponse } from "#shared/api";
 import type { InvoiceTitlePublic } from "#shared/types";
 
 // CRUD for stored invoice titles, reused for the three owners:
@@ -24,9 +25,7 @@ async function load() {
         : props.ownerType === "site"
           ? "?scope=site"
           : `?scope=org&orgId=${props.orgId ?? ""}`;
-    const data = await $fetch<{ titles: InvoiceTitlePublic[] }>(
-      `/api/titles${q}`,
-    );
+    const data = await $fetch<TitlesListResponse>(`/api/titles${q}`);
     titles.value = data.titles;
   } catch {
     titles.value = [];

@@ -3,18 +3,11 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { Invoice } from "#server/entities/invoice.entity";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type { CampaignSettingsResponse, UpdateCampaignBody } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 const VISIBILITIES = ["public", "internal", "private"] as const;
 const STATUSES = ["active", "closed", "archived"] as const;
-
-export interface UpdateCampaignInput {
-  visibility?: string;
-  searchable?: boolean;
-  status?: string;
-  deadline?: string | null;
-  name?: string;
-}
 
 /**
  * Update a campaign's platform settings (visibility / searchable / status /
@@ -26,8 +19,8 @@ export async function updateCampaignSettings(
   user: Pick<AuthUser, "id">,
   campaign: Campaign,
   rights: CampaignRights,
-  body: UpdateCampaignInput,
-) {
+  body: UpdateCampaignBody,
+): Promise<CampaignSettingsResponse> {
   const campaignId = campaign.id;
   if (!rights.canManage) {
     throw createError({
@@ -124,7 +117,7 @@ export async function updateCampaignSettings(
     ...patch,
   });
   return {
-    ok: true as const,
+    ok: true,
     campaign: {
       id: saved.id,
       visibility: saved.visibility,

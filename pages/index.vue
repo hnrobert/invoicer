@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CampaignDetailResponse } from "#shared/api";
 import type { CampaignPublic } from "#shared/types";
 
 // GitHub-style dashboard: left sidebar (my orgs / personal / explore + new
@@ -63,7 +64,7 @@ onMounted(async () => {
   const cid = Number(route.query.campaign);
   if (cid) {
     try {
-      const data = await $fetch<{ org_slug: string | null }>(
+      const data = await $fetch<Pick<CampaignDetailResponse, "org_slug">>(
         `/api/campaigns/${cid}`,
       );
       navigateTo(

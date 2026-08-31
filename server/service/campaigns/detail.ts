@@ -5,6 +5,7 @@ import { myReviewGroups, usesSubmitFlow } from "#server/utils/campaign";
 import { sqlGet } from "#server/utils/auth";
 import { calcTotal, invoiceToPublic } from "#server/utils/serialize";
 import { campaignTitleRows } from "#server/utils/campaignTitles";
+import type { CampaignDetailResponse } from "#shared/api";
 import type { AuthUser, CampaignRights } from "#shared/types";
 
 /** Compliant total over a visible row set, honoring the review flow. */
@@ -40,7 +41,7 @@ export async function campaignDetail(
   user: Pick<AuthUser, "id">,
   campaign: Campaign,
   rights: CampaignRights,
-) {
+): Promise<CampaignDetailResponse> {
   const campaignId = campaign.id;
   const flow = usesSubmitFlow(campaign) ? "submit" : "direct";
   // Group reviewers see their own + their assigned groups' invoices.
@@ -79,7 +80,7 @@ export async function campaignDetail(
     : null;
 
   return {
-    ok: true as const,
+    ok: true,
     name: campaign.name,
     expected_title: campaign.expectedTitle,
     expected_tax_id: campaign.expectedTaxId,
@@ -88,6 +89,7 @@ export async function campaignDetail(
     campaign_user_id: campaign.userId,
     visibility: campaign.visibility,
     status: campaign.status,
+    searchable: campaign.searchable,
     rights,
     flow,
     titles: await campaignTitleRows(campaignId),

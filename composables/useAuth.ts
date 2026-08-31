@@ -1,3 +1,4 @@
+import type { MeResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
 import { createAuthClient } from "better-auth/client";
 
@@ -173,9 +174,7 @@ export function useAuth() {
 
   /** Re-read the session from the server (e.g. after an OAuth callback). */
   async function refreshUser(): Promise<void> {
-    const res = await $fetch<{ user: AuthUser | null; isAdmin?: boolean }>(
-      "/api/me",
-    );
+    const res = await $fetch<MeResponse>("/api/me");
     user.value = res.user;
     isAdmin.value = !!res.isAdmin;
   }

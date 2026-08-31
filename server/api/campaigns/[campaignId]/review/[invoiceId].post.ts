@@ -1,6 +1,7 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
 import { reviewInvoice } from "#server/service/campaigns/review";
+import type { ReviewBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/review/:invoiceId — approve/reject an invoice. */
 export default defineEventHandler(async (event) => {
@@ -10,9 +11,6 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
-  const body = await readBody<{
-    decision?: string;
-    manual_amount?: number | string;
-  }>(event);
+  const body = await readBody<ReviewBody>(event);
   return reviewInvoice(user, campaign, rights, invoiceId, body);
 });

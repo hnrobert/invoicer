@@ -4,6 +4,7 @@ import { CampaignTransfer } from "#server/entities/campaignTransfer.entity";
 import { getOrgRole } from "#server/utils/campaign";
 import { logAudit } from "#server/utils/audit";
 import { notify } from "#server/utils/notify";
+import type { OkResponse } from "#shared/api";
 import type { AuthUser } from "#shared/types";
 
 /**
@@ -15,7 +16,7 @@ import type { AuthUser } from "#shared/types";
 export async function acceptTransfer(
   user: Pick<AuthUser, "id">,
   transferId: number,
-) {
+): Promise<OkResponse> {
   const repo = AppDataSource.getRepository(CampaignTransfer);
   const tr = await repo.findOneBy({ id: transferId });
   if (!tr)
@@ -67,14 +68,14 @@ export async function acceptTransfer(
     data: { campaign: campaign.name || campaign.expectedTitle },
   });
 
-  return { ok: true as const };
+  return { ok: true };
 }
 
 /** Cancel/reject a pending transfer — either side's Owner/Admin or the requester. */
 export async function cancelTransfer(
   user: Pick<AuthUser, "id">,
   transferId: number,
-) {
+): Promise<OkResponse> {
   const repo = AppDataSource.getRepository(CampaignTransfer);
   const tr = await repo.findOneBy({ id: transferId });
   if (!tr)
@@ -110,5 +111,5 @@ export async function cancelTransfer(
   if (tr.requestedBy !== user.id) {
     notify(tr.requestedBy, "transfer.canceled", {});
   }
-  return { ok: true as const };
+  return { ok: true };
 }

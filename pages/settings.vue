@@ -3,6 +3,11 @@
 // Preferences / Linked providers for every user, plus an Admin group
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
+import type {
+  AccountEmail,
+  AdminUsersResponse,
+  EmailsResponse,
+} from "#shared/api";
 import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
 
 definePageMeta({ layout: "default" });
@@ -101,16 +106,12 @@ const { confirmLeave: pwConfirmLeave, proceed: pwProceed } =
 // The username is chosen at sign-up; the primary email is managed under Emails.
 
 // ---------- emails ----------
-const emails = ref<{ email: string; primary: boolean; verified: boolean }[]>(
-  [],
-);
+const emails = ref<AccountEmail[]>([]);
 const newEmail = ref("");
 const emailBusy = ref(false);
 async function refreshEmails() {
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
-      "/api/account/emails",
-    );
+    const data = await $fetch<EmailsResponse>("/api/account/emails");
     emails.value = data.emails;
   } catch {
     emails.value = [];
@@ -120,10 +121,10 @@ async function addEmail() {
   if (!newEmail.value.trim()) return;
   emailBusy.value = true;
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
-      "/api/account/emails",
-      { method: "POST", body: { email: newEmail.value.trim() } },
-    );
+    const data = await $fetch<EmailsResponse>("/api/account/emails", {
+      method: "POST",
+      body: { email: newEmail.value.trim() },
+    });
     emails.value = data.emails;
     newEmail.value = "";
     toast.success(t("account.emails.addedUnverified"));
@@ -158,9 +159,12 @@ async function verifyCode(email: string) {
   if (!code) return;
   codeBusy.value = true;
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
+    const data = await $fetch<EmailsResponse>(
       "/api/account/emails/verify-code",
-      { method: "POST", body: { email, code } },
+      {
+        method: "POST",
+        body: { email, code },
+      },
     );
     emails.value = data.emails;
     codeSentFor.value = null;
@@ -174,7 +178,7 @@ async function verifyCode(email: string) {
 }
 async function removeEmail(email: string) {
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
+    const data = await $fetch<EmailsResponse>(
       `/api/account/emails/${encodeURIComponent(email)}`,
       { method: "DELETE" },
     );
@@ -208,10 +212,10 @@ async function savePrimary() {
   if (!target || target === primaryEmail.value) return;
   primaryBusy.value = true;
   try {
-    const data = await $fetch<{ emails: typeof emails.value }>(
-      "/api/account/emails/primary",
-      { method: "PUT", body: { email: target } },
-    );
+    const data = await $fetch<EmailsResponse>("/api/account/emails/primary", {
+      method: "PUT",
+      body: { email: target },
+    });
     emails.value = data.emails;
     primaryPick.value = null;
     toast.success(t("account.emails.primarySet"));
@@ -315,9 +319,7 @@ const usersLoading = ref(false);
 async function loadUsers() {
   usersLoading.value = true;
   try {
-    const data = await $fetch<{ users: typeof users.value }>(
-      "/api/admin/users",
-    );
+    const data = await $fetch<AdminUsersResponse>("/api/admin/users");
     users.value = data.users;
   } catch (e) {
     toast.error((e as Error).message);
