@@ -3,7 +3,7 @@ import { requireCampaignAccess } from "#server/utils/campaign";
 import {
   invoiceCampaignId,
   invoiceRawText,
-} from "#server/service/invoice/files";
+} from "#server/service/invoice/files.service";
 
 /** GET /api/invoice/:id/text — raw extraction/OCR text. */
 export default defineEventHandler(async (event) => {

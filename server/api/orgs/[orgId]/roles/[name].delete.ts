@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { deleteRole } from "#server/service/orgs/roles";
+import { deleteRole } from "#server/service/orgs/roles.service";
 
 /** DELETE /api/orgs/:orgId/roles/:name — delete a custom role. */
 export default defineEventHandler(async (event) => {

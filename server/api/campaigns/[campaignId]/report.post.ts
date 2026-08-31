@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { sendCampaignReport } from "#server/service/campaigns/report";
+import { sendCampaignReport } from "#server/service/campaigns/report.service";
 import type { RecipientBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/report — email the audit report to a recipient. */

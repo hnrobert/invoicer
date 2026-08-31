@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireSuperAdmin } from "#server/utils/superadmin";
-import { saveMailConfigFromClient } from "#server/service/mail/config";
+import { saveMailConfigFromClient } from "#server/service/mail/config.service";
 
 /** POST /api/mail/config — persist the site mail configuration. */
 export default defineEventHandler(async (event) => {

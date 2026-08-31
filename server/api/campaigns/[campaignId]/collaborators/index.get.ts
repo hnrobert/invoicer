@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { listCollaborators } from "#server/service/campaigns/collaborators";
+import { listCollaborators } from "#server/service/campaigns/collaborators.service";
 
 /** GET /api/campaigns/:id/collaborators — list collaborators. */
 export default defineEventHandler(async (event) => {

@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { exploreCampaigns } from "#server/service/explore/explore";
+import { exploreCampaigns } from "#server/service/explore/explore.service";
 
 /** GET /api/explore?q= — the public campaign plaza (login required). */
 export default defineEventHandler(async (event) => {

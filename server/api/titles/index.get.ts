@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { listTitles } from "#server/service/titles/titles";
+import { listTitles } from "#server/service/titles/titles.service";
 
 /** GET /api/titles — stored titles by scope, or grouped for the picker. */
 export default defineEventHandler(async (event) => {

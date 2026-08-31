@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { requestCampaignTransfer } from "#server/service/campaigns/transfer";
+import { requestCampaignTransfer } from "#server/service/campaigns/transfer.service";
 import type { TransferRequestBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/transfer — initiate a cross-org transfer. */

@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { createGroup } from "#server/service/campaigns/groups";
+import { createGroup } from "#server/service/campaigns/groups.service";
 import type { GroupCreateBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/groups — create a group. */

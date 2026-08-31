@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireSuperAdmin } from "#server/utils/superadmin";
-import { sendTestMail } from "#server/service/mail/test";
+import { sendTestMail } from "#server/service/mail/test.service";
 import type { RecipientBody } from "#shared/api";
 
 /** POST /api/mail/test — send a test email through the configured channel. */

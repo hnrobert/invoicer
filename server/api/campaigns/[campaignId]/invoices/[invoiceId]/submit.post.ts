@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { submitInvoice } from "#server/service/campaigns/submit";
+import { submitInvoice } from "#server/service/campaigns/submit.service";
 
 /** POST /api/campaigns/:id/invoices/:invoiceId/submit — submit one draft. */
 export default defineEventHandler(async (event) => {

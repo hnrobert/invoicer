@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { getOrgVisibility } from "#server/service/orgs/org";
+import { getOrgVisibility } from "#server/service/orgs/org.service";
 
 /** GET /api/orgs/:orgId/visibility — read org visibility (members). */
 export default defineEventHandler(async (event) => {

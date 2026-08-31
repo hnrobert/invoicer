@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { campaignDetail } from "#server/service/campaigns/detail";
+import { campaignDetail } from "#server/service/campaigns/detail.service";
 
 /** GET /api/campaigns/:id — invoice list + totals, scoped by rights. */
 export default defineEventHandler(async (event) => {

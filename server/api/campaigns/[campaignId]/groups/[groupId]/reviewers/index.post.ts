@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { addGroupReviewer } from "#server/service/campaigns/groups";
+import { addGroupReviewer } from "#server/service/campaigns/groups.service";
 import type { EmailBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/groups/:groupId/reviewers — assign a reviewer. */

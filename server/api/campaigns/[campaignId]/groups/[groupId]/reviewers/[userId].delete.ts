@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { removeGroupReviewer } from "#server/service/campaigns/groups";
+import { removeGroupReviewer } from "#server/service/campaigns/groups.service";
 
 /** DELETE .../reviewers/:userId — remove a reviewer from a group. */
 export default defineEventHandler(async (event) => {

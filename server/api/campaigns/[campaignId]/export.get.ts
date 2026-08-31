@@ -3,7 +3,7 @@ import { requireCampaignAccess } from "#server/utils/campaign";
 import {
   exportCampaign,
   type ExportFormat,
-} from "#server/service/campaigns/exportFiles";
+} from "#server/service/campaigns/exportFiles.service";
 
 /** GET /api/campaigns/:id/export?format=csv|xlsx|zip — audit-logged export. */
 export default defineEventHandler(async (event) => {

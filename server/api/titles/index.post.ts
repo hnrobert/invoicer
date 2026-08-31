@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { createTitle } from "#server/service/titles/titles";
+import { createTitle } from "#server/service/titles/titles.service";
 import type { TitleCreateBody } from "#shared/api";
 
 /** POST /api/titles — create a stored title (user/org/site ownership). */

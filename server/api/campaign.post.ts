@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { createCampaign } from "#server/service/campaigns/create";
+import { createCampaign } from "#server/service/campaigns/create.service";
 import type { CreateCampaignBody } from "#shared/api";
 
 /** POST /api/campaign — create a reimbursement campaign. */

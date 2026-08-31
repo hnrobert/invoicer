@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { deleteGroup } from "#server/service/campaigns/groups";
+import { deleteGroup } from "#server/service/campaigns/groups.service";
 
 /** DELETE /api/campaigns/:id/groups/:groupId — delete a group. */
 export default defineEventHandler(async (event) => {

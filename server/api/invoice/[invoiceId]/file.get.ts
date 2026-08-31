@@ -4,7 +4,7 @@ import { requireCampaignAccess } from "#server/utils/campaign";
 import {
   invoiceCampaignId,
   invoiceFileStream,
-} from "#server/service/invoice/files";
+} from "#server/service/invoice/files.service";
 
 /**
  * GET /api/invoice/:id/file — serve the original file for inline preview.

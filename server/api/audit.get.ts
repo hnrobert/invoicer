@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { queryAudit } from "#server/service/audit/audit";
+import { queryAudit } from "#server/service/audit/audit.service";
 
 /** GET /api/audit?campaignId=|orgId= — audit trail (privileged). */
 export default defineEventHandler(async (event) => {

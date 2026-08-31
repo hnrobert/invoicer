@@ -4,7 +4,7 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { OrgSetting } from "#server/entities/orgSetting.entity";
 import { sqlAll } from "#server/utils/auth";
 import type { ExploreResponse } from "#shared/api";
-import { campaignToPublic } from "#server/service/campaigns/list";
+import { campaignToPublic } from "#server/service/campaigns/list.service";
 
 /**
  * The explore plaza: public + searchable campaigns of PUBLIC organizations.

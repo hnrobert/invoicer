@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { updateRolePermissions } from "#server/service/orgs/roles";
+import { updateRolePermissions } from "#server/service/orgs/roles.service";
 import type { RoleUpdateBody } from "#shared/api";
 
 /** PUT /api/orgs/:orgId/roles/:name — edit a role's permission bundle. */

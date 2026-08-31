@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { cancelTransfer } from "#server/service/transfers/transfers";
+import { cancelTransfer } from "#server/service/transfers/transfers.service";
 
 /** DELETE /api/transfers/:id — cancel/reject a pending transfer. */
 export default defineEventHandler(async (event) => {

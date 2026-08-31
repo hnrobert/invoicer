@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service, shape nothing.
 import { getSessionUser } from "#server/utils/campaign";
-import { listCampaignsFor } from "#server/service/campaigns/list";
+import { listCampaignsFor } from "#server/service/campaigns/list.service";
 
 /** GET /api/campaigns — every campaign the caller may access, grouped. */
 export default defineEventHandler(async (event) => {

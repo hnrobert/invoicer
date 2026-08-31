@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { reviewInvoice } from "#server/service/campaigns/review";
+import { reviewInvoice } from "#server/service/campaigns/review.service";
 import type { ReviewBody } from "#shared/api";
 
 /** POST /api/campaigns/:id/review/:invoiceId — approve/reject an invoice. */

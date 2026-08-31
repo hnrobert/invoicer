@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { removeCollaborator } from "#server/service/campaigns/collaborators";
+import { removeCollaborator } from "#server/service/campaigns/collaborators.service";
 
 /** DELETE /api/campaigns/:id/collaborators/:userId — remove a collaborator. */
 export default defineEventHandler(async (event) => {

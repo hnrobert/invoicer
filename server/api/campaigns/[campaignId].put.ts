@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { updateCampaignSettings } from "#server/service/campaigns/settings";
+import { updateCampaignSettings } from "#server/service/campaigns/settings.service";
 import type { UpdateCampaignBody } from "#shared/api";
 
 /** PUT /api/campaigns/:id — update visibility/searchable/status/deadline/name. */

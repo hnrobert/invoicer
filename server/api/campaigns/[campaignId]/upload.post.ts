@@ -1,6 +1,6 @@
 // API layer: parse multipart, delegate persistence + recognition kickoff.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { uploadInvoices } from "#server/service/campaigns/upload";
+import { uploadInvoices } from "#server/service/campaigns/upload.service";
 
 /**
  * POST /api/campaigns/:id/upload — upload invoice files (PDF / image / 数电票).

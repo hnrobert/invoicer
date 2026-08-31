@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { getSessionUser } from "#server/utils/campaign";
-import { listOrgTransfers } from "#server/service/orgs/org";
+import { listOrgTransfers } from "#server/service/orgs/org.service";
 
 /** GET /api/orgs/:orgId/transfers — pending transfers (Owner/Admin). */
 export default defineEventHandler(async (event) => {

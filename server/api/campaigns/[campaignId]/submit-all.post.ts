@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { submitAllInvoices } from "#server/service/campaigns/submit";
+import { submitAllInvoices } from "#server/service/campaigns/submit.service";
 
 /** POST /api/campaigns/:id/submit-all — submit every own submittable draft. */
 export default defineEventHandler(async (event) => {

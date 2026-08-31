@@ -1,6 +1,6 @@
 // API layer: parse the request, delegate to server/service.
 import { requireCampaignAccess } from "#server/utils/campaign";
-import { clearUploads } from "#server/service/campaigns/clear";
+import { clearUploads } from "#server/service/campaigns/clear.service";
 
 /** POST /api/campaigns/:id/clear — remove uploads (all or own, by rights). */
 export default defineEventHandler(async (event) => {
