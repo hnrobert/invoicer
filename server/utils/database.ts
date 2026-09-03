@@ -23,7 +23,7 @@ import { migrations } from "../migrations";
 /** PostgreSQL connection — compose's `postgres` service in deployment. */
 export const databaseUrl =
   process.env.DATABASE_URL ||
-  "postgres://invoicer:invoicer@localhost:5432/invoicer";
+  "postgres://invoicer:invoicer@localhost:15432/invoicer";
 
 class StartupLogger implements Logger {
   logQuery(): void {}

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "nuxt dev",
+    "dev:db": "docker start invoicer-pg-dev 2>/dev/null || docker run -d --name invoicer-pg-dev -e POSTGRES_USER=invoicer -e POSTGRES_PASSWORD=invoicer -e POSTGRES_DB=invoicer -p 15432:5432 postgres:17-alpine",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",

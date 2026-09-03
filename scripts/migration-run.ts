@@ -12,7 +12,7 @@ function resolveUrl(): string {
   if (arg) return arg.slice(6);
   return (
     process.env.DATABASE_URL ||
-    "postgres://invoicer:invoicer@localhost:5432/invoicer"
+    "postgres://invoicer:invoicer@localhost:15432/invoicer"
   );
 }
 

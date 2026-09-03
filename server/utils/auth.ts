@@ -25,7 +25,7 @@ const wechatAppSecret = process.env.WECHAT_APP_SECRET;
 export const authDb = new Pool({
   connectionString:
     process.env.DATABASE_URL ||
-    "postgres://invoicer:invoicer@localhost:5432/invoicer",
+    "postgres://invoicer:invoicer@localhost:15432/invoicer",
   // auth flows + raw cross-table reads stay well under this
   max: 10,
 });

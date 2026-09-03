@@ -24,7 +24,7 @@ const sqlitePath = flag("sqlite", process.env.DB_PATH || "./data/app.db");
 const url =
   flag("url", "") ||
   process.env.DATABASE_URL ||
-  "postgres://invoicer:invoicer@localhost:5432/invoicer";
+  "postgres://invoicer:invoicer@localhost:15432/invoicer";
 
 /** FK-safe order: parents before children. */
 const TABLES = [
