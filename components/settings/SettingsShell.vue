@@ -19,8 +19,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 lg:flex-row lg:gap-10">
-    <aside class="w-full shrink-0 lg:w-56">
+  <div class="flex flex-col gap-6 lg:flex-row lg:gap-0">
+    <aside class="w-full shrink-0 lg:w-56 lg:border-r lg:pr-5">
       <h2 class="mb-2 text-base font-semibold">{{ title }}</h2>
       <nav class="flex flex-col gap-0.5">
         <template v-for="s in sections" :key="s.key">
@@ -46,7 +46,7 @@ defineProps<{
         </template>
       </nav>
     </aside>
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-1 lg:pl-8">
       <slot />
     </div>
   </div>

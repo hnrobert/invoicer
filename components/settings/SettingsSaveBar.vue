@@ -13,13 +13,14 @@ const { t } = useI18n();
 
 <template>
   <Transition name="savebar">
+    <!-- Sticky inside the settings CONTENT column: naturally right of the
+         shell's nav divider and spanning that column's full width — no
+         viewport-fixed positioning or hardcoded nav-width offset. -->
     <div
       v-if="dirty || saved"
-      class="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur lg:left-56"
+      class="sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur"
     >
-      <div
-        class="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
-      >
+      <div class="flex items-center justify-between gap-3 py-3">
         <span class="text-sm text-muted-foreground">
           <template v-if="saved">✓ {{ t("settings.savebar.saved") }}</template>
           <template v-else>{{ t("settings.savebar.unsaved") }}</template>
