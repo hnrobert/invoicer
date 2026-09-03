@@ -3,11 +3,7 @@
 // Preferences / Linked providers for every user, plus an Admin group
 // (Mail delivery / Users) rendered only for superadmins — the underlying
 // endpoints enforce the same rule server-side.
-import type {
-  AccountEmail,
-  AdminUsersResponse,
-  EmailsResponse,
-} from "#shared/api";
+import type { AccountEmail, EmailsResponse } from "#shared/api";
 import type { PasskeyInfo, ProviderId } from "~/composables/useAuth";
 
 definePageMeta({ layout: "default" });
@@ -306,37 +302,7 @@ async function onDisconnect(provider: ProviderId) {
 }
 
 // ---------- admin: users ----------
-const users = ref<
-  {
-    id: string;
-    name: string;
-    email: string;
-    verified: boolean;
-    createdAt: string;
-  }[]
->([]);
-const usersLoading = ref(false);
-async function loadUsers() {
-  usersLoading.value = true;
-  try {
-    const data = await $fetch<AdminUsersResponse>("/api/admin/users");
-    users.value = data.users;
-  } catch (e) {
-    toast.error((e as Error).message);
-  } finally {
-    usersLoading.value = false;
-  }
-}
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-}
+// Full CRUD lives in components/admin/UsersAdmin.vue.
 
 const sections = computed(() => [
   {
@@ -398,10 +364,6 @@ onMounted(() => {
   void refreshPasskeys();
   void refreshEmails();
   void refreshAccounts();
-  if (section.value === "users" && isAdmin.value) void loadUsers();
-});
-watch(section, (v) => {
-  if (v === "users" && isAdmin.value && !users.value.length) void loadUsers();
 });
 </script>
 
@@ -843,64 +805,10 @@ watch(section, (v) => {
       <MailSettings />
     </div>
 
-    <!-- ============ admin: users ============ -->
+    <!-- ============ admin: users (CRUD table — components/admin/UsersAdmin) ============ -->
     <div v-else-if="section === 'users' && isAdmin" class="flex flex-col gap-3">
       <h3 class="text-base font-semibold">{{ t("admin.sections.users") }}</h3>
-      <div
-        v-if="usersLoading"
-        class="py-10 text-center text-sm text-muted-foreground"
-      >
-        {{ t("settings.loading") }}
-      </div>
-      <div v-else class="overflow-x-auto rounded-lg border">
-        <table class="w-full text-sm">
-          <thead class="bg-muted/50 text-left text-xs text-muted-foreground">
-            <tr>
-              <th class="px-3 py-2 font-medium">
-                {{ t("auth.register.nameLabel") }}
-              </th>
-              <th class="px-3 py-2 font-medium">
-                {{ t("auth.login.emailLabel") }}
-              </th>
-              <th class="px-3 py-2 font-medium">
-                {{ t("admin.users.verified") }}
-              </th>
-              <th class="px-3 py-2 text-right font-medium">
-                {{ t("admin.users.joined") }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="u in users"
-              :key="u.id"
-              class="border-t last:border-0 hover:bg-accent/30"
-            >
-              <td class="px-3 py-2 font-medium">{{ u.name }}</td>
-              <td class="px-3 py-2 text-muted-foreground">{{ u.email }}</td>
-              <td class="px-3 py-2">
-                <span
-                  class="rounded-full border px-2 py-px text-xs"
-                  :class="
-                    u.verified
-                      ? 'border-emerald-500/40 text-emerald-600'
-                      : 'border-border text-muted-foreground'
-                  "
-                >
-                  {{
-                    u.verified
-                      ? t("admin.users.verifiedYes")
-                      : t("admin.users.verifiedNo")
-                  }}
-                </span>
-              </td>
-              <td class="px-3 py-2 text-right text-xs text-muted-foreground">
-                {{ fmtDate(u.createdAt) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <UsersAdmin />
     </div>
 
     <!-- ============ admin: site titles ============ -->

@@ -1,9 +1,9 @@
 // API layer: gate by superadmin, delegate to server/service.
 import { requireSuperAdmin } from "#server/utils/superadmin";
-import { listUsers } from "#server/service/admin/users.service";
+import { getUserDetail } from "#server/service/admin/users.service";
 
-/** GET /api/admin/users — list all registered users. */
+/** GET /api/admin/users/:id — full profile for the detail dialog. */
 export default defineEventHandler(async (event) => {
   await requireSuperAdmin(event);
-  return { ok: true, users: await listUsers() };
+  return getUserDetail(getRouterParam(event, "userId")!);
 });

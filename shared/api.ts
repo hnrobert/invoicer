@@ -96,7 +96,48 @@ export interface AdminUserPublic {
   name: string;
   email: string;
   verified: boolean;
+  isSuperAdmin: boolean;
   createdAt: string;
+}
+
+/** GET /api/admin/users/:id — full profile for the detail dialog. */
+export interface AdminUserDetailResponse extends OkResponse {
+  user: AdminUserPublic;
+  providers: string[];
+  passkeys: {
+    id: number;
+    deviceType: string | null;
+    backedUp: boolean;
+    createdAt: string;
+  }[];
+  organizations: { id: string; name: string; slug: string; role: string }[];
+  invoiceCount: number;
+  campaignCount: number;
+  isEnvAdmin: boolean;
+}
+
+/** POST /api/admin/users — admin creates an account (email+password login). */
+export interface AdminUserCreateBody {
+  name?: string;
+  email?: string;
+  password?: string;
+}
+
+/** PUT /api/admin/users/:id */
+export interface AdminUserUpdateBody {
+  name?: string;
+  email?: string;
+  emailVerified?: boolean;
+}
+
+/** PUT /api/admin/users/:id/password — admin sets a new password. */
+export interface AdminPasswordBody {
+  password?: string;
+}
+
+/** PUT /api/admin/users/:id/superadmin */
+export interface AdminGrantBody {
+  grant?: boolean;
 }
 
 /** Explore plaza card — a campaign plus its org display name. */

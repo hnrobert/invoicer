@@ -15,7 +15,7 @@ import type { SessionUser } from "./auth";
  *   - SUPERADMIN_EMAILS env entries (any linked email counts) are checked at
  *     runtime IN ADDITION to the table — useful for recovery/ops.
  */
-const superadminEmails = () =>
+export const superadminEmails = () =>
   (process.env.SUPERADMIN_EMAILS ?? "")
     .split(/[,;\s]+/)
     .map((e) => e.trim().toLowerCase())
