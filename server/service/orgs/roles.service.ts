@@ -180,7 +180,7 @@ export async function deleteRole(
   });
   // Demote anyone still assigned the deleted name (Better Auth member table).
   await sqlRun(
-    "UPDATE member SET role = 'member' WHERE organizationId = $1 AND role = $2",
+    "UPDATE member SET role = 'member' WHERE \"organizationId\" = $1 AND role = $2",
     [orgId, name],
   );
   logAudit({

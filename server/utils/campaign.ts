@@ -63,7 +63,7 @@ export async function isOrgMember(
   userId: string,
 ): Promise<boolean> {
   const row = await sqlGet(
-    "SELECT 1 AS ok FROM member WHERE organizationId = $1 AND userId = $2",
+    'SELECT 1 AS ok FROM member WHERE "organizationId" = $1 AND "userId" = $2',
     [organizationId, userId],
   );
   return !!row;
@@ -80,7 +80,7 @@ export async function getOrgRole(
   userId: string,
 ): Promise<OrgRole | null> {
   const row = await sqlGet<{ role: string }>(
-    "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+    'SELECT role FROM member WHERE "organizationId" = $1 AND "userId" = $2',
     [organizationId, userId],
   );
   if (!row) return null;
@@ -108,7 +108,7 @@ export async function getOrgRole(
 /** The set of organization ids the user belongs to. */
 export async function getUserOrgIds(userId: string): Promise<string[]> {
   const rows = await sqlAll<{ id: string }>(
-    "SELECT organizationId AS id FROM member WHERE userId = $1",
+    'SELECT "organizationId" AS id FROM member WHERE "userId" = $1',
     [userId],
   );
   return rows.map((r) => r.id);
@@ -167,7 +167,7 @@ export async function resolveCampaignRights(
   // the role's stored permission bundle, resolved here.
   if (role === "member") {
     const raw = await sqlGet<{ role: string }>(
-      "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+      'SELECT role FROM member WHERE "organizationId" = $1 AND "userId" = $2',
       [campaign.organizationId, user.id],
     );
     const customPerms = raw

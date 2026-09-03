@@ -77,7 +77,7 @@ export async function getOrgPermissions(
   userId: string,
 ): Promise<Set<OrgPermission>> {
   const row = await sqlGet<{ role: string }>(
-    "SELECT role FROM member WHERE organizationId = $1 AND userId = $2",
+    'SELECT role FROM member WHERE "organizationId" = $1 AND "userId" = $2',
     [organizationId, userId],
   );
   if (!row) return new Set();

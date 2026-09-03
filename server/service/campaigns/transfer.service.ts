@@ -82,7 +82,7 @@ export async function requestCampaignTransfer(
 
   // Notify the target org's owners/admins to accept.
   const admins = await sqlAll<{ userId: string }>(
-    "SELECT userId FROM member WHERE organizationId = $1 AND role IN ('owner','admin')",
+    "SELECT \"userId\" FROM member WHERE \"organizationId\" = $1 AND role IN ('owner','admin')",
     [targetOrgId],
   );
   const fromOrg = await sqlGet<{ name: string }>(
