@@ -58,13 +58,20 @@ const title = ref("");
 const taxId = ref("");
 const campaignName = ref("");
 
-// new org form (shown when arriving with #org or toggled)
-const showOrgForm = ref(route.hash === "#org");
+// new org form (shown when arriving with #org or toggled). The hash never
+// reaches the server, so it must only be read client-side after hydration —
+// initializing the ref from route.hash here causes a hydration class mismatch
+// (server renders the campaign tab, client the org tab).
+const showOrgForm = ref(false);
 const newName = ref("");
 const newSlug = ref("");
 const creatingOrg = ref(false);
 
-onMounted(() => {
+onMounted(async () => {
+  if (route.hash === "#org") showOrgForm.value = true;
+  // useState dies on full page loads — without this, arriving at /new
+  // directly (refresh, "+" menu) shows no organization scope buttons.
+  if (!organizations.value.length) await refreshOrgs().catch(() => {});
   scope.value = organizations.value[0]?.id ?? null;
   void loadTitles();
 });
@@ -118,7 +125,8 @@ async function submitOrg() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-xl">
+  <!-- id="org": gives the router's scrollBehavior an anchor for /new#org -->
+  <div id="org" class="mx-auto max-w-xl">
     <div class="mb-6 flex gap-2 border-b pb-3">
       <button
         type="button"

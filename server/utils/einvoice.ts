@@ -108,7 +108,9 @@ function fieldsFromLeaves(leaves: Leaf[]): Partial<InvoiceFields> {
     /invoicenumber|invoiceno|fphm|发票号码/.test(l.path),
   );
   if (noLeaf) {
-    const m = noLeaf.value.match(/\d{8}|\d{20}/);
+    // 20-digit (fully digitalized) numbers FIRST — the alternation order
+    // matters, else \d{8} happily matches the first 8 digits of a 20-digit one.
+    const m = noLeaf.value.match(/\d{20}|\d{8}/);
     if (m) out.invoiceNo = m[0];
   }
 

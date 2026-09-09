@@ -55,13 +55,16 @@ async function onOAuth(provider: ProviderId) {
       <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
         <div class="flex flex-col gap-2">
           <Label for="name">{{ t("auth.register.nameLabel") }}</Label>
+          <!-- Chromium compiles pattern= with the regex v flag, where a
+               literal trailing "-" inside a class is invalid (parsed as the
+               set-difference operator) — it MUST stay escaped as \-. -->
           <Input
             id="name"
             v-model="name"
             :placeholder="t('auth.register.namePlaceholder')"
             autocomplete="username"
             maxlength="39"
-            :pattern="'[A-Za-z0-9_-]+'"
+            pattern="[A-Za-z0-9_\-]+"
             :title="t('auth.register.nameHint')"
             required
             :disabled="loading"

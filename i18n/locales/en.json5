@@ -211,19 +211,25 @@
     selectOrg: "Select",
   },
 
+  // vue-i18n 按 "." 逐层下降解析，带点的字面量键（"campaign.create"）无法
+  // 被 t("perms.campaign.create") 命中 — 权限目录必须写成嵌套结构。
   perms: {
-    "campaign.create": "Create campaigns",
-    "campaign.upload": "Upload invoices",
-    "campaign.viewAll": "View all invoices",
-    "campaign.review": "Review submissions",
-    "campaign.export": "Export / reports",
-    "campaign.manage": "Campaign settings / groups / collaborators",
-    "org.member.manage": "Member management",
-    "org.role.manage": "Custom role management",
-    "org.title.manage": "Org title management",
-    "org.visibility.manage": "Org visibility management",
-    "org.transfer.accept": "Accept campaign transfers",
-    "org.audit.view": "View audit log",
+    campaign: {
+      create: "Create campaigns",
+      upload: "Upload invoices",
+      viewAll: "View all invoices",
+      review: "Review submissions",
+      export: "Export / reports",
+      manage: "Campaign settings / groups / collaborators",
+    },
+    org: {
+      member: { manage: "Member management" },
+      role: { manage: "Custom role management" },
+      title: { manage: "Org title management" },
+      visibility: { manage: "Org visibility management" },
+      transfer: { accept: "Accept campaign transfers" },
+      audit: { view: "View audit log" },
+    },
   },
 
   // ── invoice titles ───────────────────────────────────────────

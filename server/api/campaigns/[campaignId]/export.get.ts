@@ -25,10 +25,16 @@ export default defineEventHandler(async (event) => {
     rights,
     format as ExportFormat,
   );
+  // HTTP headers are ByteStrings — a Chinese campaign name in filename=
+  // throws. Send an ASCII fallback plus the RFC 5987 encoded form (what
+  // browsers prefer when both are present).
+  const asciiFallback = filename
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/"/g, "'");
   return new Response(body, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   });
 });

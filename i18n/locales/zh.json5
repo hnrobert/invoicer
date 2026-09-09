@@ -212,19 +212,25 @@
     selectOrg: "选择",
   },
 
+  // vue-i18n 按 "." 逐层下降解析，带点的字面量键（"campaign.create"）无法
+  // 被 t("perms.campaign.create") 命中 — 权限目录必须写成嵌套结构。
   perms: {
-    "campaign.create": "创建活动",
-    "campaign.upload": "上传发票",
-    "campaign.viewAll": "查看全部发票",
-    "campaign.review": "审核提交",
-    "campaign.export": "导出 / 报告",
-    "campaign.manage": "活动设置 / 分组 / 协作者",
-    "org.member.manage": "成员管理",
-    "org.role.manage": "自定义角色管理",
-    "org.title.manage": "组织抬头管理",
-    "org.visibility.manage": "组织可见性管理",
-    "org.transfer.accept": "接受活动转让",
-    "org.audit.view": "查看审计日志",
+    campaign: {
+      create: "创建活动",
+      upload: "上传发票",
+      viewAll: "查看全部发票",
+      review: "审核提交",
+      export: "导出 / 报告",
+      manage: "活动设置 / 分组 / 协作者",
+    },
+    org: {
+      member: { manage: "成员管理" },
+      role: { manage: "自定义角色管理" },
+      title: { manage: "组织抬头管理" },
+      visibility: { manage: "组织可见性管理" },
+      transfer: { accept: "接受活动转让" },
+      audit: { view: "查看审计日志" },
+    },
   },
 
   // ── 发票抬头 ─────────────────────────────────────────────────
