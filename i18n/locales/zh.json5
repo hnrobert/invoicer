@@ -325,6 +325,7 @@
   dashboard: {
     title: "我的活动",
     count: "个活动",
+    filter: "筛选活动…",
     empty: "还没有活动。创建一个，或在广场发现公开活动。",
     myOrgs: "我的组织",
   },

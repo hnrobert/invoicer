@@ -56,6 +56,17 @@ services:
       S3_BUCKET: ${S3_BUCKET:-}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      # Superadmin grants (see .env.example); empty = first-registered-user
+      # bootstrap rule.
+      SUPERADMIN_EMAILS: ${SUPERADMIN_EMAILS:-}
+      # Set to 1 only behind a reverse proxy (trusts X-Forwarded-For for
+      # rate limiting); leave empty when directly exposed.
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      # tesseract.js fallback languages (empty = chi_sim+eng default).
+      OCR_LANGS: ${OCR_LANGS:-}
+      # WebAuthn overrides — only needed when a proxy hides the real host.
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-}
     restart: unless-stopped
     depends_on:
       seaweedfs:

@@ -327,6 +327,7 @@
   dashboard: {
     title: "My campaigns",
     count: "campaign(s)",
+    filter: "Filter campaigns…",
     empty: "No campaigns yet. Create one, or explore public ones.",
     myOrgs: "My organizations",
   },

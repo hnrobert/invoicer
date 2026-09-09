@@ -30,6 +30,19 @@ const feed = computed(() =>
 const orgName = (id: string | null): string | null =>
   id ? (organizations.value.find((o) => o.id === id)?.name ?? null) : null;
 
+/** Client-side quick filter over the unified feed (name / title / org). */
+const q = ref("");
+const visible = computed(() => {
+  const needle = q.value.trim().toLowerCase();
+  if (!needle) return feed.value;
+  return feed.value.filter(
+    (c) =>
+      (c.name || "").toLowerCase().includes(needle) ||
+      c.expectedTitle.toLowerCase().includes(needle) ||
+      (orgName(c.organizationId) ?? "").toLowerCase().includes(needle),
+  );
+});
+
 function campaignHref(c: { id: number; orgSlug: string | null }): string {
   return c.orgSlug
     ? `/orgs/${c.orgSlug}/campaigns/${c.id}`
@@ -148,11 +161,31 @@ onMounted(async () => {
 
     <!-- feed -->
     <div class="min-w-0 flex-1">
-      <div class="mb-4 flex items-center justify-between">
+      <!-- toolbar: title + count left, quick filter + primary action right -->
+      <div class="mb-3 flex flex-wrap items-center gap-2">
         <h2 class="text-lg font-semibold">{{ t("dashboard.title") }}</h2>
-        <span class="text-xs text-muted-foreground"
-          >{{ feed.length }} {{ t("dashboard.count") }}</span
-        >
+        <span class="font-mono text-xs text-muted-foreground">{{
+          visible.length
+        }}</span>
+        <div class="ml-auto flex items-center gap-2">
+          <div class="relative">
+            <Icon
+              spec="Search"
+              :size="14"
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              v-model="q"
+              type="search"
+              :placeholder="t('dashboard.filter')"
+              class="h-9 w-44 rounded-md border bg-muted/40 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-background sm:w-56"
+            />
+          </div>
+          <Button size="sm" variant="outline" @click="navigateTo('/new')">
+            <Icon spec="FolderPlus" :size="14" />
+            {{ t("nav.newCampaign") }}
+          </Button>
+        </div>
       </div>
 
       <div
@@ -173,53 +206,55 @@ onMounted(async () => {
           {{ t("nav.newCampaign") }}
         </Button>
       </div>
-      <div v-else class="flex flex-col gap-3">
+      <!-- GitHub-style: ONE box, hairline-divided dense rows (not cards) -->
+      <div v-else class="overflow-hidden rounded-lg border">
         <NuxtLink
-          v-for="c in feed"
+          v-for="(c, i) in visible"
           :key="c.id"
           :to="campaignHref(c)"
-          class="flex flex-col gap-1.5 rounded-lg border p-4 transition-colors hover:bg-accent/40"
+          class="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/40"
+          :class="i > 0 ? 'border-t' : ''"
         >
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <span
-              class="flex items-center gap-1 rounded-full border border-border px-2 py-px text-muted-foreground"
-            >
-              <Icon
-                :spec="
-                  c.kind === 'personal'
-                    ? 'User'
-                    : c.kind === 'collab'
-                      ? 'UserPlus'
-                      : 'Building2'
-                "
-                :size="11"
-              />
-              {{
-                c.kind === "personal"
-                  ? t("home.scope.personal")
-                  : c.kind === "collab"
-                    ? t("home.collab.section")
-                    : (orgName(c.organizationId) ?? t("home.scope.org"))
-              }}
-            </span>
-            <span
-              class="rounded-full border px-2 py-px"
-              :class="VIS_CLS[c.visibility]"
-              >{{ t(`home.settings.vis.${c.visibility}`) }}</span
-            >
-            <span
-              class="rounded-full border px-2 py-px"
-              :class="ST_CLS[c.status]"
-              >{{ t(`home.settings.st.${c.status}`) }}</span
-            >
-            <span class="ml-auto text-muted-foreground">{{
-              fmtDate(c.createdAt)
-            }}</span>
+          <Icon
+            :spec="
+              c.kind === 'personal'
+                ? 'User'
+                : c.kind === 'collab'
+                  ? 'UserPlus'
+                  : 'Building2'
+            "
+            :size="16"
+            class="shrink-0 text-muted-foreground"
+          />
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 items-baseline gap-2">
+              <span class="truncate text-sm font-medium hover:underline">{{
+                c.name || c.expectedTitle
+              }}</span>
+              <span
+                v-if="c.kind !== 'personal' && orgName(c.organizationId)"
+                class="hidden truncate text-xs text-muted-foreground sm:inline"
+                >{{ orgName(c.organizationId) }}</span
+              >
+            </div>
+            <p class="truncate text-xs text-muted-foreground">
+              {{ c.expectedTitle || "—" }}
+            </p>
           </div>
-          <span class="font-semibold">{{ c.name || c.expectedTitle }}</span>
-          <span class="truncate text-xs text-muted-foreground">{{
-            c.expectedTitle
-          }}</span>
+          <span
+            class="hidden rounded-full border px-2 py-px text-xs"
+            :class="VIS_CLS[c.visibility]"
+            >{{ t(`home.settings.vis.${c.visibility}`) }}</span
+          >
+          <span
+            class="rounded-full border px-2 py-px text-xs"
+            :class="ST_CLS[c.status]"
+            >{{ t(`home.settings.st.${c.status}`) }}</span
+          >
+          <span
+            class="hidden w-24 shrink-0 text-right font-mono text-xs text-muted-foreground sm:inline"
+            >{{ fmtDate(c.createdAt) }}</span
+          >
         </NuxtLink>
       </div>
     </div>
