@@ -517,6 +517,7 @@
       csv: "CSV table",
       xlsx: "Excel workbook",
       zip: "Invoice files ZIP",
+      claim: "Claim form (xlsx)",
     },
     groups: {
       title: "Groups & reviewers",

@@ -515,6 +515,7 @@
       csv: "CSV 表格",
       xlsx: "Excel 表格",
       zip: "发票原件 ZIP",
+      claim: "学生活动经费报销表 (xlsx)",
     },
     groups: {
       title: "分组与审核员",

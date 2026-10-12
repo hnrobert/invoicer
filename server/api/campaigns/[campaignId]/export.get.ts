@@ -9,10 +9,10 @@ import {
 export default defineEventHandler(async (event) => {
   const campaignId = Number(getRouterParam(event, "campaignId"));
   const format = (getQuery(event).format ?? "csv").toString();
-  if (!["csv", "xlsx", "zip"].includes(format)) {
+  if (!["csv", "xlsx", "zip", "claim"].includes(format)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "format must be csv / xlsx / zip",
+      statusMessage: "format must be csv / xlsx / zip / claim",
     });
   }
   const { user, campaign, rights } = await requireCampaignAccess(

@@ -3,6 +3,8 @@ import ExcelJS from "exceljs";
 import AdmZip from "adm-zip";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
+import { CampaignItem } from "#server/entities/campaignItem.entity";
+import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import type { Campaign } from "#server/entities/campaign.entity";
 import { usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal } from "#server/utils/serialize";
@@ -35,16 +37,233 @@ function amountOf(i: Invoice): number | null {
   return i.extractedAmount ?? i.manualAmount;
 }
 
-export type ExportFormat = "csv" | "xlsx" | "zip";
+export type ExportFormat = "csv" | "xlsx" | "zip" | "claim";
 
 /**
- * Export a campaign's full invoice data (Editor+ / legacy). Three formats:
+ * Export a campaign's full invoice data (Editor+ / legacy). Formats:
  *  - csv: flat table incl. uploader identity, amounts, status, review state
  *  - xlsx: two sheets (summary + detail)
  *  - zip: the original invoice files, grouped by review state / uploader
+ *  - claim: UNNC "学生活动经费报销表 Students Activity Expenses Claim Form"
+ *    (Attachment 2 of the DCL fund regulations) — one row per reimbursement
+ *    item, totals in Chinese capital letters, fixed university invoice
+ *    header confirmation at the bottom.
  * Every export is audit-logged. Returns the bytes + download metadata; the
  * API layer shapes the actual Response.
  */
+
+/** 1234.50 → 壹仟贰佰叁拾肆元伍角 (RMB Chinese-capital form, claim form). */
+function rmbUppercase(n: number): string {
+  const digits = "零壹贰叁肆伍陆柒捌玖";
+  const units = ["", "拾", "佰", "仟"];
+  const bigUnits = ["", "万", "亿"];
+  const [intPart = "0", decPart = "00"] = n.toFixed(2).split(".");
+  if (Number(intPart) === 0 && Number(decPart) === 0) return "零元整";
+  let intStr = "";
+  const groups: string[] = [];
+  for (let g = intPart.length; g > 0; g -= 4) {
+    groups.unshift(intPart.slice(Math.max(0, g - 4), g));
+  }
+  groups.forEach((g, gi) => {
+    let seg = "";
+    let zeroPending = false;
+    for (let i = 0; i < g.length; i++) {
+      const d = Number(g[i]);
+      const unit = units[g.length - 1 - i] ?? "";
+      if (d === 0) {
+        zeroPending = seg.length > 0;
+      } else {
+        if (zeroPending) seg += "零";
+        zeroPending = false;
+        seg += digits[d] + unit;
+      }
+    }
+    if (seg) intStr += seg + bigUnits[groups.length - 1 - gi];
+  });
+  if (Number(intPart) === 0) intStr = "";
+  let decStr = "";
+  const jiao = Number(decPart[0]);
+  const fen = Number(decPart[1]);
+  if (jiao > 0) decStr += digits[jiao] + "角";
+  if (fen > 0)
+    decStr += (jiao > 0 ? "" : intStr ? "零" : "") + digits[fen] + "分";
+  if (!decStr) decStr = "整";
+  return `${intStr ? intStr + "元" : ""}${decStr}`;
+}
+
+/** Build the UNNC claim-form workbook (see Attachment 2 of the regulations). */
+async function buildClaimWorkbook(
+  campaign: Campaign,
+  campaignId: number,
+  invoices: Invoice[],
+): Promise<ExcelJS.Buffer> {
+  const items = await AppDataSource.getRepository(CampaignItem).find({
+    where: { campaignId },
+    order: { id: "asc" },
+  });
+  const groups = await AppDataSource.getRepository(CampaignGroup).find({
+    where: { campaignId },
+  });
+  const groupName = (gid: number | null) =>
+    gid == null ? null : (groups.find((g) => g.id === gid)?.name ?? null);
+
+  // One claim row per reimbursement ITEM (actual = its attached formal
+  // invoices' qualified sum); unattached qualified invoices follow as rows.
+  const rows: {
+    no: number;
+    receiptItem: string;
+    concreteItem: string;
+    amount: number | null;
+    note: string;
+    channel: string | null;
+  }[] = [];
+  const claimedInvoiceIds = new Set<number>();
+  for (const it of items) {
+    const mine = invoices.filter((i) => i.itemId === it.id);
+    mine.forEach((i) => claimedInvoiceIds.add(i.id));
+    const formal = mine.filter(
+      (i) => i.kind === "invoice" && i.status === "qualified",
+    );
+    const sum = formal.reduce((s, i) => s + (amountOf(i) ?? 0), 0);
+    const main = formal[0] ?? mine[0];
+    rows.push({
+      no: rows.length + 1,
+      receiptItem: main?.extractedMerchant ?? main?.extractedTitle ?? "",
+      concreteItem: it.name,
+      amount: formal.length ? Math.round(sum * 100) / 100 : null,
+      note: [
+        it.payer ? `垫付人: ${it.payer}` : "",
+        it.note ?? "",
+        formal.length ? "" : "待补票",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      channel: groupName(it.groupId),
+    });
+  }
+  for (const i of invoices) {
+    if (claimedInvoiceIds.has(i.id)) continue;
+    if (!(i.kind === "invoice" && i.status === "qualified")) continue;
+    rows.push({
+      no: rows.length + 1,
+      receiptItem: i.extractedMerchant ?? i.extractedTitle ?? "",
+      concreteItem: i.filename.replace(/\.[a-z0-9]+$/i, ""),
+      amount: amountOf(i),
+      note: "",
+      channel: groupName(i.groupId),
+    });
+  }
+  const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("报销表", {
+    pageSetup: { paperSize: 9, orientation: "portrait" },
+  });
+  ws.columns = [
+    { width: 5 }, // No.
+    { width: 22 }, // Item shown on receipt
+    { width: 22 }, // Concrete item
+    { width: 10 }, // Unit price
+    { width: 8 }, // Quantity
+    { width: 12 }, // Amount
+    { width: 18 }, // Note
+  ];
+
+  const mergeCenter = (range: string, text: string, bold = false) => {
+    ws.mergeCells(range);
+    const c = ws.getCell(range.split(":")[0]!);
+    c.value = text;
+    c.font = { bold, size: bold ? 12 : 10 };
+    c.alignment = { horizontal: "center", vertical: "middle" };
+  };
+  const field = (row: number, label: string, value: string) => {
+    mergeCenter(`B${row}:C${row}`, label);
+    mergeCenter(`D${row}:G${row}`, value);
+  };
+
+  mergeCenter("A1:G1", "学生活动经费报销表", true);
+  mergeCenter("A2:G2", "Students Activity Expenses Claim Form");
+  field(4, "Applicant 申请人", "");
+  field(5, "Contact Number 联系电话", "");
+  field(6, "Name of Organization 社团/组织", "");
+  field(
+    7,
+    "Activity Details 活动信息",
+    campaign.name || campaign.expectedTitle || `campaign #${campaignId}`,
+  );
+  field(8, "Claims Amounts 大写", rmbUppercase(total));
+  field(9, "Claims Amounts (Arabic) 小写", `¥${total.toFixed(2)}`);
+
+  const headerRow = ws.getRow(11);
+  headerRow.values = [
+    "No.",
+    "Item (Shown on receipt)\n发票内容",
+    "Item (concrete item)\n实际内容",
+    "Unit Price\n单价",
+    "Quantity\n数量",
+    "Amount\n总金额",
+    "Note\n备注",
+  ];
+  headerRow.height = 30;
+  headerRow.eachCell((c) => {
+    c.font = { bold: true, size: 9 };
+    c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    c.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+  });
+  // Example row, as printed on the official form.
+  const eg = ws.getRow(12);
+  eg.values = ["E.G.", "节庆用品", "气球", 2.0, 10, 20.0, ""];
+  eg.font = { size: 9, italic: true, color: { argb: "FF808080" } };
+
+  let r = 13;
+  const thin = {
+    top: { style: "thin" as const },
+    left: { style: "thin" as const },
+    bottom: { style: "thin" as const },
+    right: { style: "thin" as const },
+  };
+  let lastChannel: string | null = null;
+  for (const row of rows) {
+    if (row.channel && row.channel !== lastChannel) {
+      mergeCenter(`A${r}:G${r}`, `— ${row.channel} —`);
+      ws.getRow(r).font = { bold: true, size: 9 };
+      r++;
+    }
+    lastChannel = row.channel;
+    const xr = ws.getRow(r);
+    xr.values = [
+      row.no,
+      row.receiptItem,
+      row.concreteItem,
+      null, // unit price — left for the claimant to fill
+      null, // quantity — left for the claimant to fill
+      row.amount,
+      row.note,
+    ];
+    xr.font = { size: 9 };
+    xr.eachCell({ includeEmpty: true }, (c) => {
+      c.border = thin;
+      c.alignment = { vertical: "middle", wrapText: true };
+    });
+    xr.getCell(6).numFmt = "#,##0.00";
+    r++;
+  }
+
+  r += 1;
+  mergeCenter(
+    `A${r}:G${r}`,
+    "Please confirm the receipts information（请确认发票信息正确）:",
+  );
+  ws.getRow(r).font = { bold: true, size: 10 };
+  mergeCenter(`A${r + 1}:G${r + 1}`, "发票抬头：宁波诺丁汉大学");
+  mergeCenter(`A${r + 2}:G${r + 2}`, "纳税人识别号：1233000077647510XG");
+  return wb.xlsx.writeBuffer();
+}
 export async function exportCampaign(
   user: Pick<AuthUser, "id" | "name" | "email">,
   campaign: Campaign,
@@ -214,6 +433,16 @@ export async function exportCampaign(
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       filename: `${safeName}.xlsx`,
+    };
+  }
+
+  if (format === "claim") {
+    const buf = await buildClaimWorkbook(campaign, campaignId, invoices);
+    return {
+      body: buf as ArrayBuffer,
+      contentType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      filename: `${safeName}-报销表.xlsx`,
     };
   }
 
