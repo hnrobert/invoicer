@@ -35,8 +35,13 @@ export async function sqlAll<T = Record<string, unknown>>(
   sql: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const res = await authDb.query(sql, params);
-  return res.rows as T[];
+  try {
+    const res = await authDb.query(sql, params);
+    return res.rows as T[];
+  } catch (e) {
+    console.error(`[auth:db] ${sql.slice(0, 60)} →`, e);
+    throw e;
+  }
 }
 
 /** Run a raw query and return the first row, or undefined (as .get()). */
@@ -44,8 +49,13 @@ export async function sqlGet<T = Record<string, unknown>>(
   sql: string,
   params: unknown[] = [],
 ): Promise<T | undefined> {
-  const res = await authDb.query(sql, params);
-  return res.rows[0] as T | undefined;
+  try {
+    const res = await authDb.query(sql, params);
+    return res.rows[0] as T | undefined;
+  } catch (e) {
+    console.error(`[auth:db] ${sql.slice(0, 60)} →`, e);
+    throw e;
+  }
 }
 
 /** Run a raw mutating statement (as .run()); returns the pg result. */
@@ -53,7 +63,12 @@ export async function sqlRun(
   sql: string,
   params: unknown[] = [],
 ): Promise<void> {
-  await authDb.query(sql, params);
+  try {
+    await authDb.query(sql, params);
+  } catch (e) {
+    console.error(`[auth:db] ${sql.slice(0, 60)} →`, e);
+    throw e;
+  }
 }
 
 export const auth = betterAuth({

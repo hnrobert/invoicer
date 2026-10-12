@@ -7,9 +7,30 @@
  * Uses pdfjs-dist directly (its legacy build runs in Node without DOM
  * shims); unpdf's lazy resolver proved unreliable under Nitro bundling.
  */
+import { createRequire } from "node:module";
+import { join, resolve, dirname } from "node:path";
+
 export async function extractPdfText(data: Uint8Array): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const task = pdfjs.getDocument({ data });
+  // CID-keyed CJK fonts decode through the CMap tables shipped in the
+  // package. Without cMapUrl pdf.js logs a translateFont warning and
+  // silently DROPS every text run set in those fonts — whole value streams
+  // (amounts, names, tax ids) vanish from the output. Resolve the package
+  // root at runtime so this works in dev and in the deployed node_modules.
+  const require = createRequire(import.meta.url);
+  const pkgRoot = resolve(
+    dirname(require.resolve("pdfjs-dist/legacy/build/pdf.mjs")),
+    "../..",
+  );
+  // Plain filesystem paths (NOT file:// URLs) — in Node the legacy build
+  // reads cmap/font data through fs.readFile, and Node fetch rejects
+  // file:// URLs anyway.
+  const task = pdfjs.getDocument({
+    data,
+    cMapUrl: join(pkgRoot, "cmaps") + "/",
+    cMapPacked: true,
+    standardFontDataUrl: join(pkgRoot, "standard_fonts") + "/",
+  });
   const doc = await task.promise;
   try {
     let out = "";

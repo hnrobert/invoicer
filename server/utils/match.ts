@@ -44,22 +44,29 @@ export function matchInvoiceMulti(
       a.title &&
       a.title.replace(/\s/g, "") &&
       (a.title.replace(/\s/g, "").includes(exTitle.replace(/\s/g, "")) ||
-        exTitle.replace(/\s/g, "").includes(a.title.replace(/s/g, "")))
+        exTitle.replace(/\s/g, "").includes(a.title.replace(/\s/g, "")))
     )
       anyTitleOk = true;
     if (exTax && a.taxId && exTax === a.taxId) anyTaxOk = true;
   }
+  // Some layouts print no buyer NAME at all (railway e-tickets, personal
+  // itineraries) — when nothing was extracted the tax id is the only buyer
+  // identifier on the sheet, so a tax match alone must not read as a
+  // "title mismatch".
+  const titleOkEffective = anyTitleOk || (anyTaxOk && !exTitle);
   const amount = extracted.amount ?? null;
   let status: MatchResult["status"];
   let reason: string;
-  if (anyTitleOk && anyTaxOk) {
+  if (titleOkEffective && anyTaxOk) {
     if (amount == null) {
       status = "manual";
       reason =
         "Title and tax ID matched, but no amount recognized — enter it manually";
     } else {
       status = "qualified";
-      reason = "Title and tax ID both matched";
+      reason = anyTitleOk
+        ? "Title and tax ID both matched"
+        : "Tax ID matched (no buyer title printed on the sheet)";
     }
   } else if (anyTitleOk || anyTaxOk) {
     status = "manual";
@@ -73,7 +80,7 @@ export function matchInvoiceMulti(
   return {
     status,
     reason,
-    titleOk: anyTitleOk,
+    titleOk: titleOkEffective,
     taxOk: anyTaxOk,
     amountInTotal: status === "qualified",
   };
