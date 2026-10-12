@@ -13,6 +13,7 @@ import type { InvoiceStatus, ReviewState } from "#shared/types";
 @Index("idx_invoices_campaign", ["campaignId"])
 @Index("idx_invoices_status", ["status"])
 @Index("idx_invoices_uploader", ["uploaderId"])
+@Index("idx_invoices_item", ["itemId"])
 export class Invoice {
   @PrimaryGeneratedColumn("increment", {
     type: "integer",
@@ -31,9 +32,16 @@ export class Invoice {
   @Column({ name: "group_id", type: "integer", nullable: true })
   groupId!: number | null;
 
-  /** Document kind: formal invoice, or receipt/order screenshot (OCR path). */
+  /** Reimbursement item this file is evidence for (null = unattached). */
+  @Column({ name: "item_id", type: "integer", nullable: true })
+  itemId!: number | null;
+
+  /**
+   * Document kind: formal invoice, receipt/order screenshot (OCR path), or
+   * quotation/itemized list (报价单 — supporting evidence for an invoice).
+   */
   @Column({ type: "text", nullable: false, default: "invoice" })
-  kind!: "invoice" | "receipt";
+  kind!: "invoice" | "receipt" | "quotation";
 
   /** Receipt path: merchant/shop name. Invoices: the SELLER name (pairing key). */
   @Column({ name: "extracted_merchant", type: "text", nullable: true })

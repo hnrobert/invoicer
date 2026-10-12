@@ -75,6 +75,16 @@ try {
       .map((q) => `  ${JSON.stringify(q.query.replace(/\s+/g, " ").trim())},`)
       .join("\n");
 
+  // Harden the generated DOWN: SchemaBuilder emits bare DROP INDEX/TABLE/
+  // COLUMN statements, but a reverted UP often already cascaded some of them
+  // (DROP TABLE takes its indexes along) — bare drops then abort the whole
+  // revert. Idempotent forms keep DOWN replayable in any drift state.
+  const hardenDown = (q: string): string =>
+    q
+      .replace(/^DROP INDEX /, "DROP INDEX IF EXISTS ")
+      .replace(/^DROP TABLE /, "DROP TABLE IF EXISTS ")
+      .replace(/^(ALTER TABLE "[^"]+" DROP COLUMN )/, "$1IF EXISTS ");
+
   const content = `import { type MigrationInterface, type QueryRunner } from "typeorm";
 
 /**
@@ -96,11 +106,11 @@ export class ${className} implements MigrationInterface {
 
 const UP: string[] = [
 ${render(upQueries)}
-]
+];
 
 const DOWN: string[] = [
-${render(downQueries)}
-]
+${render(downQueries.map((q) => ({ query: hardenDown(q.query) })))}
+];
 `;
   writeFileSync(file, content);
   console.log(

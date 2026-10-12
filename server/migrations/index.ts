@@ -13,6 +13,7 @@
  * with scripts/migrate-sqlite-to-pg.ts (data ETL, not history replay).
  */
 import { Init1788094800471 } from "./1788094800471-Init";
+import { AddCampaignItems1791782473680 } from "./1791782473680-AddCampaignItems";
 
 /** Identity of the first (baseline) migration. */
 export const BASELINE_MIGRATION = {
@@ -23,6 +24,7 @@ export const BASELINE_MIGRATION = {
 // typeorm typings expect `MixedList<string | Function>` for the DataSource
 // option; migration classes satisfy that at runtime (classes are functions)
 // but not structurally, hence the cast through unknown.
-export const migrations = [Init1788094800471] as unknown as (
-  string | (() => unknown)
-)[];
+export const migrations = [
+  Init1788094800471,
+  AddCampaignItems1791782473680,
+] as unknown as (string | (() => unknown))[];

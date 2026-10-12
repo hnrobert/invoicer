@@ -15,6 +15,7 @@ import { UserEmail } from "../entities/userEmail.entity";
 import { SiteAdmin } from "../entities/siteAdmin.entity";
 import { Passkey } from "../entities/passkey.entity";
 import { CampaignGroup } from "../entities/campaignGroup.entity";
+import { CampaignItem } from "../entities/campaignItem.entity";
 import { GroupReviewer } from "../entities/groupReviewer.entity";
 import { InvoiceTitle } from "../entities/invoiceTitle.entity";
 import { CampaignTitle } from "../entities/campaignTitle.entity";
@@ -63,6 +64,7 @@ export const AppDataSource = new DataSource({
     SiteAdmin,
     Passkey,
     CampaignGroup,
+    CampaignItem,
     GroupReviewer,
     InvoiceTitle,
     CampaignTitle,

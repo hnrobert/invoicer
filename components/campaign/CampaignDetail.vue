@@ -4,6 +4,10 @@ import type {
   CampaignDetailResponse,
   CollaboratorsResponse,
   GroupsResponse,
+  ItemCreateBody,
+  ItemPublic,
+  ItemUpdateBody,
+  ItemsResponse,
 } from "#shared/api";
 import type { InvoicePublic } from "#shared/types";
 
@@ -26,12 +30,17 @@ const { organizations, refresh: refreshOrgs } = useOrgs();
 
 const loading = ref(true);
 const notFound = ref(false);
-const tab = ref<"invoices" | "settings" | "audit">(
+// 'items' (reimbursement items, the default) vs 'files' (flat invoice list).
+// Legacy ?tab=invoices links map to files.
+const tab = ref<"items" | "files" | "settings" | "audit">(
   (route.query.tab as string) === "settings"
     ? "settings"
     : (route.query.tab as string) === "audit"
       ? "audit"
-      : "invoices",
+      : (route.query.tab as string) === "files" ||
+          (route.query.tab as string) === "invoices"
+        ? "files"
+        : "items",
 );
 
 const orgName = computed(
@@ -53,6 +62,7 @@ onMounted(async () => {
     loading.value = false;
   }
   void loadGroups();
+  void loadItems();
 });
 onUnmounted(() => inv.stopPolling());
 
@@ -181,6 +191,72 @@ async function setInvoiceGroup(iid: number, gid: number | null) {
   }
 }
 
+// ---------- reimbursement items (报销条目) ----------
+// Items live here (not inside CampaignItems.vue) so the files-tab row selects
+// and the items tab share one source of truth.
+const items = ref<ItemPublic[]>([]);
+async function loadItems() {
+  try {
+    const res = await $fetch<ItemsResponse>(
+      `/api/campaigns/${props.campaignId}/items`,
+    );
+    items.value = res.items;
+  } catch {
+    items.value = [];
+  }
+}
+function itemName(itemId: number | null): string {
+  return itemId == null
+    ? ""
+    : (items.value.find((x) => x.id === itemId)?.name ?? "");
+}
+async function refreshItemsAndInvoices() {
+  await Promise.all([loadItems(), inv.refresh()]);
+}
+async function createItem(payload: ItemCreateBody) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/items`, {
+      method: "POST",
+      body: payload,
+    });
+    await refreshItemsAndInvoices();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function updateItem(itemId: number, payload: ItemUpdateBody) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/items/${itemId}`, {
+      method: "PUT",
+      body: payload,
+    });
+    await loadItems();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function removeItem(itemId: number) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/items/${itemId}`, {
+      method: "DELETE",
+    });
+    await refreshItemsAndInvoices();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+async function setInvoiceItem(invoiceIds: number[], itemId: number | null) {
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/invoices/item`, {
+      method: "POST",
+      body: { invoiceIds, itemId },
+    });
+    await refreshItemsAndInvoices();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+
 // ---------- results ----------
 const expanded = ref<Set<number>>(new Set());
 function toggleExpand(id: number) {
@@ -192,6 +268,18 @@ function fmtAmount(i: InvoicePublic): string {
   const amt = i.extractedAmount ?? i.manualAmount;
   return amt != null ? `¥${amt.toFixed(2)}` : t("common.dash");
 }
+/** Table footer total: sum of the QUALIFIED rows currently shown. Deliberately
+ *  NOT `inv.totalAmount` — that follows the review flow (submit → approved),
+ *  which reads ¥0 on campaigns whose invoices never entered the flow. */
+const qualifiedTotal = computed(() => {
+  let sum = 0;
+  for (const i of inv.filtered.value) {
+    if (i.status !== "qualified") continue;
+    const amt = i.extractedAmount ?? i.manualAmount;
+    if (amt != null) sum += amt;
+  }
+  return Math.round(sum * 100) / 100;
+});
 function isManual(i: InvoicePublic): boolean {
   return i.extractedAmount == null && i.manualAmount != null;
 }
@@ -444,7 +532,7 @@ const { confirmLeave: sdConfirmLeave, proceed: sdProceed } =
 // same way and route them through the same dialog.
 const confirmTabLeave = ref(false);
 const pendingLeave = ref<
-  | { kind: "tab"; key: "invoices" | "settings" | "audit" }
+  | { kind: "tab"; key: "items" | "files" | "settings" | "audit" }
   | {
       kind: "setSection";
       key: "general" | "groups" | "collab" | "transfer";
@@ -457,7 +545,7 @@ function leaveBlocked(): boolean {
   confirmTabLeave.value = true;
   return true;
 }
-function switchTab(key: "invoices" | "settings" | "audit") {
+function switchTab(key: "items" | "files" | "settings" | "audit") {
   if (key === tab.value) return;
   const stash = pendingLeave.value;
   pendingLeave.value = { kind: "tab", key };
@@ -692,7 +780,8 @@ async function loadAudit() {
       <nav class="mt-3 flex gap-1">
         <button
           v-for="tb in [
-            { key: 'invoices', label: t('campaign.tabs.invoices') },
+            { key: 'items', label: t('campaign.tabs.items') },
+            { key: 'files', label: t('campaign.tabs.files') },
             ...(canManage
               ? [{ key: 'settings', label: t('campaign.tabs.settings') }]
               : []),
@@ -715,8 +804,22 @@ async function loadAudit() {
       </nav>
     </div>
 
-    <!-- ============ invoices tab ============ -->
-    <div v-if="tab === 'invoices'" class="flex flex-col gap-4">
+    <!-- ============ items tab (报销条目 — the default view) ============ -->
+    <div v-if="tab === 'items'" class="flex flex-col gap-4">
+      <CampaignItems
+        :items="items"
+        :groups="groups"
+        :invoices="inv.invoices.value"
+        :can-manage="canManage"
+        @create="createItem"
+        @update="updateItem"
+        @remove="removeItem"
+        @attach="setInvoiceItem"
+      />
+    </div>
+
+    <!-- ============ files tab (flat invoice list) ============ -->
+    <div v-else-if="tab === 'files'" class="flex flex-col gap-4">
       <!-- upload dropzone -->
       <button
         v-if="canUpload"
@@ -889,9 +992,13 @@ async function loadAudit() {
                 >
                   <td class="max-w-55 truncate px-3 py-2" :title="i.filename">
                     <span
-                      v-if="i.kind === 'receipt'"
+                      v-if="i.kind === 'receipt' || i.kind === 'quotation'"
                       class="mr-1 rounded-full border border-sky-500/40 px-2 py-px text-[11px] text-sky-700 dark:text-sky-400"
-                      >{{ t("home.kind.receipt") }}</span
+                      >{{
+                        i.kind === "quotation"
+                          ? t("home.kind.quotation")
+                          : t("home.kind.receipt")
+                      }}</span
                     >{{ i.filename }}
                     <select
                       v-if="canManage && groups.length"
@@ -918,6 +1025,33 @@ async function loadAudit() {
                       v-else-if="groupName(i.groupId)"
                       class="ml-1 rounded-full border px-2 py-px text-[11px] text-muted-foreground"
                       >{{ groupName(i.groupId) }}</span
+                    >
+                    <!-- item attachment (报销条目) -->
+                    <select
+                      v-if="canManage && items.length"
+                      class="ml-1 rounded border bg-background px-1 py-0.5 text-[11px]"
+                      :value="i.itemId ?? ''"
+                      @change.stop="
+                        setInvoiceItem(
+                          [i.id],
+                          ($event.target as HTMLSelectElement).value
+                            ? Number(($event.target as HTMLSelectElement).value)
+                            : null,
+                        )
+                      "
+                      @click.stop
+                    >
+                      <option value="">
+                        {{ t("campaign.items.unattached") }}
+                      </option>
+                      <option v-for="it in items" :key="it.id" :value="it.id">
+                        {{ it.name }}
+                      </option>
+                    </select>
+                    <span
+                      v-else-if="itemName(i.itemId)"
+                      class="ml-1 rounded-full border px-2 py-px text-[11px] text-muted-foreground"
+                      >{{ itemName(i.itemId) }}</span
                     >
                   </td>
                   <td
@@ -1039,6 +1173,24 @@ async function loadAudit() {
               </td>
             </tr>
           </tbody>
+          <tfoot v-if="inv.filtered.value.length">
+            <tr class="border-t bg-accent/30">
+              <td colspan="4" class="px-3 py-2 text-sm font-medium">
+                {{ t("home.table.total") }}
+                <span class="ml-2 text-xs font-normal text-muted-foreground">{{
+                  t("home.table.totalCount", {
+                    n: inv.filtered.value.length,
+                  })
+                }}</span>
+              </td>
+              <td class="px-3 py-2 text-right font-mono text-sm font-semibold">
+                ¥{{ qualifiedTotal.toFixed(2) }}
+              </td>
+              <td colspan="2" class="px-3 py-2 text-xs text-muted-foreground">
+                {{ t("home.table.totalNote") }}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

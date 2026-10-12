@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "invoicer",
+      "credentials": [
+        {
+          "accessKey": "invoicer",
+          "secretKey": "invoicer-secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

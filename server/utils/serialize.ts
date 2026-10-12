@@ -9,6 +9,7 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
     campaignId: r.campaignId,
     uploaderId: r.uploaderId,
     groupId: r.groupId,
+    itemId: r.itemId,
     kind: r.kind,
     extractedMerchant: r.extractedMerchant,
     extractedOrderNo: r.extractedOrderNo,

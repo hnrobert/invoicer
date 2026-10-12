@@ -146,7 +146,8 @@ export interface InvoicePublic {
   campaignId: number;
   uploaderId: string | null;
   groupId: number | null;
-  kind: "invoice" | "receipt";
+  itemId: number | null;
+  kind: "invoice" | "receipt" | "quotation";
   extractedMerchant: string | null;
   extractedOrderNo: string | null;
   filename: string;

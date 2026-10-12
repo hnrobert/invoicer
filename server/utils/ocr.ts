@@ -30,7 +30,10 @@ function langPath(): string {
  * Any failure falls back to the local tesseract path, so the app works
  * unchanged without the sidecar.
  */
-const PADDLE_TIMEOUT_MS = 30_000;
+// CPU-only sidecar inference on large receipt photos takes well over 30 s
+// (first request also warms the models); a short timeout here degenerates
+// every batch into the tesseract fallback before Paddle answers.
+const PADDLE_TIMEOUT_MS = 120_000;
 
 /**
  * When the configured sidecar is unreachable (not started, DNS miss inside

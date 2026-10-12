@@ -75,13 +75,30 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       text = await ocrImage(await storage.getBuffer(inv.savedPath));
     }
 
-    // ---- receipt / order-screenshot branch (OCR'd images) ----
-    // Receipts have no invoice structure — extract merchant/order-no/amount
-    // and park them for manual review until the receipt↔invoice pairing mode
-    // ships. XML/OFD 数电票 are always invoices.
-    if (inv.fileType === "image" && !directFields) {
+    // ---- supporting-evidence branch: quotations & receipts ----
+    // Quotations (报价单/项目清单/外送清单 — including their PDF text layer)
+    // and OCR'd receipt/order screenshots are EVIDENCE for an invoice, never
+    // invoices themselves: park them as manual instead of failing the buyer
+    // match, which used to brand every attached quotation "unqualified".
+    // XML/OFD 数电票 are always invoices.
+    if (!directFields) {
       const kind = detectKind(text);
-      if (kind === "receipt") {
+      if (kind === "quotation") {
+        await repo.update(
+          { id: invoiceId },
+          {
+            kind: "quotation",
+            status: "manual",
+            reason:
+              "Quotation/itemized list — supporting evidence for an invoice",
+            amountInTotal: false,
+            rawText: text.slice(0, 20000),
+            processedAt: new Date(),
+          },
+        );
+        return;
+      }
+      if (inv.fileType === "image" && kind === "receipt") {
         const r = extractReceiptFields(text);
         const ok = r.amount != null || r.merchant || r.orderNo;
         await repo.update(

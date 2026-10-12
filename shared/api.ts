@@ -54,6 +54,18 @@ export interface CampaignGroupPublic {
   reviewers: GroupReviewerPublic[];
 }
 
+/** A reimbursement item (报销条目) — one project with attached invoices. */
+export interface ItemPublic {
+  id: number;
+  name: string;
+  groupId: number | null;
+  payer: string | null;
+  note: string | null;
+  /** Sum of attached invoices' counted amounts (null when none counted). */
+  actualTotal: number | null;
+  invoiceCount: number;
+}
+
 export interface CustomRolePublic {
   name: string;
   baseRole: string;
@@ -184,6 +196,23 @@ export interface EmailBody {
 
 export interface GroupCreateBody {
   name?: string;
+}
+
+/** POST /api/campaigns/:id/items */
+export interface ItemCreateBody {
+  name?: string;
+  groupId?: number | null;
+  payer?: string;
+  note?: string;
+}
+
+/** PUT /api/campaigns/:id/items/:itemId — same shape, all fields optional. */
+export type ItemUpdateBody = ItemCreateBody;
+
+/** POST /api/campaigns/:id/invoices/item */
+export interface AssignItemBody {
+  invoiceIds?: number[];
+  itemId?: number | null;
 }
 
 export interface TransferRequestBody {
@@ -323,6 +352,14 @@ export interface GroupsResponse extends OkResponse {
 
 export interface GroupCreateResponse extends OkResponse {
   group: { id: number; name: string };
+}
+
+export interface ItemsResponse extends OkResponse {
+  items: ItemPublic[];
+}
+
+export interface ItemMutationResponse extends OkResponse {
+  item: ItemPublic;
 }
 
 export interface RolesResponse extends OkResponse {
