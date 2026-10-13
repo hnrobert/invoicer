@@ -1,18 +1,21 @@
 import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
 
 /**
- * Fill the official UNNC claim-form .docx mould (附件3 学生活动经费报销表)
+ * Fill the official UNNC claim-form .docx mould (附件3 学活经费报销表)
  * with a campaign's claim data. The mould ships in server/assets/claim-mould.docx
  * and contains NO placeholders — table 0 has labelled blank value cells and
  * table 1 has 11 pre-numbered blank detail rows — so this operates directly
- * on word/document.xml: values are injected as runs into the empty cell
- * following each label, and detail rows are filled top-down (extra rows
- * cloned from the first data row when there are more than 11 items).
+ * on word/document.xml. Cell edits are IN-PLACE span replacements inside
+ * each row string (never re-join cells without their <w:tr> skeleton: that
+ * drops the row's opening tag + <w:trPr> and corrupts the XML).
  */
 
 export interface ClaimDocxData {
   applicant: string;
   phone: string;
+  /** Prepayment notes: payee real name + Chinese ID (blank = skip). */
+  payeeName?: string;
+  payeeChineseId?: string;
   organization: string;
   activity: string;
   /** Grand total in arabic numerals, e.g. "5418.05". */
@@ -37,20 +40,11 @@ const esc = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** A run-wrapped paragraph injected into a (blank) table cell. */
-const para = (text: string): string =>
-  `<w:p><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="21"/></w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
-
-function cellsOf(rowXml: string): string[] {
-  return rowXml.split(/(?=<w:tc>)/).filter((c) => c.startsWith("<w:tc>"));
-}
-
-/** Replace the paragraph content of a table cell, keeping its properties. */
-function setCellText(cellXml: string, text: string): string {
-  const open = cellXml.indexOf(">") + 1; // end of <w:tc ...>
-  const close = cellXml.lastIndexOf("</w:tc>");
-  return cellXml.slice(0, open) + para(text) + cellXml.slice(close);
-}
+/** A bare run injected INTO the cell's existing paragraph — no rPr, so
+ * the text inherits the document/cell default font exactly like hand-typed
+ * content; paragraph properties (alignment) stay untouched. */
+const run = (text: string): string =>
+  `<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
 
 function rowText(rowXml: string): string {
   return (
@@ -61,98 +55,204 @@ function rowText(rowXml: string): string {
   );
 }
 
-/** Find the header table row containing `label`, then fill its blank cells. */
+/** Spans of the row's <w:tc>…</w:tc> cells (cells never nest). */
+function cellSpans(rowXml: string): [number, number][] {
+  const spans: [number, number][] = [];
+  let i = rowXml.indexOf("<w:tc>");
+  while (i >= 0) {
+    const j = rowXml.indexOf("</w:tc>", i);
+    if (j < 0) break;
+    spans.push([i, j + "</w:tc>".length]);
+    i = rowXml.indexOf("<w:tc>", j);
+  }
+  return spans;
+}
+
+/** Insert text into a cell's FIRST paragraph in-place — cell, paragraph
+ * properties and any existing runs stay exactly as in the mould. `null`
+ * leaves the cell alone (used to skip label cells in pair rows). */
+function setCell(rowXml: string, cellIdx: number, text: string | null): string {
+  if (text == null) return rowXml;
+  const spans = cellSpans(rowXml);
+  const target = spans[cellIdx];
+  if (!target) return rowXml;
+  const [a, b] = target;
+  let cell = rowXml.slice(a, b);
+  const pOpen = cell.search(/<w:p[ >\/]/);
+  if (pOpen < 0) return rowXml;
+  // self-closing empty paragraph <w:p …/> → open it up for the run
+  const selfClose = /<w:p[^>]*\/\>/.exec(cell.slice(pOpen));
+  if (selfClose) {
+    const at = pOpen + selfClose[0].length;
+    cell = cell.slice(0, at - 2) + ">" + run(text) + "</w:p>" + cell.slice(at);
+  } else {
+    const pEnd = cell.indexOf("</w:p>", pOpen);
+    cell = cell.slice(0, pEnd) + run(text) + cell.slice(pEnd);
+  }
+  return rowXml.slice(0, a) + cell + rowXml.slice(b);
+}
+
+/** Whole <w:tr…>…</w:tr> spans of a table, in order. */
+function trSpans(tbl: string): [number, number][] {
+  const spans: [number, number][] = [];
+  let i = tbl.search(/<w:tr[ >]/);
+  while (i >= 0) {
+    const j = tbl.indexOf("</w:tr>", i);
+    if (j < 0) break;
+    spans.push([i, j + "</w:tr>".length]);
+    i = tbl.slice(j).search(/<w:tr[ >]/);
+    if (i >= 0) i += j;
+  }
+  return spans;
+}
+
+/** Replace text in the blank value cell(s) at the END of a labelled row. */
 function fillHeaderRow(
   tbl: string,
   label: string,
-  values: (string | undefined)[],
+  value: string | null,
 ): string {
-  const rows = tbl.split(/(?=<w:tr[ >])/).filter((r) => r.includes("<w:tr"));
-  const idx = rows.findIndex((r) => rowText(r).includes(label));
-  if (idx < 0) return tbl;
-  const cells = cellsOf(rows[idx]!);
+  const span = trSpans(tbl).find(([a, b]) =>
+    rowText(tbl.slice(a, b)).includes(label),
+  );
+  if (!span) return tbl;
+  const [a, b] = span;
+  const row = tbl.slice(a, b);
+  const cellCount = cellSpans(row).length;
+  // the LAST cell of the row is the blank value slot (labels + previous
+  // values come before); "Applicant | _ | Contact Number | _" rows have the
+  // value as their 2nd/4th cell — handled by the offset variant below.
+  return tbl.slice(0, a) + setCell(row, cellCount - 1, value) + tbl.slice(b);
+}
+
+/** Like fillHeaderRow but fills N trailing cells (label/value pairs). */
+function fillHeaderPairs(
+  tbl: string,
+  label: string,
+  values: (string | null)[],
+): string {
+  const span = trSpans(tbl).find(([a, b]) =>
+    rowText(tbl.slice(a, b)).includes(label),
+  );
+  if (!span) return tbl;
+  const [a, b] = span;
+  let row = tbl.slice(a, b);
+  const cellCount = cellSpans(row).length;
   values.forEach((v, vi) => {
-    // value cells come AFTER the label cell(s): offset from the end so the
-    // layout ("Applicant | _ | Contact Number | _") fills right-to-left pairs
-    const target = cells.length - values.length + vi;
-    if (v != null && cells[target])
-      cells[target] = setCellText(cells[target], v);
+    row = setCell(row, cellCount - values.length + vi, v);
   });
-  rows[idx] = cells.join("");
-  return rows.join("");
+  return tbl.slice(0, a) + row + tbl.slice(b);
 }
 
 export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
   const files = unzipSync(mould);
   let xml = strFromU8(files["word/document.xml"]!);
 
-  const tbls = xml.match(/<w:tbl>.*?<\/w:tbl>/gs) ?? [];
-  if (tbls.length < 2) throw new Error("claim mould: expected 2 tables");
-  const [head, detail] = tbls;
+  const tblSpans: [number, number][] = [];
+  let t = xml.indexOf("<w:tbl");
+  while (t >= 0) {
+    const e = xml.indexOf("</w:tbl>", t);
+    if (e < 0) break;
+    tblSpans.push([t, e + "</w:tbl>".length]);
+    t = xml.indexOf("<w:tbl", e);
+  }
+  if (tblSpans.length < 2) throw new Error("claim mould: expected 2 tables");
 
   // ---- header table ----
-  let headFilled = head!;
-  headFilled = fillHeaderRow(headFilled, "Applicant", [
-    undefined,
+  let head = xml.slice(...tblSpans[0]!);
+  head = fillHeaderPairs(head, "Applicant", [
+    null,
     data.applicant,
-    undefined,
+    null,
     data.phone,
   ]);
-  headFilled = fillHeaderRow(headFilled, "Name of Organization", [
-    undefined,
-    data.organization,
-  ]);
-  headFilled = fillHeaderRow(headFilled, "Activity Details", [
-    undefined,
-    data.activity,
-  ]);
-  headFilled = fillHeaderRow(headFilled, "In Chinese Capital Letters", [
-    undefined,
-    data.totalChinese,
-  ]);
-  headFilled = fillHeaderRow(headFilled, "In Arabic Numerals", [
-    undefined,
-    data.totalArabic,
-  ]);
+  head = fillHeaderRow(head, "Name of Organization", data.organization);
+  head = fillHeaderRow(head, "Activity Details", data.activity);
+  head = fillHeaderRow(head, "In Chinese Capital Letters", data.totalChinese);
+  head = fillHeaderRow(head, "In Arabic Numerals", data.totalArabic);
+
+  // Notes block (prepayment): one row reads "| Name | ␀ | Chinese ID. | ␀ |"
+  // — fill the cell RIGHT AFTER each label cell (a whole-row match keeps the
+  // short "Name" away from "Name of Organization/Society").
+  const notesRow = trSpans(head).find(([a, b]) => {
+    const t = rowText(head.slice(a, b));
+    return t.includes("Name") && t.includes("Chinese ID.");
+  });
+  if (notesRow) {
+    const [na, nb] = notesRow;
+    let row = head.slice(na, nb);
+    row.split(/(?=<w:tc>)/)
+      .filter((c) => c.startsWith("<w:tc>"))
+      .forEach((c, ci, all) => {
+        const label = (c.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) ?? [])
+          .map((t) => t.replace(/<[^>]+>/g, ""))
+          .join("")
+          .trim();
+        if (label === "Name" && data.payeeName) {
+          row = setCell(row, ci + 1 < all.length ? ci + 1 : ci, data.payeeName);
+        } else if (label.startsWith("Chinese ID") && data.payeeChineseId) {
+          row = setCell(
+            row,
+            ci + 1 < all.length ? ci + 1 : ci,
+            data.payeeChineseId,
+          );
+        }
+      });
+    head = head.slice(0, na) + row + head.slice(nb);
+  }
 
   // ---- detail table ----
-  const rows = detail!
-    .split(/(?=<w:tr[ >])/)
-    .filter((r) => r.includes("<w:tr"));
-  // data rows = rows whose text is ONLY a number (the pre-numbered blanks)
-  const dataRowIdx = rows
-    .map((r, i) => ({ r, i }))
-    .filter(({ r }) => /^\d+$/.test(rowText(r).trim()))
-    .map(({ i }) => i);
-  const template = rows[dataRowIdx[0]!] ?? rows[3];
+  const [da, db] = tblSpans[1]!;
+  let detail = xml.slice(da, db);
+  const rows = trSpans(detail);
+  // data rows = rows whose whole text is just their number (1..11 blanks)
+  const dataRows = rows.filter(([a, b]) =>
+    /^\d+$/.test(rowText(detail.slice(a, b)).trim()),
+  );
+  const [t0a, t0b] = dataRows[0] ?? rows[3]!;
+  const template = detail.slice(t0a, t0b);
 
-  const built: string[] = [];
-  for (const row of data.rows) {
-    const cells = cellsOf(template!);
-    const vals = [
-      String(row.no),
-      row.receiptItem,
-      row.concreteItem,
-      row.unitPrice,
-      row.quantity,
-      row.amount,
-      row.note,
-    ];
-    vals.forEach((v, vi) => {
-      if (cells[vi]) cells[vi] = setCellText(cells[vi], v);
-    });
-    built.push(cells.join(""));
+  // splice built rows over the pre-numbered slots, in place
+  let out = detail;
+  dataRows.forEach(([a, b], ix) => {
+    const r = data.rows[ix];
+    let row = template;
+    const vals = r
+      ? [
+          String(r.no),
+          r.receiptItem,
+          r.concreteItem,
+          r.unitPrice,
+          r.quantity,
+          r.amount,
+          r.note,
+        ]
+      : []; // fewer items than slots → keep the blank numbered row
+    vals.forEach((v, vi) => (row = setCell(row, vi, v)));
+    out = out.replace(detail.slice(a, b), row);
+  });
+  // more items than pre-numbered slots → clone before the closing row
+  for (let ix = dataRows.length; ix < data.rows.length; ix++) {
+    const r = data.rows[ix]!;
+    let row = template;
+    [
+      String(r.no),
+      r.receiptItem,
+      r.concreteItem,
+      r.unitPrice,
+      r.quantity,
+      r.amount,
+      r.note,
+    ].forEach((v, vi) => (row = setCell(row, vi, v)));
+    out = out + row;
   }
-  // splice the built rows over the FIRST pre-numbered slots; keep any
-  // remaining blank rows for hand-filling, clone template when >11 items
-  const first = dataRowIdx[0] ?? 3;
-  const outRows = [
-    ...rows.slice(0, first),
-    ...built,
-    ...rows.slice(first + built.length),
-  ];
 
-  xml = xml.replace(head!, headFilled).replace(detail!, outRows.join(""));
+  xml =
+    xml.slice(0, tblSpans[0]![0]) +
+    head +
+    xml.slice(tblSpans[0]![1], tblSpans[1]![0]) +
+    out +
+    xml.slice(tblSpans[1]![1]);
 
   files["word/document.xml"] = strToU8(xml);
   return Buffer.from(zipSync(files));
