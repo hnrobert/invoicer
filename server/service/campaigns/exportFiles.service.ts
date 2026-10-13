@@ -143,10 +143,11 @@ function stripCount(name: string): string {
 }
 
 function unitPriceOf(amount: number | null, qty: number | null): string {
-  if (amount == null || !qty || qty <= 0) return "";
-  const v = amount / qty;
-  // invoices print up to 4 decimals; trim trailing zeros
-  return v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  // No recognizable quantity still means ONE unit — the finance team fills
+  // the pair as 1 × amount rather than leaving both cells blank.
+  if (amount == null) return "";
+  const q = qty && qty > 0 ? qty : 1;
+  return (amount / q).toFixed(2);
 }
 
 /** The per-item claim rows shared by the xlsx claim sheet and the docx package. */
@@ -202,7 +203,7 @@ async function buildClaimRows(
         "",
       concreteItem: stripCount(it.name),
       amount,
-      quantity: qty != null && Number.isFinite(qty) ? String(qty) : "",
+      quantity: qty != null && Number.isFinite(qty) ? String(qty) : "1",
       unitPrice: unitPriceOf(amount, qty),
       note: [
         it.payer ? `垫付人: ${it.payer}` : "",
@@ -228,7 +229,7 @@ async function buildClaimRows(
         "",
       concreteItem: i.filename.replace(/\.[a-z0-9]+$/i, ""),
       amount: amt,
-      quantity: qty2 != null && Number.isFinite(qty2) ? String(qty2) : "",
+      quantity: qty2 != null && Number.isFinite(qty2) ? String(qty2) : "1",
       unitPrice: unitPriceOf(amt, qty2),
       note: "",
       channel: groupName(i.groupId),
