@@ -68,9 +68,12 @@ function cellSpans(rowXml: string): [number, number][] {
   return spans;
 }
 
-/** Insert text into a cell's FIRST paragraph in-place — cell, paragraph
- * properties and any existing runs stay exactly as in the mould. `null`
- * leaves the cell alone (used to skip label cells in pair rows). */
+/** REPLACE the text of a cell's FIRST paragraph in-place — paragraph
+ * properties (alignment) stay untouched and the injected run carries no
+ * rPr, so the font is the document default exactly like hand-typed text.
+ * Pre-existing runs in that paragraph are removed first (the mould's
+ * pre-numbered No. cells would otherwise double up as "1" + "1").
+ * `null` leaves the cell alone (used to skip label cells in pair rows). */
 function setCell(rowXml: string, cellIdx: number, text: string | null): string {
   if (text == null) return rowXml;
   const spans = cellSpans(rowXml);
@@ -87,7 +90,12 @@ function setCell(rowXml: string, cellIdx: number, text: string | null): string {
     cell = cell.slice(0, at - 2) + ">" + run(text) + "</w:p>" + cell.slice(at);
   } else {
     const pEnd = cell.indexOf("</w:p>", pOpen);
-    cell = cell.slice(0, pEnd) + run(text) + cell.slice(pEnd);
+    const seg = cell.slice(pOpen, pEnd);
+    // keep the <w:p …> opening tag + <w:pPr>, drop existing runs, add ours
+    const open = seg.match(/^<w:p[^>]*>/)?.[0] ?? "<w:p>";
+    const pPr = seg.match(/<w:pPr[ >][\s\S]*?<\/w:pPr>|<w:pPr\/>/)?.[0] ?? "";
+    cell =
+      cell.slice(0, pOpen) + open + pPr + run(text) + cell.slice(pEnd);
   }
   return rowXml.slice(0, a) + cell + rowXml.slice(b);
 }
@@ -212,28 +220,10 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
   const [t0a, t0b] = dataRows[0] ?? rows[3]!;
   const template = detail.slice(t0a, t0b);
 
-  // splice built rows over the pre-numbered slots, in place
-  let out = detail;
-  dataRows.forEach(([a, b], ix) => {
-    const r = data.rows[ix];
-    let row = template;
-    const vals = r
-      ? [
-          String(r.no),
-          r.receiptItem,
-          r.concreteItem,
-          r.unitPrice,
-          r.quantity,
-          r.amount,
-          r.note,
-        ]
-      : []; // fewer items than slots → keep the blank numbered row
-    vals.forEach((v, vi) => (row = setCell(row, vi, v)));
-    out = out.replace(detail.slice(a, b), row);
-  });
-  // more items than pre-numbered slots → clone before the closing row
-  for (let ix = dataRows.length; ix < data.rows.length; ix++) {
-    const r = data.rows[ix]!;
+  // splice built rows over the pre-numbered slots BY ABSOLUTE POSITION —
+  // the blank slot rows are byte-identical, so content-based replace()
+  // would keep matching earlier slots and misplace every following row.
+  const buildRow = (r: ClaimDocxData["rows"][number]) => {
     let row = template;
     [
       String(r.no),
@@ -244,7 +234,20 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
       r.amount,
       r.note,
     ].forEach((v, vi) => (row = setCell(row, vi, v)));
-    out = out + row;
+    return row;
+  };
+  let out = "";
+  let cursor = 0;
+  dataRows.forEach(([a, b], ix) => {
+    const r = data.rows[ix];
+    // fewer items than slots → keep the blank numbered row as-is
+    out += detail.slice(cursor, a) + (r ? buildRow(r) : detail.slice(a, b));
+    cursor = b;
+  });
+  out += detail.slice(cursor);
+  // more items than pre-numbered slots → append clones (template row again)
+  for (let ix = dataRows.length; ix < data.rows.length; ix++) {
+    out += buildRow(data.rows[ix]!);
   }
 
   xml =
