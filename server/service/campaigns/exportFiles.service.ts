@@ -133,6 +133,15 @@ function quantityOf(itemName: string, rawText: string | null): number | null {
   );
 }
 
+/** Claim-form "实际内容" without the trailing count — the quantity has
+ * its own column ("集章卡 1000张" → "集章卡", "CPU钥匙扣×50" → "CPU钥匙扣"). */
+function stripCount(name: string): string {
+  return name
+    .replace(/\s*[×xX]\s*[0-9]{1,6}\s*$/, "")
+    .replace(/\s*[0-9]{1,6}\s*[张个件套支把盒]\s*$/, "")
+    .trim();
+}
+
 function unitPriceOf(amount: number | null, qty: number | null): string {
   if (amount == null || !qty || qty <= 0) return "";
   const v = amount / qty;
@@ -191,7 +200,7 @@ async function buildClaimRows(
         main?.extractedMerchant ??
         main?.extractedTitle ??
         "",
-      concreteItem: it.name,
+      concreteItem: stripCount(it.name),
       amount,
       quantity: qty != null && Number.isFinite(qty) ? String(qty) : "",
       unitPrice: unitPriceOf(amount, qty),

@@ -236,15 +236,16 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     ].forEach((v, vi) => (row = setCell(row, vi, v)));
     return row;
   };
+  // only rows that exist — unused pre-numbered slots are REMOVED (the
+  // finance team asked for no blank filler rows); >11 items still append.
   let out = "";
   let cursor = 0;
   dataRows.forEach(([a, b], ix) => {
     const r = data.rows[ix];
-    // fewer items than slots → keep the blank numbered row as-is
-    out += detail.slice(cursor, a) + (r ? buildRow(r) : detail.slice(a, b));
+    if (r) out += detail.slice(cursor, a) + buildRow(r);
     cursor = b;
   });
-  out += detail.slice(cursor);
+  out += detail.slice(cursor).replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/,"");
   // more items than pre-numbered slots → append clones (template row again)
   for (let ix = dataRows.length; ix < data.rows.length; ix++) {
     out += buildRow(data.rows[ix]!);
