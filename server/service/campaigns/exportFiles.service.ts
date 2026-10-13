@@ -8,7 +8,7 @@ import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import type { Campaign } from "#server/entities/campaign.entity";
 import { usesSubmitFlow } from "#server/utils/campaign";
 import { calcTotal } from "#server/utils/serialize";
-import { sqlAll } from "#server/utils/auth";
+import { sqlAll, sqlGet } from "#server/utils/auth";
 import { logAudit } from "#server/utils/audit";
 import { storage } from "#server/utils/storage";
 import type { AuthUser, CampaignRights } from "#shared/types";
@@ -91,8 +91,29 @@ function rmbUppercase(n: number): string {
   return `${intStr ? intStr + "元" : ""}${decStr}`;
 }
 
+/**
+ * The item line printed on the invoice ("发票内容"), e.g. "*印刷品*扇子" —
+ * the 数电票 line-item format "*category*name". The PDF value stream wraps
+ * long names across lines, so fold CJK/letter newlines first ("文宣品设\n计
+ * 制作" → one token).
+ */
+function receiptItemOf(raw: string | null): string | null {
+  if (!raw) return null;
+  const t = raw.replace(/([一-鿿A-Za-z])\n(?=[一-鿿A-Za-z])/g, "$1");
+  // Name ends where the QUANTITY column starts ("␣+digits"): "*印刷品*扇子 把
+  // 200 1.03…" → "扇子 把" → trailing unit word stripped → "扇子".
+  const m = t.match(/\*([^*\n]{1,14})\*(.{1,36}?)\s+\d/);
+  if (!m?.[2]) return null;
+  const name = m[2]
+    .replace(/\s*[把张个件套次箱支盒]\s*$/, "")
+    .replace(/[\s.。·]+$/, "")
+    .trim();
+  return name.length >= 2 ? `*${m[1]}*${name}` : null;
+}
+
 /** Build the UNNC claim-form workbook (see Attachment 2 of the regulations). */
 async function buildClaimWorkbook(
+  user: Pick<AuthUser, "id" | "name">,
   campaign: Campaign,
   campaignId: number,
   invoices: Invoice[],
@@ -128,7 +149,11 @@ async function buildClaimWorkbook(
     const main = formal[0] ?? mine[0];
     rows.push({
       no: rows.length + 1,
-      receiptItem: main?.extractedMerchant ?? main?.extractedTitle ?? "",
+      receiptItem:
+        receiptItemOf(main?.rawText ?? null) ??
+        main?.extractedMerchant ??
+        main?.extractedTitle ??
+        "",
       concreteItem: it.name,
       amount: formal.length ? Math.round(sum * 100) / 100 : null,
       note: [
@@ -146,7 +171,11 @@ async function buildClaimWorkbook(
     if (!(i.kind === "invoice" && i.status === "qualified")) continue;
     rows.push({
       no: rows.length + 1,
-      receiptItem: i.extractedMerchant ?? i.extractedTitle ?? "",
+      receiptItem:
+        receiptItemOf(i.rawText) ??
+        i.extractedMerchant ??
+        i.extractedTitle ??
+        "",
       concreteItem: i.filename.replace(/\.[a-z0-9]+$/i, ""),
       amount: amountOf(i),
       note: "",
@@ -181,11 +210,24 @@ async function buildClaimWorkbook(
     mergeCenter(`D${row}:G${row}`, value);
   };
 
+  // Header identity: the exporting user (name + Settings→Profile phone) and
+  // the campaign's organization (personal campaigns leave the org blank).
+  const phoneRow = await sqlGet<{ phone: string | null }>(
+    'SELECT "phone" FROM "user" WHERE id = $1',
+    [user.id],
+  );
+  const orgRow = campaign.organizationId
+    ? await sqlGet<{ name: string }>(
+        'SELECT "name" FROM "organization" WHERE id = $1',
+        [campaign.organizationId],
+      )
+    : undefined;
+
   mergeCenter("A1:G1", "学生活动经费报销表", true);
   mergeCenter("A2:G2", "Students Activity Expenses Claim Form");
-  field(4, "Applicant 申请人", "");
-  field(5, "Contact Number 联系电话", "");
-  field(6, "Name of Organization 社团/组织", "");
+  field(4, "Applicant 申请人", user.name);
+  field(5, "Contact Number 联系电话", phoneRow?.phone ?? "");
+  field(6, "Name of Organization 社团/组织", orgRow?.name ?? "");
   field(
     7,
     "Activity Details 活动信息",
@@ -437,7 +479,7 @@ export async function exportCampaign(
   }
 
   if (format === "claim") {
-    const buf = await buildClaimWorkbook(campaign, campaignId, invoices);
+    const buf = await buildClaimWorkbook(user, campaign, campaignId, invoices);
     return {
       body: buf as ArrayBuffer,
       contentType:

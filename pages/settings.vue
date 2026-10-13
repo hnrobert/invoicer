@@ -45,6 +45,42 @@ const {
 } = useAuth();
 const { list: enabledList } = useOAuthProviders();
 
+// ---------- profile: contact phone (claim-form Contact Number) ----------
+const phoneDraft = ref("");
+watch(
+  user,
+  (u) => {
+    phoneDraft.value = u?.phone ?? "";
+  },
+  { immediate: true },
+);
+const phoneBusy = ref(false);
+const phoneDirty = computed(
+  () => phoneDraft.value !== (user.value?.phone ?? ""),
+);
+const phoneSavedFlash = ref(false);
+function discardPhone() {
+  phoneDraft.value = user.value?.phone ?? "";
+}
+async function savePhone() {
+  phoneBusy.value = true;
+  try {
+    await $fetch("/api/auth/update-user", {
+      method: "POST",
+      body: { phone: phoneDraft.value.trim() },
+    });
+    await refreshUser();
+    phoneSavedFlash.value = true;
+    setTimeout(() => (phoneSavedFlash.value = false), 2000);
+  } catch (e) {
+    toast.error(messageFromError(e, t("settings.security.pwFailed")));
+  } finally {
+    phoneBusy.value = false;
+  }
+}
+const { confirmLeave: phoneConfirmLeave, proceed: phoneProceed } =
+  useUnsavedLeaveGuard(phoneDirty, phoneBusy);
+
 // ---------- security: change password ----------
 const currentPw = ref("");
 const newPw = ref("");
@@ -402,6 +438,43 @@ onMounted(() => {
         }}</span>
         <span class="font-medium">{{ user?.email || "—" }}</span>
       </div>
+      <!-- contact phone — editable, feeds the claim-form Contact Number -->
+      <div class="flex flex-col gap-2">
+        <Label for="profile-phone">{{ t("settings.profile.phone") }}</Label>
+        <Input
+          id="profile-phone"
+          v-model="phoneDraft"
+          type="tel"
+          :placeholder="t('settings.profile.phonePh')"
+        />
+        <p class="text-xs text-muted-foreground">
+          {{ t("settings.profile.phoneHint") }}
+        </p>
+      </div>
+      <SettingsSaveBar
+        :dirty="phoneDirty"
+        :saving="phoneBusy"
+        :saved="phoneSavedFlash"
+        @save="savePhone"
+        @discard="discardPhone"
+      />
+      <UnsavedLeaveDialog
+        :open="phoneConfirmLeave"
+        :saving="phoneBusy"
+        @stay="phoneConfirmLeave = false"
+        @discard="
+          () => {
+            discardPhone();
+            phoneProceed();
+          }
+        "
+        @save="
+          async () => {
+            await savePhone();
+            if (!phoneDirty) phoneProceed();
+          }
+        "
+      />
       <p class="text-xs text-muted-foreground">
         {{ t("settings.sections.profileHint") }}
       </p>

@@ -564,6 +564,11 @@
   settings: {
     title: "设置",
     back: "返回",
+    profile: {
+      phone: "联系电话",
+      phonePh: "用于报销表导出",
+      phoneHint: "导出学生活动经费报销表时自动填入联系电话。",
+    },
     sections: {
       profile: "个人资料",
       profileHint: "用户名在注册时确定；主邮箱请在「邮箱」中管理。",

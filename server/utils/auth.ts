@@ -72,6 +72,13 @@ export async function sqlRun(
 }
 
 export const auth = betterAuth({
+  // Contact phone (联系电话) — editable from Settings → Profile; feeds the
+  // UNNC claim-form export's "Contact Number" field.
+  user: {
+    additionalFields: {
+      phone: { type: "string", input: true, required: false },
+    },
+  },
   database: authDb,
   baseURL:
     process.env.BETTER_AUTH_URL ||

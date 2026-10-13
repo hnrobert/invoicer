@@ -17,6 +17,8 @@ export interface AuthUser {
   email: string;
   emailVerified: boolean;
   image: string | null;
+  /** Contact phone (联系电话) — Better Auth additional field, claim-form use. */
+  phone?: string | null;
   createdAt: string;
   updatedAt: string;
 }
