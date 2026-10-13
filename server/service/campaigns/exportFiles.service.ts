@@ -160,6 +160,8 @@ async function buildClaimRows(
     receiptItem: string;
     concreteItem: string;
     amount: number | null;
+    quantity: string;
+    unitPrice: string;
     note: string;
     channel: string | null;
   }[]

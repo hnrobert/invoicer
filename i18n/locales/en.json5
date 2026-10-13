@@ -377,6 +377,8 @@
       payer: "Payer",
       note: "Note",
       noInvoice: "No invoice",
+      mismatch: "Invoice {inv} ≠ order {ev}",
+      mismatchHint: "Invoice and order-screenshot amounts differ — verify manually",
       noInvoiceNote: "No invoice files attached yet.",
       attach: "Attach",
       detach: "Detach",

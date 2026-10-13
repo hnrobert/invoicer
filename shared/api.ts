@@ -63,6 +63,10 @@ export interface ItemPublic {
   note: string | null;
   /** Sum of attached invoices' counted amounts (null when none counted). */
   actualTotal: number | null;
+  /** Sum of attached EVIDENCE files' amounts (order screenshots/quotations;
+   * null when none carried a readable amount) — compared against
+   * actualTotal to flag invoice↔evidence mismatches. */
+  evidenceTotal: number | null;
   invoiceCount: number;
 }
 

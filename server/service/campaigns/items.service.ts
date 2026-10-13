@@ -24,6 +24,7 @@ function requireManage(rights: CampaignRights): void {
 function toPublic(
   it: CampaignItem,
   actualTotal: number | null,
+  evidenceTotal: number | null,
   invoiceCount: number,
 ): ItemPublic {
   return {
@@ -33,6 +34,7 @@ function toPublic(
     payer: it.payer,
     note: it.note,
     actualTotal,
+    evidenceTotal,
     invoiceCount,
   };
 }
@@ -72,10 +74,19 @@ export async function listItems(campaignId: number): Promise<ItemsResponse> {
         .filter((r) => r.kind === "invoice")
         .map(countedAmount)
         .filter((a): a is number => a != null);
+      // Evidence amounts (order screenshots etc.) — the reconciliation
+      // counterpart shown next to the invoice total.
+      const evidence = mine
+        .filter((r) => r.kind !== "invoice")
+        .map(countedAmount)
+        .filter((a): a is number => a != null);
       return toPublic(
         it,
         counted.length
           ? Math.round(counted.reduce((s, a) => s + a, 0) * 100) / 100
+          : null,
+        evidence.length
+          ? Math.round(evidence.reduce((s, a) => s + a, 0) * 100) / 100
           : null,
         mine.length,
       );
@@ -119,12 +130,19 @@ async function savedItem(it: CampaignItem): Promise<ItemMutationResponse> {
     .filter((r) => r.kind === "invoice")
     .map(countedAmount)
     .filter((a): a is number => a != null);
+  const evidence = mine
+    .filter((r) => r.kind !== "invoice")
+    .map(countedAmount)
+    .filter((a): a is number => a != null);
   return {
     ok: true,
     item: toPublic(
       saved,
       counted.length
         ? Math.round(counted.reduce((s, a) => s + a, 0) * 100) / 100
+        : null,
+      evidence.length
+        ? Math.round(evidence.reduce((s, a) => s + a, 0) * 100) / 100
         : null,
       mine.length,
     ),

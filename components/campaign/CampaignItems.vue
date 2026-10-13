@@ -32,6 +32,14 @@ function groupName(gid: number | null): string {
     ? ""
     : (props.groups.find((g) => g.id === gid)?.name ?? "");
 }
+/** Invoice total vs evidence (order-screenshot) total — warn when both
+ * are known and differ (OCR drift or a genuinely missing piece). */
+function amountMismatch(it: ItemPublic): { inv: number; ev: number } | null {
+  if (it.actualTotal == null || it.evidenceTotal == null) return null;
+  return Math.abs(it.actualTotal - it.evidenceTotal) > 0.005
+    ? { inv: it.actualTotal, ev: it.evidenceTotal }
+    : null;
+}
 const sumActual = computed(() => {
   const xs = props.items
     .map((i) => i.actualTotal)
@@ -159,6 +167,14 @@ function counted(i: InvoicePublic): number | null {
           <span v-if="it.payer" class="text-xs text-muted-foreground"
             >{{ t("campaign.items.payer") }}: {{ it.payer }}</span
           >
+          <span
+            v-if="amountMismatch(it)"
+            class="flex items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+            :title="t('campaign.items.mismatchHint')"
+          >
+            <Icon spec="TriangleAlert" :size="12" />
+            {{ t("campaign.items.mismatch", { inv: amountMismatch(it)!.inv, ev: amountMismatch(it)!.ev }) }}
+          </span>
           <span class="ml-auto flex items-center gap-3">
             <span
               v-if="!it.invoiceCount"

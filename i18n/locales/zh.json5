@@ -375,6 +375,8 @@
       payer: "垫付人",
       note: "备注",
       noInvoice: "待补票",
+      mismatch: "发票 {inv} ≠ 订单 {ev}",
+      mismatchHint: "发票金额与订单截图金额不一致，请人工核对",
       noInvoiceNote: "还没有挂载票据文件。",
       attach: "挂载",
       detach: "摘下",
