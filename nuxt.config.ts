@@ -135,6 +135,13 @@ export default defineNuxtConfig({
   // Without this the @Column metadata is emitted as plain String/Number and
   // TypeORM infers the wrong column type at runtime.
   nitro: {
+    // pdf.js MUST stay external (loaded from node_modules at runtime):
+    // bundling it breaks its fake-worker + cmap file resolution under
+    // .output ("Setting up fake worker failed" / missing DOMMatrix), which
+    // silently killed text extraction for whole classes of PDFs.
+    externals: {
+      external: ["pdfjs-dist", "dommatrix"],
+    },
     esbuild: {
       options: {
         tsconfigRaw: JSON.stringify({

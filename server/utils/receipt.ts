@@ -118,10 +118,18 @@ const AMOUNT_PATTERNS: RegExp[] = [
   //    sits between the label and the ¥-total
   //  - "实 付 款 ¥780" → INTEGER totals (no .00) — the strict patterns above
   //    require two decimals and missed them entirely
+  // 1688 order pages: the grand total reliably sits right before the
+  // "共N种N件" summary chip ("130.00⏎共1种100件") — even when the 总实付
+  // label itself got severed from its number by a line break.
+  /([0-9][0-9,oO]{0,10}[.,][0-9oO]{2})\s*(?:\n|\s)*共[1一]种/,
+  // "总实付 ¥1341.00" — MUST beat the bare 实付 below: item-detail pages
+  // print "实付¥18.30" as the UNIT price label, which sits earlier in the
+  // text than the grand total.
+  /总实付\s*(?:共减[\s¥￥Y半羊站#]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})/,
   // "实付款 共减(站)80 ¥140" — the discount segment may carry OCR noise
   // characters (站/#) and its own ¥; the TOTAL sits AFTER it. Also tolerates
   // the ¥-less form "共减¥80  140" where only the total prints bare.
-  /(?:实付款?|总实付|实付金额)\s*(?:共减[\s¥￥Y半羊站#]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})/,
+  /(?:实付款?|实付金额)\s*(?:共减[\s¥￥Y半羊站#]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})/,
   // PaddleOCR layout variant: the total prints BEFORE the label —
   // "…官方立减 ￥140\n实付款\n共减￥80". Anchored on 实付款 right after the
   // amount so the pre-discount price (￥220 … 共1件) never matches.

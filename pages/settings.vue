@@ -45,21 +45,26 @@ const {
 } = useAuth();
 const { list: enabledList } = useOAuthProviders();
 
-// ---------- profile: contact phone (claim-form Contact Number) ----------
+// ---------- profile: real name + contact phone (claim-form identity) ----------
+const nameDraft = ref("");
 const phoneDraft = ref("");
 watch(
   user,
   (u) => {
+    nameDraft.value = u?.displayName ?? "";
     phoneDraft.value = u?.phone ?? "";
   },
   { immediate: true },
 );
 const phoneBusy = ref(false);
 const phoneDirty = computed(
-  () => phoneDraft.value !== (user.value?.phone ?? ""),
+  () =>
+    nameDraft.value !== (user.value?.displayName ?? "") ||
+    phoneDraft.value !== (user.value?.phone ?? ""),
 );
 const phoneSavedFlash = ref(false);
 function discardPhone() {
+  nameDraft.value = user.value?.displayName ?? "";
   phoneDraft.value = user.value?.phone ?? "";
 }
 async function savePhone() {
@@ -67,7 +72,10 @@ async function savePhone() {
   try {
     await $fetch("/api/auth/update-user", {
       method: "POST",
-      body: { phone: phoneDraft.value.trim() },
+      body: {
+        displayName: nameDraft.value.trim(),
+        phone: phoneDraft.value.trim(),
+      },
     });
     await refreshUser();
     phoneSavedFlash.value = true;
@@ -438,19 +446,30 @@ onMounted(() => {
         }}</span>
         <span class="font-medium">{{ user?.email || "—" }}</span>
       </div>
-      <!-- contact phone — editable, feeds the claim-form Contact Number -->
-      <div class="flex flex-col gap-2">
-        <Label for="profile-phone">{{ t("settings.profile.phone") }}</Label>
-        <Input
-          id="profile-phone"
-          v-model="phoneDraft"
-          type="tel"
-          :placeholder="t('settings.profile.phonePh')"
-        />
-        <p class="text-xs text-muted-foreground">
-          {{ t("settings.profile.phoneHint") }}
-        </p>
+      <!-- real name + contact phone (one group, one save bar) — identity for
+           the claim-form export; the username above stays fixed -->
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="flex flex-col gap-2">
+          <Label for="profile-name">{{ t("settings.profile.name") }}</Label>
+          <Input
+            id="profile-name"
+            v-model="nameDraft"
+            :placeholder="t('settings.profile.namePh')"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <Label for="profile-phone">{{ t("settings.profile.phone") }}</Label>
+          <Input
+            id="profile-phone"
+            v-model="phoneDraft"
+            type="tel"
+            :placeholder="t('settings.profile.phonePh')"
+          />
+        </div>
       </div>
+      <p class="text-xs text-muted-foreground">
+        {{ t("settings.profile.phoneHint") }}
+      </p>
       <SettingsSaveBar
         :dirty="phoneDirty"
         :saving="phoneBusy"

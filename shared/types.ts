@@ -19,6 +19,8 @@ export interface AuthUser {
   image: string | null;
   /** Contact phone (联系电话) — Better Auth additional field, claim-form use. */
   phone?: string | null;
+  /** Real name (姓名), distinct from the sign-up username; claim-form use. */
+  displayName?: string | null;
   createdAt: string;
   updatedAt: string;
 }

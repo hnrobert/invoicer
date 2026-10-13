@@ -496,6 +496,7 @@
     settings: {
       title: "Campaign settings",
       desc: "Visibility, status, and collaborators. Changing visibility moves the campaign onto the new permission model.",
+      nameLabel: "Campaign name",
       visibility: "Visibility",
       vis: { public: "Public", internal: "Internal", private: "Private" },
       visDesc: {
@@ -567,6 +568,8 @@
     title: "Settings",
     back: "Back",
     profile: {
+      name: "Name",
+      namePh: "real name, used by the claim form",
       phone: "Contact phone",
       phonePh: "used by the claim-form export",
       phoneHint: "Auto-fills Contact Number in the claim-form export.",

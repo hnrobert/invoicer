@@ -494,6 +494,7 @@
     settings: {
       title: "活动设置",
       desc: "可见性、状态与协作者。修改可见性后活动即进入新的权限模型。",
+      nameLabel: "活动名称",
       visibility: "可见性",
       vis: { public: "公开", internal: "组织内", private: "私密" },
       visDesc: {
@@ -565,6 +566,8 @@
     title: "设置",
     back: "返回",
     profile: {
+      name: "姓名",
+      namePh: "真实姓名，用于报销表",
       phone: "联系电话",
       phonePh: "用于报销表导出",
       phoneHint: "导出学生活动经费报销表时自动填入联系电话。",

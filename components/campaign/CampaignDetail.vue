@@ -490,6 +490,7 @@ async function loadSettings() {
     setVisibility.value = data.visibility;
     setStatus.value = data.status;
     setSearchable.value = !!data.searchable;
+    setName.value = data.name ?? inv.name.value;
   } catch {
     // keep defaults
   }
@@ -505,9 +506,13 @@ async function loadSettings() {
 }
 // ---------- settings general: unsaved-changes machinery ----------
 /** Baseline of the staged general form (server state at last load/save). */
-const sdOrig = ref<{ v: string; s: string; q: boolean } | null>(null);
+const setName = ref("");
+const sdOrig = ref<{ v: string; s: string; q: boolean; n: string } | null>(
+  null,
+);
 function sdSnapshot() {
   return {
+    n: setName.value,
     v: setVisibility.value,
     s: setStatus.value,
     q: setSearchable.value,
@@ -521,6 +526,7 @@ const sdDirty = computed(
 const sdSavedFlash = ref(false);
 function discardSettings() {
   if (!sdOrig.value) return;
+  setName.value = sdOrig.value.n;
   setVisibility.value = sdOrig.value.v as typeof setVisibility.value;
   setStatus.value = sdOrig.value.s as typeof setStatus.value;
   setSearchable.value = sdOrig.value.q;
@@ -585,6 +591,7 @@ async function saveSettings() {
     await $fetch(`/api/campaigns/${props.campaignId}`, {
       method: "PUT",
       body: {
+        ...(setName.value.trim() ? { name: setName.value.trim() } : {}),
         visibility: setVisibility.value,
         searchable: setVisibility.value === "public" && setSearchable.value,
         status: setStatus.value,
@@ -644,10 +651,16 @@ async function initiateTransfer() {
     transferBusy.value = false;
   }
 }
-watch(tab, (v) => {
-  if (v === "settings" && !collaborators.value.length) void loadSettings();
-  if (v === "audit") void loadAudit();
-});
+watch(
+  tab,
+  (v) => {
+    if (v === "settings" && !collaborators.value.length) void loadSettings();
+    if (v === "audit") void loadAudit();
+  },
+  // immediate: landing directly on ?tab=settings initialises tab without a
+  // change, so the lazy load (and its staging baseline) never ran.
+  { immediate: true },
+);
 
 // ---------- audit tab ----------
 const auditLogs = ref<
@@ -1250,6 +1263,14 @@ async function loadAudit() {
         v-if="setSection === 'general'"
         class="flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
       >
+        <div class="flex flex-col gap-1.5">
+          <Label for="campaign-name">{{ t("home.settings.nameLabel") }}</Label>
+          <Input
+            id="campaign-name"
+            v-model="setName"
+            :placeholder="t('home.step1.namePlaceholder')"
+          />
+        </div>
         <div class="flex flex-col gap-1.5">
           <Label>{{ t("home.settings.visibility") }}</Label>
           <div class="flex flex-wrap gap-2">

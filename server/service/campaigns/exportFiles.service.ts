@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import ExcelJS from "exceljs";
 import AdmZip from "adm-zip";
 import { AppDataSource } from "#server/utils/database";
@@ -212,10 +211,10 @@ async function buildClaimWorkbook(
 
   // Header identity: the exporting user (name + Settings→Profile phone) and
   // the campaign's organization (personal campaigns leave the org blank).
-  const phoneRow = await sqlGet<{ phone: string | null }>(
-    'SELECT "phone" FROM "user" WHERE id = $1',
-    [user.id],
-  );
+  const idRow = await sqlGet<{
+    displayName: string | null;
+    phone: string | null;
+  }>('SELECT "displayName", "phone" FROM "user" WHERE id = $1', [user.id]);
   const orgRow = campaign.organizationId
     ? await sqlGet<{ name: string }>(
         'SELECT "name" FROM "organization" WHERE id = $1',
@@ -225,8 +224,8 @@ async function buildClaimWorkbook(
 
   mergeCenter("A1:G1", "学生活动经费报销表", true);
   mergeCenter("A2:G2", "Students Activity Expenses Claim Form");
-  field(4, "Applicant 申请人", user.name);
-  field(5, "Contact Number 联系电话", phoneRow?.phone ?? "");
+  field(4, "Applicant 申请人", idRow?.displayName || user.name);
+  field(5, "Contact Number 联系电话", idRow?.phone ?? "");
   field(6, "Name of Organization 社团/组织", orgRow?.name ?? "");
   field(
     7,
@@ -488,16 +487,55 @@ export async function exportCampaign(
     };
   }
 
-  // zip: original files grouped by review state, then uploader.
+  // zip: every original file, FLAT and renamed to the reimbursement naming
+  // convention the finance team uses by hand — "NN-条目名-金额-类型.ext":
+  // files of one item cluster together in file managers and reviewers can
+  // match invoice ↔ evidence without opening anything. Unattached files keep
+  // their original name under a trailing "未归类" bucket number.
+  const zipItems = await AppDataSource.getRepository(CampaignItem).find({
+    where: { campaignId },
+    order: { id: "asc" },
+  });
+  const itemNo = new Map(zipItems.map((it, ix) => [it.id, ix + 1]));
+  const KIND_LABEL: Record<string, string> = {
+    invoice: "发票",
+    quotation: "报价单",
+    receipt: "订单截图",
+  };
+  const usedNames = new Set<string>();
   const zip = new AdmZip();
+  let missing = 0;
+  const unattachedIx = zipItems.length;
   for (const i of invoices) {
     const data = await storage.getBuffer(i.savedPath).catch(() => null);
-    if (!data) continue;
-    const group = flow === "submit" ? (i.reviewState ?? "draft") : i.status;
-    const upDir =
-      (i.uploaderId && uploaders.get(i.uploaderId)?.name) || "unknown";
-    const safeUp = upDir.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 40);
-    zip.addFile(`${group}/${safeUp}/${basename(i.savedPath)}`, data);
+    if (!data) {
+      missing++;
+      continue;
+    }
+    const ext = (i.filename.match(/\.[a-z0-9]+$/i) ?? [""])[0]!;
+    const amount = amountOf(i);
+    const label = KIND_LABEL[i.kind] ?? i.kind;
+    const base = i.itemId
+      ? (itemNo.get(i.itemId) ?? unattachedIx).toString().padStart(2, "0") +
+        "-" +
+        (zipItems.find((it) => it.id === i.itemId)?.name ?? "未归类")
+      : "未归类-" + i.filename.replace(/\.[a-z0-9]+$/i, "");
+    let name =
+      `${base}${amount != null ? `-${amount.toFixed(2)}` : ""}-${label}${ext}`
+        .replace(/[\\/:*?"<>|]+/g, "_")
+        .replace(/\s+/g, "_")
+        .slice(0, 120);
+    // same item + same amount + same kind (rare): dedupe with a counter
+    for (let n = 2; usedNames.has(name); n++) {
+      name = name.replace(/(\.[^.]+)$/, `-${n}$1`);
+    }
+    usedNames.add(name);
+    zip.addFile(name, data);
+  }
+  if (missing) {
+    console.warn(
+      `[export] campaign #${campaignId}: ${missing} file(s) missing from storage and skipped`,
+    );
   }
   return {
     body: zip.toBuffer(),

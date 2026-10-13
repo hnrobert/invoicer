@@ -24,6 +24,12 @@ RUN pnpm build
 RUN mkdir -p .output/server/node_modules/tesseract.js-core && \
     find node_modules -path '*tesseract.js-core*' -name '*.wasm' \
       -exec cp -fL {} .output/server/node_modules/tesseract.js-core/ \;
+# Same trap for pdf.js: nitro copies the externalized main entry but NOT the
+# worker/cmaps/standard_fonts it resolves at runtime — replace the partial
+# copy with the full package (cmaps/fonts are also loaded from here).
+RUN rm -rf .output/server/node_modules/pdfjs-dist && \
+    cp -rL node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist \
+      .output/server/node_modules/pdfjs-dist
 
 # --- production ---
 # No apt packages either: tesseract.js is pure WASM and reads its language data

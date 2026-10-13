@@ -72,10 +72,12 @@ export async function sqlRun(
 }
 
 export const auth = betterAuth({
-  // Contact phone (联系电话) — editable from Settings → Profile; feeds the
-  // UNNC claim-form export's "Contact Number" field.
+  // Identity fields edited under Settings → Profile (grouped together) and
+  // consumed by the UNNC claim-form export: real name (姓名, distinct from
+  // the sign-up username) + contact phone (联系电话).
   user: {
     additionalFields: {
+      displayName: { type: "string", input: true, required: false },
       phone: { type: "string", input: true, required: false },
     },
   },

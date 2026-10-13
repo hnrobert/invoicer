@@ -15,6 +15,7 @@
 import { Init1788094800471 } from "./1788094800471-Init";
 import { AddCampaignItems1791782473680 } from "./1791782473680-AddCampaignItems";
 import { AddUserPhone1791902615000 } from "./1791902615000-AddUserPhone";
+import { AddUserDisplayName1791988800000 } from "./1791988800000-AddUserDisplayName";
 
 /** Identity of the first (baseline) migration. */
 export const BASELINE_MIGRATION = {
@@ -29,4 +30,5 @@ export const migrations = [
   Init1788094800471,
   AddCampaignItems1791782473680,
   AddUserPhone1791902615000,
+  AddUserDisplayName1791988800000,
 ] as unknown as (string | (() => unknown))[];

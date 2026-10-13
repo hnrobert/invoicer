@@ -9,8 +9,17 @@
  */
 import { createRequire } from "node:module";
 import { join, resolve, dirname } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export async function extractPdfText(data: Uint8Array): Promise<string> {
+  // Node ships no global DOMMatrix, but pdf.js needs it for transformed
+  // content (certain CID fonts) — the `dommatrix` polyfill covers the
+  // bundled-production case where "DOMMatrix is not defined" killed whole
+  // PDFs. No-op in runtimes that already provide it.
+  if (typeof globalThis.DOMMatrix === "undefined") {
+    const { default: DOMMatrix } = await import("dommatrix");
+    (globalThis as { DOMMatrix?: unknown }).DOMMatrix = DOMMatrix;
+  }
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   // CID-keyed CJK fonts decode through the CMap tables shipped in the
   // package. Without cMapUrl pdf.js logs a translateFont warning and
@@ -22,6 +31,15 @@ export async function extractPdfText(data: Uint8Array): Promise<string> {
     dirname(require.resolve("pdfjs-dist/legacy/build/pdf.mjs")),
     "../..",
   );
+  // In the bundled production build pdf.js resolves its fake worker by
+  // module path, which no longer exists under .output — point it at the
+  // real worker file inside node_modules. file:// URL form: the fake worker
+  // loader dynamic-imports this value, and import() rejects bare FS paths.
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(
+      join(pkgRoot, "legacy/build/pdf.worker.mjs"),
+    ).href;
+  }
   // Plain filesystem paths (NOT file:// URLs) — in Node the legacy build
   // reads cmap/font data through fs.readFile, and Node fetch rejects
   // file:// URLs anyway.
