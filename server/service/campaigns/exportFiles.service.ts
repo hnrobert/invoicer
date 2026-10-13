@@ -113,6 +113,33 @@ function receiptItemOf(raw: string | null): string | null {
   return name.length >= 2 ? `*${m[1]}*${name}` : null;
 }
 
+/**
+ * Recognize the QUANTITY of a claim row: the item name usually carries it
+ * ("扇子×200", "集章卡 1000张"); order screenshots print "x100" / "共1种100件".
+ * With a quantity + amount, the unit price is their exact quotient — far
+ * more reliable than scraping the invoice's jumbled value stream.
+ */
+function quantityOf(itemName: string, rawText: string | null): number | null {
+  const fromName =
+    itemName.match(/[×xX]\s*([0-9]{1,6})/)?.[1] ??
+    itemName.match(/([0-9]{1,6})\s*[张个件套支把盒]/)?.[1] ??
+    null;
+  if (fromName) return Number(fromName);
+  const t = rawText ?? "";
+  return Number(
+    t.match(/[xX]\s*([0-9]{1,6})(?!\d)/)?.[1] ??
+      t.match(/共\s*[1一]\s*种\s*([0-9]{1,6})\s*件/)?.[1] ??
+      NaN,
+  );
+}
+
+function unitPriceOf(amount: number | null, qty: number | null): string {
+  if (amount == null || !qty || qty <= 0) return "";
+  const v = amount / qty;
+  // invoices print up to 4 decimals; trim trailing zeros
+  return v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 /** The per-item claim rows shared by the xlsx claim sheet and the docx package. */
 async function buildClaimRows(
   campaignId: number,
@@ -141,6 +168,8 @@ async function buildClaimRows(
     receiptItem: string;
     concreteItem: string;
     amount: number | null;
+    quantity: string;
+    unitPrice: string;
     note: string;
     channel: string | null;
   }[] = [];
@@ -153,6 +182,8 @@ async function buildClaimRows(
     );
     const sum = formal.reduce((s, i) => s + (amountOf(i) ?? 0), 0);
     const main = formal[0] ?? mine[0];
+    const amount = formal.length ? Math.round(sum * 100) / 100 : null;
+    const qty = quantityOf(it.name, main?.rawText ?? null);
     rows.push({
       no: rows.length + 1,
       receiptItem:
@@ -161,7 +192,9 @@ async function buildClaimRows(
         main?.extractedTitle ??
         "",
       concreteItem: it.name,
-      amount: formal.length ? Math.round(sum * 100) / 100 : null,
+      amount,
+      quantity: qty != null && Number.isFinite(qty) ? String(qty) : "",
+      unitPrice: unitPriceOf(amount, qty),
       note: [
         it.payer ? `垫付人: ${it.payer}` : "",
         it.note ?? "",
@@ -175,6 +208,8 @@ async function buildClaimRows(
   for (const i of invoices) {
     if (claimedInvoiceIds.has(i.id)) continue;
     if (!(i.kind === "invoice" && i.status === "qualified")) continue;
+    const amt = amountOf(i);
+    const qty2 = quantityOf(i.filename, i.rawText);
     rows.push({
       no: rows.length + 1,
       receiptItem:
@@ -183,7 +218,9 @@ async function buildClaimRows(
         i.extractedTitle ??
         "",
       concreteItem: i.filename.replace(/\.[a-z0-9]+$/i, ""),
-      amount: amountOf(i),
+      amount: amt,
+      quantity: qty2 != null && Number.isFinite(qty2) ? String(qty2) : "",
+      unitPrice: unitPriceOf(amt, qty2),
       note: "",
       channel: groupName(i.groupId),
     });
@@ -299,8 +336,8 @@ async function buildClaimWorkbook(
       row.no,
       row.receiptItem,
       row.concreteItem,
-      null, // unit price — left for the claimant to fill
-      null, // quantity — left for the claimant to fill
+      row.unitPrice || null,
+      row.quantity || null,
       row.amount,
       row.note,
     ];
@@ -571,8 +608,8 @@ export async function exportCampaign(
         no: r.no,
         receiptItem: r.receiptItem,
         concreteItem: r.concreteItem,
-        unitPrice: "",
-        quantity: "",
+        unitPrice: r.unitPrice,
+        quantity: r.quantity,
         amount: r.amount != null ? r.amount.toFixed(2) : "",
         note: r.note,
       })),

@@ -81,7 +81,7 @@ function setCell(rowXml: string, cellIdx: number, text: string | null): string {
   if (!target) return rowXml;
   const [a, b] = target;
   let cell = rowXml.slice(a, b);
-  const pOpen = cell.search(/<w:p[ >\/]/);
+  const pOpen = cell.search(/<w:p[ >]/);
   if (pOpen < 0) return rowXml;
   // self-closing empty paragraph <w:p …/> → open it up for the run
   const selfClose = /<w:p[^>]*\/\>/.exec(cell.slice(pOpen));
