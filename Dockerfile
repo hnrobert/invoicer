@@ -38,6 +38,8 @@ FROM node:24-slim AS production
 WORKDIR /app
 
 COPY --from=build /app/.output ./.output
+# Claim-form docx mould — read at runtime by the package export.
+COPY --from=build /app/server/assets ./server/assets
 COPY --from=build /app/package.json ./package.json
 # OCR language data, fetched by postinstall in the deps stage (strict mode) —
 # take it from there, not from the build context (CI checkouts have no

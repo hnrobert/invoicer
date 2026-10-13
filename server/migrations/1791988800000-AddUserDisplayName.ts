@@ -11,9 +11,7 @@ export class AddUserDisplayName1791988800000 implements MigrationInterface {
   name = "AddUserDisplayName1791988800000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      'ALTER TABLE "user" ADD COLUMN "displayName" text',
-    );
+    await queryRunner.query('ALTER TABLE "user" ADD COLUMN "displayName" text');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

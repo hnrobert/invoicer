@@ -498,6 +498,9 @@
       desc: "Visibility, status, and collaborators. Changing visibility moves the campaign onto the new permission model.",
       nameLabel: "Campaign name",
       visibility: "Visibility",
+      roster: "Participant roster",
+      rosterPh: "Yuhan Zhang,张宇涵,20413248 (one per line)",
+      rosterHint: "Exported as the roster sheet in the claim package; empty = skip.",
       vis: { public: "Public", internal: "Internal", private: "Private" },
       visDesc: {
         public: "Anyone with the link can view and upload their own invoices.",
@@ -519,6 +522,7 @@
       xlsx: "Excel workbook",
       zip: "Invoice files ZIP",
       claim: "Claim form (xlsx)",
+      package: "Claim package (docx+files+roster)",
     },
     groups: {
       title: "Groups & reviewers",
@@ -571,6 +575,8 @@
       name: "Name",
       namePh: "real name, used by the claim form",
       phone: "Contact phone",
+      id: "Chinese ID",
+      idPh: "needed for prepayment",
       phonePh: "used by the claim-form export",
       phoneHint: "Auto-fills Contact Number in the claim-form export.",
     },

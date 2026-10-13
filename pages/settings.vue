@@ -48,11 +48,13 @@ const { list: enabledList } = useOAuthProviders();
 // ---------- profile: real name + contact phone (claim-form identity) ----------
 const nameDraft = ref("");
 const phoneDraft = ref("");
+const idDraft = ref("");
 watch(
   user,
   (u) => {
     nameDraft.value = u?.displayName ?? "";
     phoneDraft.value = u?.phone ?? "";
+    idDraft.value = u?.chineseId ?? "";
   },
   { immediate: true },
 );
@@ -60,12 +62,14 @@ const phoneBusy = ref(false);
 const phoneDirty = computed(
   () =>
     nameDraft.value !== (user.value?.displayName ?? "") ||
-    phoneDraft.value !== (user.value?.phone ?? ""),
+    phoneDraft.value !== (user.value?.phone ?? "") ||
+    idDraft.value !== (user.value?.chineseId ?? ""),
 );
 const phoneSavedFlash = ref(false);
 function discardPhone() {
   nameDraft.value = user.value?.displayName ?? "";
   phoneDraft.value = user.value?.phone ?? "";
+  idDraft.value = user.value?.chineseId ?? "";
 }
 async function savePhone() {
   phoneBusy.value = true;
@@ -75,6 +79,7 @@ async function savePhone() {
       body: {
         displayName: nameDraft.value.trim(),
         phone: phoneDraft.value.trim(),
+        chineseId: idDraft.value.trim(),
       },
     });
     await refreshUser();
@@ -464,6 +469,14 @@ onMounted(() => {
             v-model="phoneDraft"
             type="tel"
             :placeholder="t('settings.profile.phonePh')"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <Label for="profile-id">{{ t("settings.profile.id") }}</Label>
+          <Input
+            id="profile-id"
+            v-model="idDraft"
+            :placeholder="t('settings.profile.idPh')"
           />
         </div>
       </div>

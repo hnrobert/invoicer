@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import ExcelJS from "exceljs";
+import { fillClaimDocx } from "#server/utils/claimDocx";
 import AdmZip from "adm-zip";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
@@ -36,7 +39,7 @@ function amountOf(i: Invoice): number | null {
   return i.extractedAmount ?? i.manualAmount;
 }
 
-export type ExportFormat = "csv" | "xlsx" | "zip" | "claim";
+export type ExportFormat = "csv" | "xlsx" | "zip" | "claim" | "package";
 
 /**
  * Export a campaign's full invoice data (Editor+ / legacy). Formats:
@@ -110,13 +113,20 @@ function receiptItemOf(raw: string | null): string | null {
   return name.length >= 2 ? `*${m[1]}*${name}` : null;
 }
 
-/** Build the UNNC claim-form workbook (see Attachment 2 of the regulations). */
-async function buildClaimWorkbook(
-  user: Pick<AuthUser, "id" | "name">,
-  campaign: Campaign,
+/** The per-item claim rows shared by the xlsx claim sheet and the docx package. */
+async function buildClaimRows(
   campaignId: number,
   invoices: Invoice[],
-): Promise<ExcelJS.Buffer> {
+): Promise<
+  {
+    no: number;
+    receiptItem: string;
+    concreteItem: string;
+    amount: number | null;
+    note: string;
+    channel: string | null;
+  }[]
+> {
   const items = await AppDataSource.getRepository(CampaignItem).find({
     where: { campaignId },
     order: { id: "asc" },
@@ -126,9 +136,6 @@ async function buildClaimWorkbook(
   });
   const groupName = (gid: number | null) =>
     gid == null ? null : (groups.find((g) => g.id === gid)?.name ?? null);
-
-  // One claim row per reimbursement ITEM (actual = its attached formal
-  // invoices' qualified sum); unattached qualified invoices follow as rows.
   const rows: {
     no: number;
     receiptItem: string;
@@ -181,6 +188,17 @@ async function buildClaimWorkbook(
       channel: groupName(i.groupId),
     });
   }
+  return rows;
+}
+
+/** Build the UNNC claim-form workbook (see Attachment 2 of the regulations). */
+async function buildClaimWorkbook(
+  user: Pick<AuthUser, "id" | "name">,
+  campaign: Campaign,
+  campaignId: number,
+  invoices: Invoice[],
+): Promise<ExcelJS.Buffer> {
+  const rows = await buildClaimRows(campaignId, invoices);
   const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
 
   const wb = new ExcelJS.Workbook();
@@ -485,6 +503,138 @@ export async function exportCampaign(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       filename: `${safeName}-报销表.xlsx`,
     };
+  }
+
+  if (format === "package") {
+    const buf = await buildClaimPackage(user, campaign, campaignId, invoices);
+    return {
+      body: buf as unknown as ArrayBuffer,
+      contentType: "application/zip",
+      filename: `${safeName}-报销包.zip`,
+    };
+  }
+
+  /**
+   * The one-click claim PACKAGE: the official docx mould filled with the
+   * campaign's claim rows + the invoice files and order screenshots in
+   * separate folders + the participant roster xlsx. Layout mirrors the
+   * finance team's hand-assembled packages:
+   *
+   *   20261013.CPU迎新报销表.V1.何思源.docx
+   *   CPU迎新发票/01-扇子×200-210.00-发票.pdf …
+   *   CPU迎新订单截图/01-扇子×200-209.00-订单截图.jpg …
+   *   CPU迎新参与人员名单.xlsx
+   */
+  async function buildClaimPackage(
+    user: Pick<AuthUser, "id" | "name">,
+    campaign: Campaign,
+    campaignId: number,
+    invoices: Invoice[],
+  ): Promise<Buffer> {
+    const rows = await buildClaimRows(campaignId, invoices);
+    const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+    const idRow = await sqlGet<{
+      displayName: string | null;
+      phone: string | null;
+    }>('SELECT "displayName", "phone" FROM "user" WHERE id = $1', [user.id]);
+    const orgRow = campaign.organizationId
+      ? await sqlGet<{ name: string }>(
+          'SELECT "name" FROM "organization" WHERE id = $1',
+          [campaign.organizationId],
+        )
+      : undefined;
+    const applicant = idRow?.displayName || user.name;
+    const activity =
+      campaign.name || campaign.expectedTitle || `campaign #${campaignId}`;
+    const safeAct = activity.replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40);
+    const dateTag = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+
+    // 1) filled docx from the official mould
+    const mouldPath =
+      process.env.CLAIM_MOULD_PATH ||
+      resolve(process.cwd(), "server/assets/claim-mould.docx");
+    const mould = readFileSync(mouldPath);
+    const docx = fillClaimDocx(mould, {
+      applicant,
+      phone: idRow?.phone ?? "",
+      organization: orgRow?.name ?? "",
+      activity,
+      totalArabic: total.toFixed(2),
+      totalChinese: rmbUppercase(total),
+      rows: rows.map((r) => ({
+        no: r.no,
+        receiptItem: r.receiptItem,
+        concreteItem: r.concreteItem,
+        unitPrice: "",
+        quantity: "",
+        amount: r.amount != null ? r.amount.toFixed(2) : "",
+        note: r.note,
+      })),
+    });
+
+    const zip = new AdmZip();
+    zip.addFile(
+      `${dateTag}.${safeAct}报销表.V1.${applicant.replace(/[\\/:*?"<>|\s]+/g, "_")}.docx`,
+      docx,
+    );
+
+    // 2) invoice files / order screenshots in separate folders (zip naming rules)
+    const items = await AppDataSource.getRepository(CampaignItem).find({
+      where: { campaignId },
+      order: { id: "asc" },
+    });
+    const itemNo = new Map(items.map((it, ix) => [it.id, ix + 1]));
+    const KIND_LABEL: Record<string, string> = {
+      invoice: "发票",
+      quotation: "报价单",
+      receipt: "订单截图",
+    };
+    const used = new Set<string>();
+    for (const i of invoices) {
+      const data = await storage.getBuffer(i.savedPath).catch(() => null);
+      if (!data) continue;
+      const ext = (i.filename.match(/\.[a-z0-9]+$/i) ?? [""])[0]!;
+      const amount = amountOf(i);
+      const label = KIND_LABEL[i.kind] ?? i.kind;
+      const base = i.itemId
+        ? (itemNo.get(i.itemId) ?? items.length).toString().padStart(2, "0") +
+          "-" +
+          (items.find((it) => it.id === i.itemId)?.name ?? "未归类")
+        : "未归类-" + i.filename.replace(/\.[a-z0-9]+$/i, "");
+      let name =
+        `${base}${amount != null ? `-${amount.toFixed(2)}` : ""}-${label}${ext}`
+          .replace(/[\\/:*?"<>|]+/g, "_")
+          .replace(/\s+/g, "_")
+          .slice(0, 120);
+      for (let n = 2; used.has(name); n++)
+        name = name.replace(/(\.[^.]+)$/, `-${n}$1`);
+      used.add(name);
+      const folder =
+        i.kind === "invoice" ? `${safeAct}发票` : `${safeAct}订单截图`;
+      zip.addFile(`${folder}/${name}`, data);
+    }
+
+    // 3) participant roster xlsx (Name / 姓名 / 学号), only when configured
+    const roster = JSON.parse(campaign.participants || "[]") as {
+      en?: string;
+      zh?: string;
+      id?: string;
+    }[];
+    if (roster.length) {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("名单");
+      ws.columns = [
+        { header: "Name", width: 24 },
+        { header: "姓名", width: 16 },
+        { header: "学号", width: 14 },
+      ];
+      ws.getRow(1).font = { bold: true };
+      for (const r of roster) ws.addRow([r.en ?? "", r.zh ?? "", r.id ?? ""]);
+      const buf = await wb.xlsx.writeBuffer();
+      zip.addFile(`${safeAct}参与人员名单.xlsx`, Buffer.from(buf));
+    }
+
+    return zip.toBuffer();
   }
 
   // zip: every original file, FLAT and renamed to the reimbursement naming

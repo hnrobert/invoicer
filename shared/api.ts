@@ -175,6 +175,8 @@ export interface UpdateCampaignBody {
   status?: string;
   deadline?: string | null;
   name?: string;
+  /** Participant roster rows [{en,zh,id}] as a JSON string. */
+  participants?: string;
 }
 
 /** POST /api/campaigns/:id/review/:invoiceId */
@@ -280,6 +282,8 @@ export interface CampaignSettingsResponse extends OkResponse {
     deadline: string | null;
     name: string;
     visibilityConfirmed: boolean;
+    /** Roster rows [{en,zh,id}] as JSON text. */
+    participants?: string;
   };
 }
 
@@ -292,6 +296,8 @@ export interface CampaignsResponse extends OkResponse {
 /** GET /api/campaigns/:id — the live campaign workspace payload. */
 export interface CampaignDetailResponse extends OkResponse {
   name: string;
+  /** Roster rows [{en,zh,id}] JSON text (claim package export). */
+  participants?: string;
   expected_title: string;
   expected_tax_id: string | null;
   organization_id: string | null;

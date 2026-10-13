@@ -496,6 +496,9 @@
       desc: "可见性、状态与协作者。修改可见性后活动即进入新的权限模型。",
       nameLabel: "活动名称",
       visibility: "可见性",
+      roster: "参与人员名单",
+      rosterPh: "Yuhan Zhang,张宇涵,20413248（每行一人）",
+      rosterHint: "导出报销包时生成人员名单表；留空则不生成。",
       vis: { public: "公开", internal: "组织内", private: "私密" },
       visDesc: {
         public: "任何人可通过链接访问并上传自己的发票。",
@@ -517,6 +520,7 @@
       xlsx: "Excel 表格",
       zip: "发票原件 ZIP",
       claim: "学生活动经费报销表 (xlsx)",
+      package: "报销包（docx+文件+名单）",
     },
     groups: {
       title: "分组与审核员",
@@ -569,6 +573,8 @@
       name: "姓名",
       namePh: "真实姓名，用于报销表",
       phone: "联系电话",
+      id: "身份证号",
+      idPh: "预付款打款需要",
       phonePh: "用于报销表导出",
       phoneHint: "导出学生活动经费报销表时自动填入联系电话。",
     },

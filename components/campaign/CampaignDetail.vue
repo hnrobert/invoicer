@@ -433,7 +433,7 @@ async function submitReview(decision: "qualified" | "unqualified") {
 
 // ---------- export ----------
 const exportOpen = ref(false);
-function doExport(fmt: "csv" | "xlsx" | "zip" | "claim") {
+function doExport(fmt: "csv" | "xlsx" | "zip" | "claim" | "package") {
   exportOpen.value = false;
   window.open(
     `/api/campaigns/${props.campaignId}/export?format=${fmt}`,
@@ -491,6 +491,7 @@ async function loadSettings() {
     setStatus.value = data.status;
     setSearchable.value = !!data.searchable;
     setName.value = data.name ?? inv.name.value;
+    rosterDraft.value = rosterFromJson(data.participants);
   } catch {
     // keep defaults
   }
@@ -507,12 +508,34 @@ async function loadSettings() {
 // ---------- settings general: unsaved-changes machinery ----------
 /** Baseline of the staged general form (server state at last load/save). */
 const setName = ref("");
-const sdOrig = ref<{ v: string; s: string; q: boolean; n: string } | null>(
-  null,
-);
+// participant roster, edited as CSV lines "English name, name, student ID"
+const rosterDraft = ref("");
+const rosterFromJson = (j?: string) =>
+  (JSON.parse(j || "[]") as { en?: string; zh?: string; id?: string }[])
+    .map((r) => [r.en ?? "", r.zh ?? "", r.id ?? ""].join(","))
+    .join("\n") ?? "";
+const rosterToJson = () =>
+  JSON.stringify(
+    rosterDraft.value
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [en = "", zh = "", id = ""] = l.split(",").map((x) => x.trim());
+        return { en, zh, id };
+      }),
+  );
+const sdOrig = ref<{
+  v: string;
+  s: string;
+  q: boolean;
+  n: string;
+  r: string;
+} | null>(null);
 function sdSnapshot() {
   return {
     n: setName.value,
+    r: rosterDraft.value,
     v: setVisibility.value,
     s: setStatus.value,
     q: setSearchable.value,
@@ -527,6 +550,7 @@ const sdSavedFlash = ref(false);
 function discardSettings() {
   if (!sdOrig.value) return;
   setName.value = sdOrig.value.n;
+  rosterDraft.value = sdOrig.value.r;
   setVisibility.value = sdOrig.value.v as typeof setVisibility.value;
   setStatus.value = sdOrig.value.s as typeof setStatus.value;
   setSearchable.value = sdOrig.value.q;
@@ -592,6 +616,7 @@ async function saveSettings() {
       method: "PUT",
       body: {
         ...(setName.value.trim() ? { name: setName.value.trim() } : {}),
+        participants: rosterToJson(),
         visibility: setVisibility.value,
         searchable: setVisibility.value === "public" && setSearchable.value,
         status: setStatus.value,
@@ -767,7 +792,7 @@ async function loadAudit() {
               class="absolute right-0 z-20 mt-1 flex w-36 flex-col overflow-hidden rounded-md border bg-popover shadow-md"
             >
               <button
-                v-for="f in ['csv', 'xlsx', 'zip', 'claim'] as const"
+                v-for="f in ['csv', 'xlsx', 'zip', 'claim', 'package'] as const"
                 :key="f"
                 type="button"
                 class="px-3 py-2 text-left text-xs hover:bg-accent"
@@ -1270,6 +1295,19 @@ async function loadAudit() {
             v-model="setName"
             :placeholder="t('home.step1.namePlaceholder')"
           />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="campaign-roster">{{ t("home.settings.roster") }}</Label>
+          <textarea
+            id="campaign-roster"
+            v-model="rosterDraft"
+            rows="6"
+            class="rounded-md border bg-background px-3 py-2 font-mono text-xs"
+            :placeholder="t('home.settings.rosterPh')"
+          />
+          <p class="text-xs text-muted-foreground">
+            {{ t("home.settings.rosterHint") }}
+          </p>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label>{{ t("home.settings.visibility") }}</Label>

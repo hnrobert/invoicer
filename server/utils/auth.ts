@@ -79,6 +79,7 @@ export const auth = betterAuth({
     additionalFields: {
       displayName: { type: "string", input: true, required: false },
       phone: { type: "string", input: true, required: false },
+      chineseId: { type: "string", input: true, required: false },
     },
   },
   database: authDb,

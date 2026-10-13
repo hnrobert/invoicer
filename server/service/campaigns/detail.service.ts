@@ -82,6 +82,7 @@ export async function campaignDetail(
   return {
     ok: true,
     name: campaign.name,
+    participants: campaign.participants,
     expected_title: campaign.expectedTitle,
     expected_tax_id: campaign.expectedTaxId,
     organization_id: campaign.organizationId,

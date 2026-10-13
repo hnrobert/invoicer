@@ -30,6 +30,13 @@ export class Campaign {
   @Column({ type: "text", nullable: false, default: "" })
   name!: string;
 
+  /**
+   * Participant roster for the claim package, as JSON rows
+   * [{en,zh,id}] (English name / 姓名 / 学号). Exported as the roster xlsx.
+   */
+  @Column({ type: "text", nullable: false, default: "[]" })
+  participants!: string;
+
   /** Invoice title (buyer name) to match against. */
   @Column({ name: "expected_title", type: "text", nullable: false })
   expectedTitle!: string;

@@ -21,6 +21,8 @@ export interface AuthUser {
   phone?: string | null;
   /** Real name (姓名), distinct from the sign-up username; claim-form use. */
   displayName?: string | null;
+  /** Chinese ID number (身份证号) — prepayment transfers need it. */
+  chineseId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

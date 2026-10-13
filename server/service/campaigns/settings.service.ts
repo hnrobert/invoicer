@@ -73,6 +73,19 @@ export async function updateCampaignSettings(
   if (typeof body?.name === "string" && body.name.trim()) {
     patch.name = body.name.trim();
   }
+  // participant roster: stored verbatim as JSON text after shape check
+  if (typeof body?.participants === "string") {
+    try {
+      const rows = JSON.parse(body.participants) as unknown[];
+      if (!Array.isArray(rows)) throw new Error("not an array");
+      patch.participants = body.participants.slice(0, 200_000);
+    } catch {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "participants must be a JSON array",
+      });
+    }
+  }
 
   if (Object.keys(patch).length === 0) {
     throw createError({
@@ -125,6 +138,7 @@ export async function updateCampaignSettings(
       status: saved.status,
       deadline: saved.deadline?.toISOString() ?? null,
       name: saved.name,
+      participants: saved.participants,
       visibilityConfirmed: saved.visibilityConfirmed,
     },
   };
