@@ -34,6 +34,49 @@ const { org, full, loading, notFound, isPrivileged, myRole, visibility, load } =
   useOrgContext(slug);
 const { leave, remove } = useOrgs();
 
+// ---------- general: organization name (Better Auth organization.update) ----------
+const nameDraft = ref("");
+watch(
+  org,
+  (o) => {
+    nameDraft.value = o?.name ?? "";
+  },
+  { immediate: true },
+);
+const nameSaving = ref(false);
+const nameDirty = computed(
+  () =>
+    !!org.value &&
+    !nameSaving.value &&
+    nameDraft.value.trim() !== org.value.name &&
+    nameDraft.value.trim().length > 0,
+);
+async function applyOrgName() {
+  if (!org.value || !nameDirty.value) return;
+  nameSaving.value = true;
+  try {
+    await $fetch("/api/auth/organization/update", {
+      method: "POST",
+      body: { organizationId: org.value.id, data: { name: nameDraft.value.trim() } },
+    });
+    toast.success(t("orgs.settings.nameSaved"));
+    // The org header/menus resolve from several SPA caches (org list,
+    // per-slug context) that don't all invalidate together mid-session.
+    // Better Auth's list endpoint already serves the new name, so a full
+    // page reload rehydrates everything consistently.
+    setTimeout(() => window.location.reload(), 600);
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    nameSaving.value = false;
+  }
+}
+function discardOrgName() {
+  nameDraft.value = org.value?.name ?? "";
+}
+const { confirmLeave: nameConfirmLeave, proceed: nameProceed } =
+  useUnsavedLeaveGuard(nameDirty, nameSaving);
+
 // ---------- general: visibility ----------
 // Staged: clicking Public/Private only updates the local pick; the PUT fires
 // from the shared SettingsSaveBar (save / discard / leave-guard below).
@@ -353,6 +396,39 @@ onMounted(async () => {
             >{{ t("orgs.vis.private") }}</Button
           >
         </div>
+
+        <!-- organization name -->
+        <div class="flex flex-col gap-1.5">
+          <Label for="org-name">{{ t("orgs.settings.nameLabel") }}</Label>
+          <Input
+            id="org-name"
+            v-model="nameDraft"
+            :placeholder="t('orgs.namePlaceholder')"
+          />
+        </div>
+        <SettingsSaveBar
+          :dirty="nameDirty"
+          :saving="nameSaving"
+          @save="applyOrgName"
+          @discard="discardOrgName"
+        />
+        <UnsavedLeaveDialog
+          :open="nameConfirmLeave"
+          :saving="nameSaving"
+          @stay="nameConfirmLeave = false"
+          @discard="
+            () => {
+              discardOrgName();
+              nameProceed();
+            }
+          "
+          @save="
+            async () => {
+              await applyOrgName();
+              if (!nameDirty) nameProceed();
+            }
+          "
+        />
 
         <SettingsSaveBar
           :dirty="visDirty"
