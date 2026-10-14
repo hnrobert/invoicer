@@ -36,20 +36,27 @@ const { leave, remove } = useOrgs();
 
 // ---------- general: organization name (Better Auth organization.update) ----------
 const nameDraft = ref("");
+const slugDraft = ref("");
 watch(
   org,
   (o) => {
     nameDraft.value = o?.name ?? "";
+    slugDraft.value = o?.slug ?? "";
   },
   { immediate: true },
 );
 const nameSaving = ref(false);
+const slugValid = computed(() =>
+  /^[a-z0-9][a-z0-9-]*$/.test(slugDraft.value.trim()),
+);
 const nameDirty = computed(
   () =>
     !!org.value &&
     !nameSaving.value &&
-    nameDraft.value.trim() !== org.value.name &&
-    nameDraft.value.trim().length > 0,
+    slugValid.value &&
+    ((nameDraft.value.trim() !== org.value.name &&
+      nameDraft.value.trim().length > 0) ||
+      slugDraft.value.trim() !== org.value.slug),
 );
 async function applyOrgName() {
   if (!org.value || !nameDirty.value) return;
@@ -57,14 +64,28 @@ async function applyOrgName() {
   try {
     await $fetch("/api/auth/organization/update", {
       method: "POST",
-      body: { organizationId: org.value.id, data: { name: nameDraft.value.trim() } },
+      body: {
+        organizationId: org.value.id,
+        data: {
+          name: nameDraft.value.trim(),
+          ...(slugDraft.value.trim() !== org.value.slug
+            ? { slug: slugDraft.value.trim() }
+            : {}),
+        },
+      },
     });
     toast.success(t("orgs.settings.nameSaved"));
     // The org header/menus resolve from several SPA caches (org list,
     // per-slug context) that don't all invalidate together mid-session.
     // Better Auth's list endpoint already serves the new name, so a full
     // page reload rehydrates everything consistently.
-    setTimeout(() => window.location.reload(), 600);
+    const newSlug = slugDraft.value.trim();
+    setTimeout(
+      () =>
+        (window.location.href =
+          window.location.origin + `/orgs/${newSlug}/settings`),
+      600,
+    );
   } catch (e) {
     toast.error((e as Error).message);
   } finally {
@@ -73,6 +94,7 @@ async function applyOrgName() {
 }
 function discardOrgName() {
   nameDraft.value = org.value?.name ?? "";
+  slugDraft.value = org.value?.slug ?? "";
 }
 const { confirmLeave: nameConfirmLeave, proceed: nameProceed } =
   useUnsavedLeaveGuard(nameDirty, nameSaving);
@@ -397,14 +419,30 @@ onMounted(async () => {
           >
         </div>
 
-        <!-- organization name -->
-        <div class="flex flex-col gap-1.5">
-          <Label for="org-name">{{ t("orgs.settings.nameLabel") }}</Label>
-          <Input
-            id="org-name"
-            v-model="nameDraft"
-            :placeholder="t('orgs.namePlaceholder')"
-          />
+        <!-- organization name + slug -->
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <Label for="org-name">{{ t("orgs.settings.nameLabel") }}</Label>
+            <Input
+              id="org-name"
+              v-model="nameDraft"
+              :placeholder="t('orgs.namePlaceholder')"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="org-slug">{{ t("orgs.settings.slugLabel") }}</Label>
+            <Input
+              id="org-slug"
+              v-model="slugDraft"
+              :placeholder="t('orgs.slugPlaceholder')"
+            />
+            <p
+              v-if="slugDraft && !slugValid"
+              class="text-xs text-red-600 dark:text-red-400"
+            >
+              {{ t("orgs.slugHint") }}
+            </p>
+          </div>
         </div>
         <SettingsSaveBar
           :dirty="nameDirty"

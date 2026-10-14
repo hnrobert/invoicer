@@ -135,6 +135,7 @@
       visibilityDesc: "私密组织不进入广场/搜索；其公开活动仍可通过链接访问。",
       savedToast: "组织可见性已更新",
       nameLabel: "组织名称",
+      slugLabel: "标识（URL）",
       nameSaved: "组织名称已更新",
       ownersOnly: "仅 Owner / Admin 可访问组织设置。",
     },

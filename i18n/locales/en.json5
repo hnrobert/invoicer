@@ -135,6 +135,7 @@
       visibilityDesc: "Private orgs stay off the plaza/search; their public campaigns remain reachable by link.",
       savedToast: "Organization visibility updated",
       nameLabel: "Organization name",
+      slugLabel: "Slug (URL)",
       nameSaved: "Organization name updated",
       ownersOnly: "Only Owner / Admin can access organization settings.",
     },
