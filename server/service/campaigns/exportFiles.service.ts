@@ -586,10 +586,9 @@ export async function exportCampaign(
       displayName: string | null;
       phone: string | null;
       chineseId: string | null;
-    }>(
-      'SELECT "displayName", "phone", "chineseId" FROM "user" WHERE id = $1',
-      [user.id],
-    );
+    }>('SELECT "displayName", "phone", "chineseId" FROM "user" WHERE id = $1', [
+      user.id,
+    ]);
     const orgRow = campaign.organizationId
       ? await sqlGet<{ name: string }>(
           'SELECT "name" FROM "organization" WHERE id = $1',

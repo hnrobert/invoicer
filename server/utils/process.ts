@@ -5,7 +5,7 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { extractPdfText } from "./extract";
 import { ocrImage } from "./ocr";
 import { extractInvoiceFields } from "./fields";
-import { detectKind, extractReceiptFields } from "./receipt";
+import { detectKind, extractReceiptFields, normalizeOcrText } from "./receipt";
 import { matchInvoiceMulti } from "./match";
 import { allowedPairs } from "./campaignTitles";
 import { parseElectronicInvoice } from "./einvoice";
@@ -84,6 +84,17 @@ export async function processInvoice(invoiceId: number): Promise<void> {
     if (!directFields) {
       const kind = detectKind(text);
       if (kind === "quotation") {
+        // Quotations still carry a headline price worth reconciling —
+        // "活动共计费⽤ 300" / "总计金额 100" (Kangxi-radical lookalikes in
+        // PDF layers, so match on the NORMALIZED text).
+        const r = extractReceiptFields(text);
+        const m =
+          r.amount ??
+          Number(
+            normalizeOcrText(text).match(
+              /(?:共计费用|费用合计|总计金额|总金额|结算金额|合计)[:：]?\s*[¥￥*]?\s*([0-9]+(?:\.[0-9]{1,2})?)/,
+            )?.[1] ?? NaN,
+          );
         await repo.update(
           { id: invoiceId },
           {
@@ -91,6 +102,7 @@ export async function processInvoice(invoiceId: number): Promise<void> {
             status: "manual",
             reason:
               "Quotation/itemized list — supporting evidence for an invoice",
+            extractedAmount: Number.isFinite(m) ? m : null,
             amountInTotal: false,
             rawText: text.slice(0, 20000),
             processedAt: new Date(),

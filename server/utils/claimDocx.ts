@@ -84,7 +84,7 @@ function setCell(rowXml: string, cellIdx: number, text: string | null): string {
   const pOpen = cell.search(/<w:p[ >]/);
   if (pOpen < 0) return rowXml;
   // self-closing empty paragraph <w:p …/> → open it up for the run
-  const selfClose = /<w:p[^>]*\/\>/.exec(cell.slice(pOpen));
+  const selfClose = /<w:p[^>]*\/>/.exec(cell.slice(pOpen));
   if (selfClose) {
     const at = pOpen + selfClose[0].length;
     cell = cell.slice(0, at - 2) + ">" + run(text) + "</w:p>" + cell.slice(at);
@@ -94,8 +94,7 @@ function setCell(rowXml: string, cellIdx: number, text: string | null): string {
     // keep the <w:p …> opening tag + <w:pPr>, drop existing runs, add ours
     const open = seg.match(/^<w:p[^>]*>/)?.[0] ?? "<w:p>";
     const pPr = seg.match(/<w:pPr[ >][\s\S]*?<\/w:pPr>|<w:pPr\/>/)?.[0] ?? "";
-    cell =
-      cell.slice(0, pOpen) + open + pPr + run(text) + cell.slice(pEnd);
+    cell = cell.slice(0, pOpen) + open + pPr + run(text) + cell.slice(pEnd);
   }
   return rowXml.slice(0, a) + cell + rowXml.slice(b);
 }
@@ -189,7 +188,8 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
   if (notesRow) {
     const [na, nb] = notesRow;
     let row = head.slice(na, nb);
-    row.split(/(?=<w:tc>)/)
+    row
+      .split(/(?=<w:tc>)/)
       .filter((c) => c.startsWith("<w:tc>"))
       .forEach((c, ci, all) => {
         const label = (c.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) ?? [])
@@ -211,7 +211,7 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
 
   // ---- detail table ----
   const [da, db] = tblSpans[1]!;
-  let detail = xml.slice(da, db);
+  const detail = xml.slice(da, db);
   const rows = trSpans(detail);
   // data rows = rows whose whole text is just their number (1..11 blanks)
   const dataRows = rows.filter(([a, b]) =>
@@ -245,7 +245,9 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     if (r) out += detail.slice(cursor, a) + buildRow(r);
     cursor = b;
   });
-  out += detail.slice(cursor).replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/,"");
+  out += detail
+    .slice(cursor)
+    .replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/, "");
   // more items than pre-numbered slots → append clones (template row again)
   for (let ix = dataRows.length; ix < data.rows.length; ix++) {
     out += buildRow(data.rows[ix]!);

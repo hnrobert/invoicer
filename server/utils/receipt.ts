@@ -53,6 +53,47 @@ const RECEIPT_MARKERS = [
  * mis-reads simplified as traditional (技術/訂單). Normalize a COPY for
  * matching: strip inter-CJK whitespace and fold common traditional variants.
  */
+// Kangxi-radical lookalikes PDF text layers often emit (⽉ instead of 月)
+// folded to their CJK counterparts — label matching depends on it.
+const RADICAL_MAP: Record<string, string> = {
+  "⽤": "用",
+  "⼊": "入",
+  "⽇": "日",
+  "⼈": "人",
+  "⼿": "手",
+  "⼀": "一",
+  "⼆": "二",
+  "⼋": "八",
+  "⼗": "十",
+  "⽅": "方",
+  "⾦": "金",
+  "⾏": "行",
+  "⽀": "支",
+  "⼝": "口",
+  "⽂": "文",
+  "⼴": "广",
+  "⼭": "山",
+  "⼼": "心",
+  "⽉": "月",
+  "⼤": "大",
+  "⼩": "小",
+  "⾼": "高",
+  "⼚": "厂",
+  "⻔": "门",
+  "⻢": "马",
+  "⻋": "车",
+  "⾬": "雨",
+  "⻄": "西",
+  "⻉": "贝",
+  "⻚": "页",
+  "⾃": "自",
+  "⽩": "白",
+  "⽬": "目",
+  "⽿": "耳",
+  "⾂": "臣",
+  "⽰": "示",
+};
+
 export function normalizeOcrText(text: string): string {
   return text
     .replace(/([\u4e00-\u9fff])[ \t]+(?=[\u4e00-\u9fff])/g, "$1")
@@ -65,7 +106,11 @@ export function normalizeOcrText(text: string): string {
     .replace(/時間/g, "时间")
     .replace(/總計/g, "总计")
     .replace(/合計/g, "合计")
-    .replace(/總額/g, "总额");
+    .replace(/總額/g, "总额")
+    .replace(
+      /[⽤⼊⽇⼈⼿⼀⼆⼋⼗⽅⾦⾏⽀⼝⽂⼴⼭⼼⽉⼤⼩⾼⼲⻔⻢⻋⾬⻄⻉⻚⾃⽩⽬⽿⾂⽰]/gu,
+      (ch) => RADICAL_MAP[ch] ?? ch,
+    );
 }
 
 /**
@@ -108,6 +153,18 @@ const ORDER_NO_PATTERNS: RegExp[] = [
   /(?:订单编号|订单号|交易单号|单号)\s*[:：]?\s*([A-Za-z0-9-]{6,40})/,
 ];
 const AMOUNT_PATTERNS: RegExp[] = [
+  // Meituan grand total: "实付总额 ￥8.4" must beat the item's unit-price
+  // "实付￥7.9" printed above it.
+  /实付总额\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  // Sam's Club paper receipts: "实 付 合计 ; 39 ,3?" is THE grand total —
+  // must beat the (post-coupon) bare "实 付 ， 33.37" line above it.
+  /实付合计\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  // Meituan PaddleOCR layout mirrors it: the total prints BEFORE the label
+  // ("元￥205.9 合计 已优惠23.3元") — anchor on 合计 right after the amount.
+  /[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*元?\s*合计/,
+  // Meituan delivery orders: "合计 已 优惠 23.3 元 ¥205.9" — an optional
+  // savings note sits between the label and the grand total.
+  /合计\s*(?:已\s*优惠\s*[0-9.]+\s*元)?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   /实付款?金额?\s*[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
   /支付金额[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
   /(?:合计|总计|总额|实收)[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
@@ -125,23 +182,28 @@ const AMOUNT_PATTERNS: RegExp[] = [
   // "总实付 ¥1341.00" — MUST beat the bare 实付 below: item-detail pages
   // print "实付¥18.30" as the UNIT price label, which sits earlier in the
   // text than the grand total.
-  /总实付\s*(?:共减[\s¥￥Y半羊站#]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})/,
+  /总实付\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   // "实付款 共减(站)80 ¥140" — the discount segment may carry OCR noise
   // characters (站/#) and its own ¥; the TOTAL sits AFTER it. Also tolerates
   // the ¥-less form "共减¥80  140" where only the total prints bare.
-  /(?:实付款?|实付金额)\s*(?:共减[\s¥￥Y半羊站#]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})/,
+  /(?:实付款?|实付金额)\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   // PaddleOCR layout variant: the total prints BEFORE the label —
   // "…官方立减 ￥140\n实付款\n共减￥80". Anchored on 实付款 right after the
   // amount so the pre-discount price (￥220 … 共1件) never matches.
-  /[¥￥Y半羊#]\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{2}|[0-9]{2,7})\s*(?:\n|\s)*实付款/,
+  /[¥￥Y半羊#*]\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*(?:\n|\s)*实付款/,
 ];
 
 /** Tolerant numeric cleanup for the OCR amount above (spaces, o/O for 0). */
 function parseOcrAmount(raw: string): number | null {
-  const t = raw.replace(/[oO]/g, "0").replace(/[\s,，]/g, "");
-  const m = t.match(/^([0-9]+)(?:[.,]([0-9]{2}))?$/);
-  if (!m) return null;
-  return m[2] ? Number(`${m[1]}.${m[2]}`) : Number(m[1]);
+  const t = raw.replace(/[oO]/g, "0").replace(/\s+/g, "");
+  // OCR commas are DECIMALS in this domain ("39 ,3" = 39.3); a true
+  // thousands separator matches the strict 1-3-3 grouping below.
+  let m = t.match(/^([0-9]+)[.,，]([0-9]{1,2})$/);
+  if (m) return Number(`${m[1]}.${m[2]}`);
+  m = t.match(/^([0-9]+)(?:[.,，]([0-9]{1,2}))?$/);
+  if (m) return m[2] ? Number(`${m[1]}.${m[2]}`) : Number(m[1]);
+  if (/^[0-9]{1,3}(,[0-9]{3})+$/.test(t)) return Number(t.replace(/,/g, ""));
+  return null;
 }
 const AMOUNT_FALLBACK = /[¥￥]\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/g;
 const DATE_PATTERNS: RegExp[] = [
@@ -160,7 +222,7 @@ export function extractReceiptFields(rawText: string): ReceiptFields {
       }
     }
     // No labeled total — fall back to the last ¥ amount in the image (user
-    // rule: the 实付款-labeled total is the source of truth; unlabeled picks
+    // rule: the 实付款-labeled total is the source of truth; unlabelled picks
     // are guesses, and "highest amount" would grab pre-discount line prices
     // like ¥220 on a ¥140 order).
     const all = [...text.matchAll(AMOUNT_FALLBACK)].map((x) => x[1]!);

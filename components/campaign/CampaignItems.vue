@@ -173,7 +173,12 @@ function counted(i: InvoicePublic): number | null {
             :title="t('campaign.items.mismatchHint')"
           >
             <Icon spec="TriangleAlert" :size="12" />
-            {{ t("campaign.items.mismatch", { inv: amountMismatch(it)!.inv, ev: amountMismatch(it)!.ev }) }}
+            {{
+              t("campaign.items.mismatch", {
+                inv: amountMismatch(it)!.inv,
+                ev: amountMismatch(it)!.ev,
+              })
+            }}
           </span>
           <span class="ml-auto flex items-center gap-3">
             <span
