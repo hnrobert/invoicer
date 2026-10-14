@@ -188,6 +188,9 @@ async function buildClaimRows(
   const claimedInvoiceIds = new Set<number>();
   for (const it of items) {
     const mine = invoices.filter((i) => i.itemId === it.id);
+    // Group-scoped exports pass a filtered invoice list — items with no
+    // invoice in scope (including other groups' 待补票 rows) stay out.
+    if (!mine.length) continue;
     mine.forEach((i) => claimedInvoiceIds.add(i.id));
     const formal = mine.filter(
       (i) => i.kind === "invoice" && i.status === "qualified",
@@ -377,6 +380,7 @@ export async function exportCampaign(
   campaign: Campaign,
   rights: CampaignRights,
   format: ExportFormat,
+  groupId: number | null = null,
 ): Promise<{
   body: BlobPart;
   contentType: string;
@@ -390,10 +394,21 @@ export async function exportCampaign(
     });
   }
 
-  const invoices = await AppDataSource.getRepository(Invoice).find({
+  let invoices = await AppDataSource.getRepository(Invoice).find({
     where: { campaignId },
     order: { id: "asc" },
   });
+  if (groupId != null) {
+    // Group scope: keep invoices attached to that group's items, plus
+    // unattached invoices whose own groupId matches.
+    const groupItems = await AppDataSource.getRepository(CampaignItem).find({
+      where: { campaignId, groupId },
+    });
+    const ids = new Set(groupItems.map((i) => i.id));
+    invoices = invoices.filter(
+      (i) => (i.itemId != null && ids.has(i.itemId)) || i.groupId === groupId,
+    );
+  }
 
   // Uploader identity — export-grade (Editor+), so names/emails are included.
   const uploaderIds = [

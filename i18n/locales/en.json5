@@ -378,6 +378,7 @@
       name: "Item name",
       channel: "Channel",
       payer: "Payer",
+      allGroups: "All",
       note: "Note",
       noInvoice: "No invoice",
       mismatch: "Invoice {inv} ≠ order {ev}",
@@ -528,6 +529,7 @@
       zip: "Invoice files ZIP",
       claim: "Claim form (xlsx)",
       package: "Claim package (docx+files+roster)",
+      pkgGroup: "Claim package · {name}",
     },
     groups: {
       title: "Groups & reviewers",

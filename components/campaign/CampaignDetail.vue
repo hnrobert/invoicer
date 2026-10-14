@@ -433,10 +433,13 @@ async function submitReview(decision: "qualified" | "unqualified") {
 
 // ---------- export ----------
 const exportOpen = ref(false);
-function doExport(fmt: "csv" | "xlsx" | "zip" | "claim" | "package") {
+function doExport(
+  fmt: "csv" | "xlsx" | "zip" | "claim" | "package",
+  groupId?: number,
+) {
   exportOpen.value = false;
   window.open(
-    `/api/campaigns/${props.campaignId}/export?format=${fmt}`,
+    `/api/campaigns/${props.campaignId}/export?format=${fmt}${groupId ? `&groupId=${groupId}` : ""}`,
     "_blank",
   );
 }
@@ -789,7 +792,7 @@ async function loadAudit() {
             </Button>
             <div
               v-if="exportOpen"
-              class="absolute right-0 z-20 mt-1 flex w-36 flex-col overflow-hidden rounded-md border bg-popover shadow-md"
+              class="absolute right-0 z-20 mt-1 flex w-48 flex-col overflow-hidden rounded-md border bg-popover shadow-md"
             >
               <button
                 v-for="f in ['csv', 'xlsx', 'zip', 'claim', 'package'] as const"
@@ -800,6 +803,19 @@ async function loadAudit() {
               >
                 {{ t(`home.export.${f}`) }}
               </button>
+              <!-- per-group claim packages (团委/CS submit separately) -->
+              <template v-if="groups.length > 1">
+                <div class="border-t" />
+                <button
+                  v-for="g in groups"
+                  :key="`pkg-${g.id}`"
+                  type="button"
+                  class="px-3 py-2 text-left text-xs hover:bg-accent"
+                  @click="doExport('package', g.id)"
+                >
+                  {{ t("home.export.pkgGroup", { name: g.name }) }}
+                </button>
+              </template>
             </div>
           </div>
           <Button

@@ -40,8 +40,15 @@ function amountMismatch(it: ItemPublic): { inv: number; ev: number } | null {
     ? { inv: it.actualTotal, ev: it.evidenceTotal }
     : null;
 }
+// group filter: chips above the list (全部 / each group)
+const groupFilter = ref<number | "all">("all");
+const filteredItems = computed(() =>
+  groupFilter.value === "all"
+    ? props.items
+    : props.items.filter((i) => i.groupId === groupFilter.value),
+);
 const sumActual = computed(() => {
-  const xs = props.items
+  const xs = filteredItems.value
     .map((i) => i.actualTotal)
     .filter((x): x is number => x != null);
   return xs.length
@@ -145,9 +152,46 @@ function counted(i: InvoicePublic): number | null {
       </span>
     </div>
 
+    <!-- group filter chips -->
+    <div
+      v-if="groups.length > 1 && items.length"
+      class="flex flex-wrap items-center gap-1.5"
+    >
+      <button
+        type="button"
+        class="rounded-full border px-2.5 py-1 text-xs transition-colors"
+        :class="
+          groupFilter === 'all'
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-accent'
+        "
+        @click="groupFilter = 'all'"
+      >
+        {{ t("campaign.items.allGroups") }}
+      </button>
+      <button
+        v-for="g in groups"
+        :key="g.id"
+        type="button"
+        class="rounded-full border px-2.5 py-1 text-xs transition-colors"
+        :class="
+          groupFilter === g.id
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-accent'
+        "
+        @click="groupFilter = g.id"
+      >
+        {{ g.name }}
+      </button>
+    </div>
+
     <!-- item rows -->
     <div v-if="items.length" class="overflow-hidden rounded-lg border">
-      <div v-for="it in items" :key="it.id" class="border-t first:border-t-0">
+      <div
+        v-for="it in filteredItems"
+        :key="it.id"
+        class="border-t first:border-t-0"
+      >
         <button
           type="button"
           class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left text-sm transition-colors hover:bg-accent/40"
@@ -166,6 +210,11 @@ function counted(i: InvoicePublic): number | null {
           >
           <span v-if="it.payer" class="text-xs text-muted-foreground"
             >{{ t("campaign.items.payer") }}: {{ it.payer }}</span
+          >
+          <span
+            v-else
+            class="text-xs text-muted-foreground/60 hover:text-muted-foreground"
+            >+ {{ t("campaign.items.payer") }}</span
           >
           <span
             v-if="amountMismatch(it)"

@@ -376,6 +376,7 @@
       name: "条目名",
       channel: "渠道",
       payer: "垫付人",
+      allGroups: "全部",
       note: "备注",
       noInvoice: "待补票",
       mismatch: "发票 {inv} ≠ 订单 {ev}",
@@ -526,6 +527,7 @@
       zip: "发票原件 ZIP",
       claim: "学生活动经费报销表 (xlsx)",
       package: "报销包（docx+文件+名单）",
+      pkgGroup: "报销包 · {name}",
     },
     groups: {
       title: "分组与审核员",

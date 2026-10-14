@@ -19,11 +19,17 @@ export default defineEventHandler(async (event) => {
     event,
     campaignId,
   );
+  // Optional single-group scope: ?groupId=N limits every format to that
+  // group's items + invoices (团委/CS export their own claim packages).
+  const groupIdRaw = getQuery(event).groupId;
+  const groupId =
+    typeof groupIdRaw === "string" && groupIdRaw ? Number(groupIdRaw) : null;
   const { body, contentType, filename } = await exportCampaign(
     user,
     campaign,
     rights,
     format as ExportFormat,
+    groupId,
   );
   // HTTP headers are ByteStrings — a Chinese campaign name in filename=
   // throws. Send an ASCII fallback plus the RFC 5987 encoded form (what
