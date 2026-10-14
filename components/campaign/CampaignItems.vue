@@ -42,10 +42,34 @@ function amountMismatch(it: ItemPublic): { inv: number; ev: number } | null {
 }
 // group filter: chips above the list (全部 / each group)
 const groupFilter = ref<number | "all">("all");
+// payer filter: second chip row — each badge shows the person's advance
+// total (their items' actual totals), right inside the badge.
+const payerFilter = ref<string | "all">("all");
+const payers = computed(() => {
+  // scoped to the current group filter — the badges answer "who advanced
+  // what IN THIS VIEW", not campaign-wide.
+  const scope =
+    groupFilter.value === "all"
+      ? props.items
+      : props.items.filter((i) => i.groupId === groupFilter.value);
+  const totals = new Map<string, number>();
+  for (const it of scope) {
+    if (!it.payer) continue;
+    totals.set(it.payer, (totals.get(it.payer) ?? 0) + (it.actualTotal ?? 0));
+  }
+  return [...totals.entries()]
+    .map(([name, total]) => ({
+      name,
+      total: Math.round(total * 100) / 100,
+    }))
+    .sort((a, b) => b.total - a.total);
+});
 const filteredItems = computed(() =>
-  groupFilter.value === "all"
-    ? props.items
-    : props.items.filter((i) => i.groupId === groupFilter.value),
+  props.items.filter(
+    (i) =>
+      (groupFilter.value === "all" || i.groupId === groupFilter.value) &&
+      (payerFilter.value === "all" || i.payer === payerFilter.value),
+  ),
 );
 const sumActual = computed(() => {
   const xs = filteredItems.value
@@ -182,6 +206,37 @@ function counted(i: InvoicePublic): number | null {
         @click="groupFilter = g.id"
       >
         {{ g.name }}
+      </button>
+    </div>
+
+    <!-- payer filter chips (below the group row) -->
+    <div v-if="payers.length" class="flex flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        class="rounded-full border px-2.5 py-1 text-xs transition-colors"
+        :class="
+          payerFilter === 'all'
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-accent'
+        "
+        @click="payerFilter = 'all'"
+      >
+        {{ t("campaign.items.allPayers") }}
+      </button>
+      <button
+        v-for="p in payers"
+        :key="p.name"
+        type="button"
+        class="rounded-full border px-2.5 py-1 text-xs transition-colors"
+        :class="
+          payerFilter === p.name
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-accent'
+        "
+        @click="payerFilter = p.name"
+      >
+        {{ p.name }}
+        <span class="font-mono">¥{{ p.total.toFixed(2) }}</span>
       </button>
     </div>
 

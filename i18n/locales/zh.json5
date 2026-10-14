@@ -377,6 +377,7 @@
       channel: "渠道",
       payer: "垫付人",
       allGroups: "全部",
+      allPayers: "所有人",
       note: "备注",
       noInvoice: "待补票",
       mismatch: "发票 {inv} ≠ 订单 {ev}",

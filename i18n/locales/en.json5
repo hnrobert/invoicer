@@ -379,6 +379,7 @@
       channel: "Channel",
       payer: "Payer",
       allGroups: "All",
+      allPayers: "Everyone",
       note: "Note",
       noInvoice: "No invoice",
       mismatch: "Invoice {inv} ≠ order {ev}",
