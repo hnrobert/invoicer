@@ -61,6 +61,8 @@ export interface ItemPublic {
   groupId: number | null;
   payer: string | null;
   note: string | null;
+  /** Item count (数量), stored separately from the name. */
+  quantity: number | null;
   /** Claim completeness policy for this item (both default true). */
   requireInvoice?: boolean;
   requireEvidence?: boolean;
@@ -217,6 +219,7 @@ export interface ItemCreateBody {
   groupId?: number | null;
   payer?: string;
   note?: string;
+  quantity?: number | null;
   requireInvoice?: boolean;
   requireEvidence?: boolean;
 }

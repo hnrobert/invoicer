@@ -34,6 +34,11 @@ export class CampaignItem {
   @Column({ type: "text", nullable: true })
   note!: string | null;
 
+  /** Item count (数量) — stored separately from the name; feeds the claim
+   * form's Quantity column directly instead of being parsed from the name. */
+  @Column({ type: "integer", nullable: true })
+  quantity!: number | null;
+
   /** Claim completeness policy: warn when no formal invoice is attached. */
   @Column({
     name: "require_invoice",

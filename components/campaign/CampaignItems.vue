@@ -106,6 +106,7 @@ const form = reactive({
   groupId: "" as number | "",
   payer: "",
   note: "",
+  quantity: "" as string | number,
   requireInvoice: true,
   requireEvidence: true,
 });
@@ -117,6 +118,7 @@ function fillForm(it: ItemPublic) {
   form.note = it.note ?? "";
   form.requireInvoice = it.requireInvoice !== false;
   form.requireEvidence = it.requireEvidence !== false;
+  form.quantity = it.quantity ?? "";
 }
 function resetForm() {
   editingId.value = null;
@@ -126,6 +128,7 @@ function resetForm() {
   form.note = "";
   form.requireInvoice = true;
   form.requireEvidence = true;
+  form.quantity = "";
 }
 function submitForm() {
   const payload: ItemCreateBody = {
@@ -135,6 +138,10 @@ function submitForm() {
     note: form.note,
     requireInvoice: form.requireInvoice,
     requireEvidence: form.requireEvidence,
+    quantity:
+      form.quantity === "" || form.quantity == null
+        ? null
+        : Number(form.quantity),
   };
   if (editingId.value != null) emit("update", editingId.value, payload);
   else emit("create", payload);
@@ -277,6 +284,11 @@ function counted(i: InvoicePublic): number | null {
           />
           <span class="font-medium">{{ it.name }}</span>
           <span
+            v-if="it.quantity != null"
+            class="rounded-full bg-accent px-1.5 py-px font-mono text-[11px] text-muted-foreground"
+            >×{{ it.quantity }}</span
+          >
+          <span
             v-if="groupName(it.groupId)"
             class="rounded-full border border-sky-500/40 px-2 py-px text-[11px] text-sky-700 dark:text-sky-400"
             >{{ groupName(it.groupId) }}</span
@@ -412,6 +424,14 @@ function counted(i: InvoicePublic): number | null {
                 {{ t("campaign.items.name") }}
                 <Input v-model="form.name" class="h-8 text-sm" />
               </label>
+              <label class="flex w-24 flex-col gap-1 text-xs">
+                {{ t("campaign.items.qty") }}
+                <Input
+                  v-model="form.quantity"
+                  class="h-8 text-sm"
+                  inputmode="numeric"
+                />
+              </label>
               <label class="flex flex-col gap-1 text-xs">
                 {{ t("campaign.items.channel") }}
                 <select
@@ -493,6 +513,14 @@ function counted(i: InvoicePublic): number | null {
       <label class="flex min-w-40 flex-col gap-1 text-xs">
         {{ t("campaign.items.name") }}
         <Input v-model="form.name" class="h-8 text-sm" required />
+      </label>
+      <label class="flex w-24 flex-col gap-1 text-xs">
+        {{ t("campaign.items.qty") }}
+        <Input
+          v-model="form.quantity"
+          class="h-8 text-sm"
+          inputmode="numeric"
+        />
       </label>
       <label class="flex flex-col gap-1 text-xs">
         {{ t("campaign.items.channel") }}

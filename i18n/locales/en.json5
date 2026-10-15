@@ -380,6 +380,7 @@
       payer: "Payer",
       allGroups: "All",
       allPayers: "Everyone",
+      qty: "Qty",
       note: "Note",
       noInvoice: "No invoice",
       needInvoice: "No invoice",

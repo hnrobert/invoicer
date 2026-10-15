@@ -378,6 +378,7 @@
       payer: "垫付人",
       allGroups: "全部",
       allPayers: "所有人",
+      qty: "数量",
       note: "备注",
       noInvoice: "待补票",
       needInvoice: "缺发票",

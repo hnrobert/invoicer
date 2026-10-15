@@ -198,7 +198,8 @@ async function buildClaimRows(
     const sum = formal.reduce((s, i) => s + (amountOf(i) ?? 0), 0);
     const main = formal[0] ?? mine[0];
     const amount = formal.length ? Math.round(sum * 100) / 100 : null;
-    const qty = quantityOf(it.name, main?.rawText ?? null);
+    // Prefer the stored quantity column; fall back to name/text scraping.
+    const qty = it.quantity ?? quantityOf(it.name, main?.rawText ?? null);
     rows.push({
       no: rows.length + 1,
       receiptItem:

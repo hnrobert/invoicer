@@ -35,6 +35,7 @@ function toPublic(
     groupId: it.groupId,
     payer: it.payer,
     note: it.note,
+    quantity: it.quantity,
     requireInvoice: it.requireInvoice,
     requireEvidence: it.requireEvidence,
     actualTotal,
@@ -186,6 +187,10 @@ export async function createItem(
     note: (body?.note ?? "").trim().slice(0, 200) || null,
     requireInvoice: body?.requireInvoice !== false,
     requireEvidence: body?.requireEvidence !== false,
+    quantity:
+      body?.quantity == null || !Number.isFinite(Number(body.quantity))
+        ? null
+        : Math.trunc(Number(body.quantity)),
   } as CampaignItem);
   logAudit({
     organizationId: campaign.organizationId,
