@@ -17,6 +17,7 @@ import { AddCampaignItems1791782473680 } from "./1791782473680-AddCampaignItems"
 import { AddUserPhone1791902615000 } from "./1791902615000-AddUserPhone";
 import { AddUserDisplayName1791988800000 } from "./1791988800000-AddUserDisplayName";
 import { AddUserChineseId1792072890000 } from "./1792072890000-AddUserChineseId";
+import { AddItemRequirements1792046068167 } from "./1792046068167-AddItemRequirements";
 import { AddCampaignParticipants1791869296830 } from "./1791869296830-AddCampaignParticipants";
 
 /** Identity of the first (baseline) migration. */
@@ -34,5 +35,6 @@ export const migrations = [
   AddUserPhone1791902615000,
   AddUserDisplayName1791988800000,
   AddUserChineseId1792072890000,
+  AddItemRequirements1792046068167,
   AddCampaignParticipants1791869296830,
 ] as unknown as (string | (() => unknown))[];

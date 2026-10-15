@@ -34,6 +34,24 @@ export class CampaignItem {
   @Column({ type: "text", nullable: true })
   note!: string | null;
 
+  /** Claim completeness policy: warn when no formal invoice is attached. */
+  @Column({
+    name: "require_invoice",
+    type: "boolean",
+    nullable: false,
+    default: true,
+  })
+  requireInvoice!: boolean;
+
+  /** Claim completeness policy: warn when no quotation / order screenshot. */
+  @Column({
+    name: "require_evidence",
+    type: "boolean",
+    nullable: false,
+    default: true,
+  })
+  requireEvidence!: boolean;
+
   @Column({
     name: "created_at",
     type: "timestamp",

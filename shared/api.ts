@@ -61,8 +61,15 @@ export interface ItemPublic {
   groupId: number | null;
   payer: string | null;
   note: string | null;
+  /** Claim completeness policy for this item (both default true). */
+  requireInvoice?: boolean;
+  requireEvidence?: boolean;
   /** Sum of attached invoices' counted amounts (null when none counted). */
   actualTotal: number | null;
+  /** Whether at least one formal invoice is attached. */
+  hasInvoice: boolean;
+  /** Whether at least one quotation / order-screenshot is attached. */
+  hasEvidence: boolean;
   /** Sum of attached EVIDENCE files' amounts (order screenshots/quotations;
    * null when none carried a readable amount) — compared against
    * actualTotal to flag invoice↔evidence mismatches. */
@@ -210,6 +217,8 @@ export interface ItemCreateBody {
   groupId?: number | null;
   payer?: string;
   note?: string;
+  requireInvoice?: boolean;
+  requireEvidence?: boolean;
 }
 
 /** PUT /api/campaigns/:id/items/:itemId — same shape, all fields optional. */

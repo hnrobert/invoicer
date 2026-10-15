@@ -32,6 +32,16 @@ function groupName(gid: number | null): string {
     ? ""
     : (props.groups.find((g) => g.id === gid)?.name ?? "");
 }
+/** Completeness badges: 缺发票 / 缺佐证 — driven by the item's own
+ * requirement flags (requireInvoice / requireEvidence, editable in the
+ * inline form below); flags default ON for every item. */
+function missingDocs(it: ItemPublic): string[] {
+  const miss: string[] = [];
+  if (it.requireInvoice !== false && !it.hasInvoice) miss.push("invoice");
+  if (it.requireEvidence !== false && !it.hasEvidence) miss.push("evidence");
+  return miss;
+}
+
 /** Invoice total vs evidence (order-screenshot) total — warn when both
  * are known and differ (OCR drift or a genuinely missing piece). */
 function amountMismatch(it: ItemPublic): { inv: number; ev: number } | null {
@@ -96,6 +106,8 @@ const form = reactive({
   groupId: "" as number | "",
   payer: "",
   note: "",
+  requireInvoice: true,
+  requireEvidence: true,
 });
 function fillForm(it: ItemPublic) {
   editingId.value = it.id;
@@ -103,6 +115,8 @@ function fillForm(it: ItemPublic) {
   form.groupId = it.groupId ?? "";
   form.payer = it.payer ?? "";
   form.note = it.note ?? "";
+  form.requireInvoice = it.requireInvoice !== false;
+  form.requireEvidence = it.requireEvidence !== false;
 }
 function resetForm() {
   editingId.value = null;
@@ -110,6 +124,8 @@ function resetForm() {
   form.groupId = "";
   form.payer = "";
   form.note = "";
+  form.requireInvoice = true;
+  form.requireEvidence = true;
 }
 function submitForm() {
   const payload: ItemCreateBody = {
@@ -117,6 +133,8 @@ function submitForm() {
     groupId: form.groupId === "" ? null : Number(form.groupId),
     payer: form.payer,
     note: form.note,
+    requireInvoice: form.requireInvoice,
+    requireEvidence: form.requireEvidence,
   };
   if (editingId.value != null) emit("update", editingId.value, payload);
   else emit("create", payload);
@@ -272,6 +290,18 @@ function counted(i: InvoicePublic): number | null {
             >+ {{ t("campaign.items.payer") }}</span
           >
           <span
+            v-for="miss in missingDocs(it)"
+            :key="miss"
+            class="flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:text-rose-400"
+          >
+            <Icon spec="FileWarning" :size="12" />
+            {{
+              miss === "invoice"
+                ? t("campaign.items.needInvoice")
+                : t("campaign.items.needEvidence")
+            }}
+          </span>
+          <span
             v-if="amountMismatch(it)"
             class="flex items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
             :title="t('campaign.items.mismatchHint')"
@@ -402,6 +432,24 @@ function counted(i: InvoicePublic): number | null {
                 {{ t("campaign.items.note") }}
                 <Input v-model="form.note" class="h-8 text-sm" />
               </label>
+              <div class="flex items-center gap-4 text-xs sm:col-span-3">
+                <label class="flex items-center gap-1.5">
+                  <input
+                    v-model="form.requireInvoice"
+                    type="checkbox"
+                    class="size-4 accent-(--color-primary)"
+                  />
+                  {{ t("campaign.items.reqInvoice") }}
+                </label>
+                <label class="flex items-center gap-1.5">
+                  <input
+                    v-model="form.requireEvidence"
+                    type="checkbox"
+                    class="size-4 accent-(--color-primary)"
+                  />
+                  {{ t("campaign.items.reqEvidence") }}
+                </label>
+              </div>
             </div>
             <div class="mt-2 flex gap-2">
               <Button

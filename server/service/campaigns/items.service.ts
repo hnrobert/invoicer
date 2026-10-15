@@ -26,6 +26,8 @@ function toPublic(
   actualTotal: number | null,
   evidenceTotal: number | null,
   invoiceCount: number,
+  hasInvoice = invoiceCount > 0,
+  hasEvidence = false,
 ): ItemPublic {
   return {
     id: it.id,
@@ -33,8 +35,12 @@ function toPublic(
     groupId: it.groupId,
     payer: it.payer,
     note: it.note,
+    requireInvoice: it.requireInvoice,
+    requireEvidence: it.requireEvidence,
     actualTotal,
     evidenceTotal,
+    hasInvoice,
+    hasEvidence,
     invoiceCount,
   };
 }
@@ -89,6 +95,8 @@ export async function listItems(campaignId: number): Promise<ItemsResponse> {
           ? Math.round(evidence.reduce((s, a) => s + a, 0) * 100) / 100
           : null,
         mine.length,
+        mine.some((r) => r.kind === "invoice"),
+        mine.some((r) => r.kind !== "invoice"),
       );
     }),
   };
@@ -145,6 +153,8 @@ async function savedItem(it: CampaignItem): Promise<ItemMutationResponse> {
         ? Math.round(evidence.reduce((s, a) => s + a, 0) * 100) / 100
         : null,
       mine.length,
+      mine.some((r) => r.kind === "invoice"),
+      mine.some((r) => r.kind !== "invoice"),
     ),
   };
 }
@@ -174,6 +184,8 @@ export async function createItem(
     groupId: body?.groupId == null ? null : Number(body.groupId),
     payer: (body?.payer ?? "").trim().slice(0, 40) || null,
     note: (body?.note ?? "").trim().slice(0, 200) || null,
+    requireInvoice: body?.requireInvoice !== false,
+    requireEvidence: body?.requireEvidence !== false,
   } as CampaignItem);
   logAudit({
     organizationId: campaign.organizationId,
@@ -205,6 +217,10 @@ export async function updateItem(
   if ("groupId" in (body ?? {})) it.groupId = body?.groupId ?? null;
   if ("payer" in (body ?? {})) it.payer = (body?.payer ?? "").trim() || null;
   if ("note" in (body ?? {})) it.note = (body?.note ?? "").trim() || null;
+  if ("requireInvoice" in (body ?? {}))
+    it.requireInvoice = !!body?.requireInvoice;
+  if ("requireEvidence" in (body ?? {}))
+    it.requireEvidence = !!body?.requireEvidence;
   const res = await savedItem(it);
   logAudit({
     organizationId: campaign.organizationId,
