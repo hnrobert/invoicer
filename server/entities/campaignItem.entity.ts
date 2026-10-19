@@ -2,13 +2,14 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 /**
  * A reimbursement item (报销条目) inside one campaign — one project per item
- * (e.g. "扇子×200 · 团委"): an invoice plus its same-price quotation/receipt
+ * (e.g. "定制迎新扇子 · 团委"): an invoice plus its same-price quotation/receipt
  * evidence. Invoice files attach to items as supporting evidence
  * (`invoices.item_id`); the item's actual total is the sum of its attached
  * invoices. `groupId` reuses campaign groups as the channel (团委/CS…).
+ * Identity is the `id` — names are free-form display text and may repeat
+ * (two same-named purchases are two items).
  */
 @Entity({ name: "campaign_items" })
-@Index("uq_campaign_items_name", ["campaignId", "name"], { unique: true })
 @Index("idx_campaign_items_campaign", ["campaignId"])
 export class CampaignItem {
   @PrimaryGeneratedColumn("increment", {
