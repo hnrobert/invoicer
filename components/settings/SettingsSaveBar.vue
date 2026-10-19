@@ -13,36 +13,47 @@ const { t } = useI18n();
 
 <template>
   <Transition name="savebar">
-    <!-- Sticky inside the settings CONTENT column: naturally right of the
-         shell's nav divider and spanning that column's full width — no
-         viewport-fixed positioning or hardcoded nav-width offset. -->
-    <div
-      v-if="dirty || saved"
-      class="sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur"
-    >
-      <div class="flex items-center justify-between gap-3 py-3">
-        <span class="text-sm text-muted-foreground">
-          <template v-if="saved">✓ {{ t("settings.savebar.saved") }}</template>
-          <template v-else>{{ t("settings.savebar.unsaved") }}</template>
-        </span>
-        <div class="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="saving || saved"
-            @click="$emit('discard')"
-          >
-            {{ t("settings.savebar.discard") }}
-          </Button>
-          <Button size="sm" :disabled="saving || saved" @click="$emit('save')">
-            {{
-              saving
-                ? t("settings.savebar.saving")
-                : saved
-                  ? t("settings.savebar.saved")
-                  : t("settings.savebar.save")
-            }}
-          </Button>
+    <!-- Viewport-fixed bottom bar confined to the settings CONTENT column:
+       the wrapper mirrors the app layout (mx-auto max-w-7xl + page padding)
+       and the shell's nav offset (lg:pl-70 = page px-6 24 + aside w-56 224 +
+       column lg:pl-8 32), so the bar starts right of the nav divider and
+       spans exactly the content column — never below both columns. Fixed
+       (not sticky-in-column) because the bar's containing section often
+       ends mid-page on short forms, leaving sticky stranded there. -->
+    <div v-if="dirty || saved" class="fixed inset-x-0 bottom-0 z-50">
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:pl-70">
+        <div class="border-t bg-background/95 backdrop-blur">
+          <div class="flex items-center justify-between gap-3 py-3">
+            <span class="text-sm text-muted-foreground">
+              <template v-if="saved"
+                >✓ {{ t("settings.savebar.saved") }}</template
+              >
+              <template v-else>{{ t("settings.savebar.unsaved") }}</template>
+            </span>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="saving || saved"
+                @click="$emit('discard')"
+              >
+                {{ t("settings.savebar.discard") }}
+              </Button>
+              <Button
+                size="sm"
+                :disabled="saving || saved"
+                @click="$emit('save')"
+              >
+                {{
+                  saving
+                    ? t("settings.savebar.saving")
+                    : saved
+                      ? t("settings.savebar.saved")
+                      : t("settings.savebar.save")
+                }}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

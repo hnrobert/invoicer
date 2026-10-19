@@ -19,7 +19,10 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 lg:flex-row lg:gap-0">
+  <!-- lg:flex-1 stretches the two columns to the rest of the page height:
+       the nav/content divider runs all the way down and a sticky-bottom
+       child of the content column pins against the viewport bottom. -->
+  <div class="flex flex-col gap-6 lg:flex-row lg:flex-1 lg:gap-0">
     <aside class="w-full shrink-0 lg:w-56 lg:border-r lg:pr-5">
       <h2 class="mb-2 text-base font-semibold">{{ title }}</h2>
       <nav class="flex flex-col gap-0.5">

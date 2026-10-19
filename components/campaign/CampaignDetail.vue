@@ -469,7 +469,25 @@ async function sendReport() {
 }
 
 // ---------- settings tab ----------
-const setSection = ref<"general" | "groups" | "collab" | "transfer">("general");
+// Sections are URL-driven (?section=, org-settings style): deep links work
+// and dirty switches flow through the leave-guard's onBeforeRouteUpdate.
+const setSection = computed<"general" | "groups" | "collab" | "transfer">(() =>
+  ["general", "groups", "collab", "transfer"].includes(
+    String(route.query.section),
+  )
+    ? (route.query.section as "general" | "groups" | "collab" | "transfer")
+    : "general",
+);
+const secUrl = (key: string) => ({
+  path: route.path,
+  query: { ...route.query, tab: "settings", section: key },
+});
+const settingsSections = computed(() => [
+  { key: "general", label: t("orgs.settings.general"), to: secUrl("general") },
+  { key: "groups", label: t("home.groups.title"), to: secUrl("groups") },
+  { key: "collab", label: t("home.collab.title"), to: secUrl("collab") },
+  { key: "transfer", label: t("home.transfer.title"), to: secUrl("transfer") },
+]);
 const setVisibility = ref<"public" | "internal" | "private">("internal");
 const setSearchable = ref(false);
 const setStatus = ref<"active" | "closed" | "archived">("active");
@@ -561,17 +579,14 @@ function discardSettings() {
 const { confirmLeave: sdConfirmLeave, proceed: sdProceed } =
   useUnsavedLeaveGuard(sdDirty, setSaving);
 // Leaving the settings TAB is not a route change (tabs are component state),
-// so the router guard can't cover it — intercept tab / sub-section clicks the
-// same way and route them through the same dialog.
+// so the router guard can't cover it — intercept tab clicks the same way and
+// route them through the same dialog. Settings SUB-sections are ?section=
+// NuxtLinks, so dirty switches go through the route-update guard instead.
 const confirmTabLeave = ref(false);
-const pendingLeave = ref<
-  | { kind: "tab"; key: "items" | "files" | "settings" | "audit" }
-  | {
-      kind: "setSection";
-      key: "general" | "groups" | "collab" | "transfer";
-    }
-  | null
->(null);
+const pendingLeave = ref<{
+  kind: "tab";
+  key: "items" | "files" | "settings" | "audit";
+} | null>(null);
 function leaveBlocked(): boolean {
   if (tab.value !== "settings" || !sdDirty.value || setSaving.value)
     return false;
@@ -586,24 +601,11 @@ function switchTab(key: "items" | "files" | "settings" | "audit") {
   pendingLeave.value = stash;
   tab.value = key;
 }
-function switchSetSection(key: "general" | "groups" | "collab" | "transfer") {
-  if (key === setSection.value) return;
-  if (setSection.value !== "general") {
-    setSection.value = key; // staging lives only on general — nothing dirty
-    return;
-  }
-  const stash = pendingLeave.value;
-  pendingLeave.value = { kind: "setSection", key };
-  if (leaveBlocked()) return;
-  pendingLeave.value = stash;
-  setSection.value = key;
-}
 function performPendingLeave() {
   const p = pendingLeave.value;
   pendingLeave.value = null;
   confirmTabLeave.value = false;
   if (p?.kind === "tab") tab.value = p.key;
-  else if (p?.kind === "setSection") setSection.value = p.key;
   else sdProceed();
 }
 async function onLeaveDialogSave() {
@@ -727,7 +729,7 @@ async function loadAudit() {
   >
     {{ t("settings.loading") }}
   </div>
-  <div v-else class="flex flex-col gap-6">
+  <div v-else class="flex flex-1 flex-col gap-6">
     <!-- repo-style header -->
     <div class="border-b pb-4">
       <div class="flex flex-wrap items-start gap-3">
@@ -1122,11 +1124,14 @@ async function loadAudit() {
                         : i.extractedTitle || t("common.dash")
                     }}
                   </td>
+                  <!-- TAX ID column is invoice-only — receipts (order
+                       screenshots) and quotations never carry one, so their
+                       cell stays blank instead of faking an order no. -->
                   <td class="px-3 py-2 font-mono text-xs text-muted-foreground">
                     {{
-                      i.kind === "receipt"
-                        ? i.extractedOrderNo || t("common.dash")
-                        : i.extractedTaxId || t("common.dash")
+                      i.kind === "invoice"
+                        ? i.extractedTaxId || t("common.dash")
+                        : ""
                     }}
                   </td>
                   <td class="px-3 py-2 text-right tabular-nums">
@@ -1249,44 +1254,11 @@ async function loadAudit() {
       </div>
     </div>
 
-    <!-- ============ settings tab (sectioned, GitHub-style) ============ -->
+    <!-- ============ settings tab (SettingsShell, ?section= routed) ============ -->
     <div
       v-else-if="tab === 'settings' && canManage"
-      class="flex flex-col gap-6 lg:flex-row lg:gap-10"
+      class="flex flex-1 flex-col gap-6"
     >
-      <aside class="w-full shrink-0 lg:w-40">
-        <nav class="flex flex-col gap-0.5">
-          <button
-            v-for="ss in [
-              { key: 'general', label: t('orgs.settings.general') },
-              { key: 'groups', label: t('home.groups.title') },
-              { key: 'collab', label: t('home.collab.title') },
-              { key: 'transfer', label: t('home.transfer.title') },
-            ]"
-            :key="ss.key"
-            type="button"
-            class="rounded-md px-2 py-1.5 text-left text-sm transition-colors"
-            :class="
-              setSection === ss.key
-                ? 'bg-accent font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-            "
-            @click="switchSetSection(ss.key)"
-          >
-            {{ ss.label }}
-          </button>
-        </nav>
-      </aside>
-
-      <!-- fixed overlays: present for the whole settings tab, not just the
-           general sub-section -->
-      <SettingsSaveBar
-        :dirty="sdDirty"
-        :saving="setSaving"
-        :saved="sdSavedFlash"
-        @save="saveSettings"
-        @discard="discardSettings"
-      />
       <UnsavedLeaveDialog
         :open="sdConfirmLeave || confirmTabLeave"
         :saving="setSaving"
@@ -1299,240 +1271,251 @@ async function loadAudit() {
         @discard="(discardSettings(), performPendingLeave())"
         @save="onLeaveDialogSave"
       />
-
-      <div
-        v-if="setSection === 'general'"
-        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
+      <SettingsShell
+        :title="t('campaign.tabs.settings')"
+        :active="setSection"
+        :sections="settingsSections"
       >
-        <div class="flex flex-col gap-1.5">
-          <Label for="campaign-name">{{ t("home.settings.nameLabel") }}</Label>
-          <Input
-            id="campaign-name"
-            v-model="setName"
-            :placeholder="t('home.step1.namePlaceholder')"
-          />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="campaign-roster">{{ t("home.settings.roster") }}</Label>
-          <textarea
-            id="campaign-roster"
-            v-model="rosterDraft"
-            rows="6"
-            class="rounded-md border bg-background px-3 py-2 font-mono text-xs"
-            :placeholder="t('home.settings.rosterPh')"
-          />
-          <p class="text-xs text-muted-foreground">
-            {{ t("home.settings.rosterHint") }}
-          </p>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label>{{ t("home.settings.visibility") }}</Label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="v in ['public', 'internal', 'private'] as const"
-              :key="v"
-              type="button"
-              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-              :class="
-                setVisibility === v
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
-              "
-              @click="setVisibility = v"
-            >
-              {{ t(`home.settings.vis.${v}`) }}
-            </button>
-          </div>
-          <p class="text-xs text-muted-foreground">
-            {{ t(`home.settings.visDesc.${setVisibility}`) }}
-          </p>
-        </div>
-        <label
-          v-if="setVisibility === 'public'"
-          class="flex items-center gap-2 text-sm"
-        >
-          <input
-            v-model="setSearchable"
-            type="checkbox"
-            class="size-4 accent-(--color-primary)"
-          />
-          {{ t("home.settings.searchable") }}
-        </label>
-        <div class="flex flex-col gap-1.5">
-          <Label>{{ t("home.settings.status") }}</Label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="s in ['active', 'closed', 'archived'] as const"
-              :key="s"
-              type="button"
-              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-              :class="
-                setStatus === s
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
-              "
-              @click="setStatus = s"
-            >
-              {{ t(`home.settings.st.${s}`) }}
-            </button>
-          </div>
-          <p class="text-xs text-muted-foreground">
-            {{ t(`home.settings.stDesc.${setStatus}`) }}
-          </p>
-        </div>
-        <!-- Save affordance: sticky SettingsSaveBar appears when the staged
-             form differs from the server state. -->
-      </div>
-
-      <!-- groups & reviewers -->
-      <div
-        v-else-if="setSection === 'groups'"
-        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-3"
-      >
-        <h3 class="text-base font-semibold">{{ t("home.groups.title") }}</h3>
-        <p class="text-sm text-muted-foreground">{{ t("home.groups.desc") }}</p>
-        <div
-          v-for="g in groups"
-          :key="g.id"
-          class="flex flex-col gap-2 rounded-lg border p-3"
-        >
-          <div class="flex items-center gap-2">
-            <Icon spec="FolderGit2" :size="15" class="text-muted-foreground" />
-            <span class="text-sm font-medium">{{ g.name }}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="ml-auto"
-              @click="deleteGroup(g.id)"
-            >
-              {{ t("orgs.remove") }}
-            </Button>
-          </div>
-          <div
-            v-for="r in g.reviewers"
-            :key="r.userId"
-            class="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm"
-          >
-            <Icon spec="UserCheck" :size="14" class="text-muted-foreground" />
-            <span class="font-medium">{{ r.name }}</span>
-            <span class="text-xs text-muted-foreground">{{ r.email }}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="ml-auto"
-              @click="removeGroupReviewer(g.id, r.userId)"
-            >
-              {{ t("orgs.remove") }}
-            </Button>
-          </div>
-          <form class="flex gap-2" @submit.prevent="addGroupReviewer(g.id)">
+        <div v-if="setSection === 'general'" class="flex flex-col gap-6">
+          <div class="flex flex-col gap-1.5">
+            <Label for="campaign-name">{{
+              t("home.settings.nameLabel")
+            }}</Label>
             <Input
-              v-model="groupReviewerEmail[g.id]"
-              type="email"
-              :placeholder="t('home.groups.reviewerPlaceholder')"
-              class="flex-1"
+              id="campaign-name"
+              v-model="setName"
+              :placeholder="t('home.step1.namePlaceholder')"
             />
-            <Button type="submit" variant="outline" size="sm">
-              {{ t("home.groups.addReviewer") }}
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="campaign-roster">{{ t("home.settings.roster") }}</Label>
+            <textarea
+              id="campaign-roster"
+              v-model="rosterDraft"
+              rows="6"
+              class="rounded-md border bg-background px-3 py-2 font-mono text-xs"
+              :placeholder="t('home.settings.rosterPh')"
+            />
+            <p class="text-xs text-muted-foreground">
+              {{ t("home.settings.rosterHint") }}
+            </p>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label>{{ t("home.settings.visibility") }}</Label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="v in ['public', 'internal', 'private'] as const"
+                :key="v"
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  setVisibility === v
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                "
+                @click="setVisibility = v"
+              >
+                {{ t(`home.settings.vis.${v}`) }}
+              </button>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ t(`home.settings.visDesc.${setVisibility}`) }}
+            </p>
+          </div>
+          <label
+            v-if="setVisibility === 'public'"
+            class="flex items-center gap-2 text-sm"
+          >
+            <input
+              v-model="setSearchable"
+              type="checkbox"
+              class="size-4 accent-(--color-primary)"
+            />
+            {{ t("home.settings.searchable") }}
+          </label>
+          <div class="flex flex-col gap-1.5">
+            <Label>{{ t("home.settings.status") }}</Label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="s in ['active', 'closed', 'archived'] as const"
+                :key="s"
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  setStatus === s
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                "
+                @click="setStatus = s"
+              >
+                {{ t(`home.settings.st.${s}`) }}
+              </button>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{ t(`home.settings.stDesc.${setStatus}`) }}
+            </p>
+          </div>
+          <!-- Save affordance: sticky inside the content column — right of the
+             nav divider, spanning this column's width, at its bottom. -->
+          <SettingsSaveBar
+            :dirty="sdDirty"
+            :saving="setSaving"
+            :saved="sdSavedFlash"
+            @save="saveSettings"
+            @discard="discardSettings"
+          />
+        </div>
+
+        <!-- groups & reviewers -->
+        <div v-else-if="setSection === 'groups'" class="flex flex-col gap-3">
+          <h3 class="text-base font-semibold">{{ t("home.groups.title") }}</h3>
+          <p class="text-sm text-muted-foreground">
+            {{ t("home.groups.desc") }}
+          </p>
+          <div
+            v-for="g in groups"
+            :key="g.id"
+            class="flex flex-col gap-2 rounded-lg border p-3"
+          >
+            <div class="flex items-center gap-2">
+              <Icon
+                spec="FolderGit2"
+                :size="15"
+                class="text-muted-foreground"
+              />
+              <span class="text-sm font-medium">{{ g.name }}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="ml-auto"
+                @click="deleteGroup(g.id)"
+              >
+                {{ t("orgs.remove") }}
+              </Button>
+            </div>
+            <div
+              v-for="r in g.reviewers"
+              :key="r.userId"
+              class="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm"
+            >
+              <Icon spec="UserCheck" :size="14" class="text-muted-foreground" />
+              <span class="font-medium">{{ r.name }}</span>
+              <span class="text-xs text-muted-foreground">{{ r.email }}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="ml-auto"
+                @click="removeGroupReviewer(g.id, r.userId)"
+              >
+                {{ t("orgs.remove") }}
+              </Button>
+            </div>
+            <form class="flex gap-2" @submit.prevent="addGroupReviewer(g.id)">
+              <Input
+                v-model="groupReviewerEmail[g.id]"
+                type="email"
+                :placeholder="t('home.groups.reviewerPlaceholder')"
+                class="flex-1"
+              />
+              <Button type="submit" variant="outline" size="sm">
+                {{ t("home.groups.addReviewer") }}
+              </Button>
+            </form>
+          </div>
+          <p v-if="!groups.length" class="text-xs text-muted-foreground">
+            {{ t("home.groups.none") }}
+          </p>
+          <form class="flex gap-2" @submit.prevent="createGroup">
+            <Input
+              v-model="groupNameInput"
+              :placeholder="t('home.groups.namePlaceholder')"
+              class="w-48"
+            />
+            <Button type="submit" variant="outline" :disabled="groupBusy">
+              {{ t("home.groups.create") }}
             </Button>
           </form>
         </div>
-        <p v-if="!groups.length" class="text-xs text-muted-foreground">
-          {{ t("home.groups.none") }}
-        </p>
-        <form class="flex gap-2" @submit.prevent="createGroup">
-          <Input
-            v-model="groupNameInput"
-            :placeholder="t('home.groups.namePlaceholder')"
-            class="w-48"
-          />
-          <Button type="submit" variant="outline" :disabled="groupBusy">
-            {{ t("home.groups.create") }}
-          </Button>
-        </form>
-      </div>
 
-      <!-- collaborators -->
-      <div
-        v-else-if="setSection === 'collab'"
-        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2"
-      >
-        <h3 class="text-sm font-medium">{{ t("home.collab.title") }}</h3>
-        <div
-          v-for="c in collaborators"
-          :key="c.userId"
-          class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
-        >
-          <div class="min-w-0 flex-1">
-            <div class="truncate font-medium">{{ c.name }}</div>
-            <div class="truncate text-xs text-muted-foreground">
-              {{ c.email }}
+        <!-- collaborators -->
+        <div v-else-if="setSection === 'collab'" class="flex flex-col gap-2">
+          <h3 class="text-sm font-medium">{{ t("home.collab.title") }}</h3>
+          <div
+            v-for="c in collaborators"
+            :key="c.userId"
+            class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="truncate font-medium">{{ c.name }}</div>
+              <div class="truncate text-xs text-muted-foreground">
+                {{ c.email }}
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              @click="removeCollaborator(c.userId)"
+            >
+              {{ t("home.collab.remove") }}
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            @click="removeCollaborator(c.userId)"
-          >
-            {{ t("home.collab.remove") }}
-          </Button>
+          <p v-if="!collaborators.length" class="text-xs text-muted-foreground">
+            {{ t("home.collab.none") }}
+          </p>
+          <form class="flex gap-2" @submit.prevent="addCollaborator">
+            <Input
+              v-model="collabEmail"
+              type="email"
+              :placeholder="t('home.collab.emailPlaceholder')"
+              class="flex-1"
+            />
+            <Button type="submit" variant="outline" :disabled="collabBusy">
+              {{ t("home.collab.add") }}
+            </Button>
+          </form>
         </div>
-        <p v-if="!collaborators.length" class="text-xs text-muted-foreground">
-          {{ t("home.collab.none") }}
-        </p>
-        <form class="flex gap-2" @submit.prevent="addCollaborator">
-          <Input
-            v-model="collabEmail"
-            type="email"
-            :placeholder="t('home.collab.emailPlaceholder')"
-            class="flex-1"
-          />
-          <Button type="submit" variant="outline" :disabled="collabBusy">
-            {{ t("home.collab.add") }}
-          </Button>
-        </form>
-      </div>
 
-      <!-- transfer -->
-      <div
-        v-else-if="setSection === 'transfer' && inv.organizationId.value"
-        class="flex min-w-0 max-w-2xl flex-1 flex-col gap-2"
-      >
-        <h3 class="text-sm font-medium">{{ t("home.transfer.title") }}</h3>
-        <form
-          v-if="otherOrgs.length"
-          class="flex gap-2"
-          @submit.prevent="initiateTransfer"
+        <!-- transfer -->
+        <div
+          v-else-if="setSection === 'transfer' && inv.organizationId.value"
+          class="flex flex-col gap-2"
         >
-          <select
-            v-model="transferOrgId"
-            class="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+          <h3 class="text-sm font-medium">{{ t("home.transfer.title") }}</h3>
+          <form
+            v-if="otherOrgs.length"
+            class="flex gap-2"
+            @submit.prevent="initiateTransfer"
           >
-            <option value="" disabled>{{ t("home.transfer.pick") }}</option>
-            <option v-for="o in otherOrgs" :key="o.id" :value="o.id">
-              {{ o.name }}
-            </option>
-          </select>
-          <Button
-            type="submit"
-            variant="outline"
-            :disabled="transferBusy || !transferOrgId"
-          >
-            {{ t("home.transfer.send") }}
-          </Button>
-        </form>
-        <p v-else class="text-sm text-muted-foreground">
-          {{ t("home.transfer.noTarget") }}
-        </p>
-        <p class="text-xs text-muted-foreground">
-          {{ t("home.transfer.desc") }}
-        </p>
-      </div>
-      <div v-else-if="setSection === 'transfer'" class="flex-1">
-        <p class="text-sm text-muted-foreground">
-          {{ t("home.transfer.personalNone") }}
-        </p>
-      </div>
+            <select
+              v-model="transferOrgId"
+              class="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="" disabled>{{ t("home.transfer.pick") }}</option>
+              <option v-for="o in otherOrgs" :key="o.id" :value="o.id">
+                {{ o.name }}
+              </option>
+            </select>
+            <Button
+              type="submit"
+              variant="outline"
+              :disabled="transferBusy || !transferOrgId"
+            >
+              {{ t("home.transfer.send") }}
+            </Button>
+          </form>
+          <p v-else class="text-sm text-muted-foreground">
+            {{ t("home.transfer.noTarget") }}
+          </p>
+          <p class="text-xs text-muted-foreground">
+            {{ t("home.transfer.desc") }}
+          </p>
+        </div>
+        <div v-else-if="setSection === 'transfer'">
+          <p class="text-sm text-muted-foreground">
+            {{ t("home.transfer.personalNone") }}
+          </p>
+        </div>
+      </SettingsShell>
     </div>
 
     <!-- ============ audit tab ============ -->
@@ -1585,7 +1568,8 @@ async function loadAudit() {
             }}</span>
             {{ reviewTarget.extractedTitle || t("common.none") }}
           </div>
-          <div>
+          <!-- TAX ID is invoice-only — receipts / quotations never carry one. -->
+          <div v-if="reviewTarget.kind === 'invoice'">
             <span class="text-muted-foreground">{{
               t("home.reviewModal.taxLabel")
             }}</span>

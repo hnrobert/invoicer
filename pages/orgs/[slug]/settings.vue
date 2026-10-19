@@ -381,7 +381,10 @@ onMounted(async () => {
   >
     {{ t("settings.loading") }}
   </div>
-  <div v-else-if="org && full && isPrivileged" class="flex flex-col gap-6">
+  <div
+    v-else-if="org && full && isPrivileged"
+    class="flex flex-1 flex-col gap-6"
+  >
     <OrgHeader
       :slug="org.slug"
       :name="org.name"
