@@ -106,10 +106,13 @@ function receiptItemOf(raw: string | null): string | null {
   // 200 1.03…" → "扇子 把" → trailing unit word stripped → "扇子".
   const m = t.match(/\*([^*\n]{1,14})\*(.{1,36}?)\s+\d/);
   if (!m?.[2]) return null;
-  const name = m[2]
+  const stripped = m[2]
     .replace(/\s*[把张个件套次箱支盒]\s*$/, "")
     .replace(/[\s.。·]+$/, "")
     .trim();
+  // The unit-word strip must not eat a real noun (卡套 → 卡): fall back to
+  // the unstripped text when it would leave less than two characters.
+  const name = stripped.length >= 2 ? stripped : m[2].trim();
   return name.length >= 2 ? `*${m[1]}*${name}` : null;
 }
 
@@ -200,13 +203,19 @@ async function buildClaimRows(
     const amount = formal.length ? Math.round(sum * 100) / 100 : null;
     // Prefer the stored quantity column; fall back to name/text scraping.
     const qty = it.quantity ?? quantityOf(it.name, main?.rawText ?? null);
+    // *品类*品名 from ANY of the item's invoices — OCR garbles one invoice's
+    // line-item stream surprisingly often, and a sibling of the same item
+    // (e.g. its second invoice) usually reads clean.
+    const receiptItem =
+      [...formal, ...mine]
+        .map((i) => receiptItemOf(i.rawText))
+        .find((x): x is string => !!x) ??
+      main?.extractedMerchant ??
+      main?.extractedTitle ??
+      "";
     rows.push({
       no: rows.length + 1,
-      receiptItem:
-        receiptItemOf(main?.rawText ?? null) ??
-        main?.extractedMerchant ??
-        main?.extractedTitle ??
-        "",
+      receiptItem,
       concreteItem: stripCount(it.name),
       amount,
       quantity: qty != null && Number.isFinite(qty) ? String(qty) : "1",

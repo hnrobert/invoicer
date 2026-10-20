@@ -55,8 +55,52 @@ export async function extractPdfText(data: Uint8Array): Promise<string> {
     for (let p = 1; p <= doc.numPages; p++) {
       const page = await doc.getPage(p);
       const content = await page.getTextContent();
+      // Rebuild in VISUAL order, not content-stream order: e-invoice PDFs
+      // often store label runs and value runs as separate later objects, so
+      // stream order yields labels-with-holes and a value dump at the end.
+      // pdfjs hands each run its transform (e=x, f=y baseline) — group runs
+      // into lines by baseline (y descends), order within a line by x.
+      const pieces: {
+        str: string;
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+      }[] = [];
       for (const item of content.items) {
-        if ("str" in item) out += item.str + (item.hasEOL ? "\n" : "");
+        if (!("str" in item) || !item.str) continue;
+        const t = item.transform ?? [1, 0, 0, 1, 0, 0];
+        pieces.push({
+          str: item.str,
+          x: t[4],
+          y: t[5],
+          w: item.width ?? 0,
+          h: item.height ?? (Math.abs(t[3]) || 10),
+        });
+      }
+      pieces.sort((a, b) => b.y - a.y || a.x - b.x);
+      const lines: (typeof pieces)[] = [];
+      let cur: typeof pieces = [];
+      let baseY = NaN;
+      for (const pc of pieces) {
+        if (cur.length && Math.abs(pc.y - baseY) > Math.max(2, pc.h * 0.4)) {
+          lines.push(cur);
+          cur = [];
+        }
+        if (!cur.length) baseY = pc.y;
+        cur.push(pc);
+      }
+      if (cur.length) lines.push(cur);
+      for (const ln of lines) {
+        ln.sort((a, b) => a.x - b.x);
+        let text = "";
+        let prevEnd: number | null = null;
+        for (const pc of ln) {
+          if (prevEnd != null && pc.x - prevEnd > 1) text += " ";
+          text += pc.str;
+          prevEnd = pc.x + pc.w;
+        }
+        out += text + "\n";
       }
       page.cleanup();
     }

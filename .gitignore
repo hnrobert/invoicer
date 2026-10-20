@@ -28,3 +28,4 @@ docker-compose.yaml
 /tessdata/
 /*.traineddata
 docker-compose.override.yml
+.uploads/
