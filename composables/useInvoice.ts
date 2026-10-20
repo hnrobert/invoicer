@@ -175,6 +175,16 @@ export function useInvoice() {
     stopPolling();
   }
 
+  /** Delete one uploaded file (record + storage object), then reload —
+   * totals and any item rollups come back server-computed. */
+  async function removeOne(id: number) {
+    if (!campaignId.value) return;
+    await $fetch(`/api/campaigns/${campaignId.value}/invoices/${id}`, {
+      method: "DELETE",
+    });
+    await refresh();
+  }
+
   async function review(
     id: number,
     decision: "qualified" | "unqualified",
@@ -287,6 +297,7 @@ export function useInvoice() {
     stopPolling,
     upload,
     clearAll,
+    removeOne,
     review,
     submitInvoice,
     submitAll,

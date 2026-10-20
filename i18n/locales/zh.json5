@@ -484,6 +484,9 @@
       submitAll: "提交全部",
       submittedToast: "已提交，等待审核",
       submittedAllToast: "已提交 {n} 张，等待审核",
+      delete: "删除",
+      deleteConfirm: "删除文件「{name}」？文件与记录都会移除，不可恢复。",
+      deletedToast: "已删除",
     },
     reviewModal: {
       title: "手动审核",

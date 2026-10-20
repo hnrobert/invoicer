@@ -486,6 +486,9 @@
       submitAll: "Submit all",
       submittedToast: "Submitted — awaiting review",
       submittedAllToast: "Submitted {n} invoice(s) — awaiting review",
+      delete: "Delete",
+      deleteConfirm: "Delete {name}? The file and its record are removed permanently.",
+      deletedToast: "Deleted",
     },
     reviewModal: {
       title: "Manual review",

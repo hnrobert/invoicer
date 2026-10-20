@@ -388,6 +388,22 @@ async function doSubmitAll() {
     toast.error((e as Error).message);
   }
 }
+/** Delete one uploaded file — managers/reviewers any, others only their own
+ * (the server re-checks; this gates the button). */
+function canDeleteFile(i: InvoicePublic): boolean {
+  return canManage.value || canReview.value || i.uploaderId === user.value?.id;
+}
+async function onDeleteInvoice(i: InvoicePublic) {
+  if (!confirm(t("home.action.deleteConfirm", { name: i.filename }))) return;
+  try {
+    await inv.removeOne(i.id);
+    toast.success(t("home.action.deletedToast"));
+    // item rollups (attachment counts / totals) may have changed
+    void loadItems();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
 
 // ---------- review modal ----------
 const reviewModal = ref(false);
@@ -1186,6 +1202,16 @@ async function loadAudit() {
                     <span v-else class="text-xs text-muted-foreground">{{
                       t("common.dash")
                     }}</span>
+                    <Button
+                      v-if="canDeleteFile(i)"
+                      variant="ghost"
+                      size="sm"
+                      class="ml-1 text-red-600 hover:text-red-500 dark:text-red-400"
+                      :title="t('home.action.delete')"
+                      @click="onDeleteInvoice(i)"
+                    >
+                      <Icon spec="Trash2" :size="14" />
+                    </Button>
                   </td>
                 </tr>
                 <tr v-if="expanded.has(i.id)">
