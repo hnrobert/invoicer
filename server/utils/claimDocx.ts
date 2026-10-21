@@ -237,7 +237,7 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     return row;
   };
   // only rows that exist — unused pre-numbered slots are REMOVED (the
-  // finance team asked for no blank filler rows); >11 items still append.
+  // finance team asked for no blank filler rows).
   let out = "";
   let cursor = 0;
   dataRows.forEach(([a, b], ix) => {
@@ -245,13 +245,21 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     if (r) out += detail.slice(cursor, a) + buildRow(r);
     cursor = b;
   });
-  out += detail
+  // tail = whatever follows the last pre-numbered slot; drop its trailing
+  // blank row. Extra rows (>11 items) splice INSIDE the table, right before
+  // </w:tbl> — appending after the close put them outside the table and Word
+  // silently dropped them (the form capped at 11).
+  let tail = detail
     .slice(cursor)
     .replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/, "");
-  // more items than pre-numbered slots → append clones (template row again)
-  for (let ix = dataRows.length; ix < data.rows.length; ix++) {
-    out += buildRow(data.rows[ix]!);
-  }
+  const extra = data.rows
+    .slice(dataRows.length)
+    .map((r) => buildRow(r))
+    .join("");
+  const closeAt = tail.lastIndexOf("</w:tbl>");
+  if (closeAt >= 0) tail = tail.slice(0, closeAt) + extra + tail.slice(closeAt);
+  else tail += extra;
+  out += tail;
 
   xml =
     xml.slice(0, tblSpans[0]![0]) +

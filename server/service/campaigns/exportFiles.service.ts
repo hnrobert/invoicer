@@ -410,14 +410,16 @@ export async function exportCampaign(
     order: { id: "asc" },
   });
   if (groupId != null) {
-    // Group scope: keep invoices attached to that group's items, plus
-    // unattached invoices whose own groupId matches.
+    // Group scope: invoices attached to an item belong to THAT item's group
+    // (their own groupId is stale once attached) — only UNATTACHED invoices
+    // fall back to their own groupId. An `||` here leaked attached-to-other-
+    // group receipts into scoped exports as phantom blank claim rows.
     const groupItems = await AppDataSource.getRepository(CampaignItem).find({
       where: { campaignId, groupId },
     });
     const ids = new Set(groupItems.map((i) => i.id));
-    invoices = invoices.filter(
-      (i) => (i.itemId != null && ids.has(i.itemId)) || i.groupId === groupId,
+    invoices = invoices.filter((i) =>
+      i.itemId != null ? ids.has(i.itemId) : i.groupId === groupId,
     );
   }
 
@@ -677,10 +679,17 @@ export async function exportCampaign(
     );
 
     // 2) invoice files / order screenshots in separate folders (zip naming rules)
-    const items = await AppDataSource.getRepository(CampaignItem).find({
+    // Numbering follows the EXPORT SCOPE (items with a file in this invoice
+    // list, id-ascending — the claim rows' order), so a group-scoped package
+    // starts at 01 instead of the campaign-wide item index.
+    const allItems = await AppDataSource.getRepository(CampaignItem).find({
       where: { campaignId },
       order: { id: "asc" },
     });
+    const usedItems = new Set(
+      invoices.filter((i) => i.itemId != null).map((i) => i.itemId),
+    );
+    const items = allItems.filter((it) => usedItems.has(it.id));
     const itemNo = new Map(items.map((it, ix) => [it.id, ix + 1]));
     const KIND_LABEL: Record<string, string> = {
       invoice: "发票",
@@ -740,10 +749,16 @@ export async function exportCampaign(
   // files of one item cluster together in file managers and reviewers can
   // match invoice ↔ evidence without opening anything. Unattached files keep
   // their original name under a trailing "未归类" bucket number.
-  const zipItems = await AppDataSource.getRepository(CampaignItem).find({
+  // Scope the numbering like the package zip above: items present in this
+  // export's invoice list, so filtered flat zips also start at 01.
+  const allZipItems = await AppDataSource.getRepository(CampaignItem).find({
     where: { campaignId },
     order: { id: "asc" },
   });
+  const zipUsed = new Set(
+    fileInvoices.filter((i) => i.itemId != null).map((i) => i.itemId),
+  );
+  const zipItems = allZipItems.filter((it) => zipUsed.has(it.id));
   const itemNo = new Map(zipItems.map((it, ix) => [it.id, ix + 1]));
   const KIND_LABEL: Record<string, string> = {
     invoice: "发票",
