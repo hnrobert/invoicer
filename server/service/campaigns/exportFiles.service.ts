@@ -391,6 +391,7 @@ export async function exportCampaign(
   rights: CampaignRights,
   format: ExportFormat,
   groupId: number | null = null,
+  opts: { status?: string; q?: string } = {},
 ): Promise<{
   body: BlobPart;
   contentType: string;
@@ -419,6 +420,18 @@ export async function exportCampaign(
       (i) => (i.itemId != null && ids.has(i.itemId)) || i.groupId === groupId,
     );
   }
+
+  // View filters (?status= / ?q=) mirror the files tab's filter bar: the
+  // csv/xlsx/zip exports ship exactly the rows the user was looking at.
+  // The claim formats ignore them — claim rows are item-based and a status
+  // subset would produce a meaningless claim form (the group scope above
+  // still applies to everything).
+  const fileInvoices = invoices.filter(
+    (i) =>
+      (!opts.status || i.status === opts.status) &&
+      (!opts.q ||
+        i.filename.toLowerCase().includes(opts.q.trim().toLowerCase())),
+  );
 
   // Uploader identity — export-grade (Editor+), so names/emails are included.
   const uploaderIds = [
@@ -454,7 +467,13 @@ export async function exportCampaign(
     actorId: user.id,
     action: "campaign.export",
     target: `campaign #${campaignId}`,
-    meta: { format, count: invoices.length },
+    meta: {
+      format,
+      count: (format === "claim" || format === "package"
+        ? invoices
+        : fileInvoices
+      ).length,
+    },
   });
 
   if (format === "csv") {
@@ -471,7 +490,7 @@ export async function exportCampaign(
       "Uploaded at",
     ];
     const lines = [header.map(csvEscape).join(",")];
-    for (const i of invoices) {
+    for (const i of fileInvoices) {
       lines.push(
         [
           i.id,
@@ -524,7 +543,7 @@ export async function exportCampaign(
       a: campaign.name || campaign.expectedTitle,
       b: campaign.expectedTitle,
       c: campaign.expectedTaxId ?? "",
-      d: invoices.length,
+      d: fileInvoices.length,
       e: total,
       f: `${user.name} <${user.email}>`,
       g: new Date().toISOString(),
@@ -543,7 +562,7 @@ export async function exportCampaign(
       { header: "Reason", key: "reason", width: 24 },
       { header: "Uploaded at", key: "at", width: 22 },
     ];
-    for (const i of invoices) {
+    for (const i of fileInvoices) {
       detail.addRow({
         id: i.id,
         fn: i.filename,
@@ -735,7 +754,7 @@ export async function exportCampaign(
   const zip = new AdmZip();
   let missing = 0;
   const unattachedIx = zipItems.length;
-  for (const i of invoices) {
+  for (const i of fileInvoices) {
     const data = await storage.getBuffer(i.savedPath).catch(() => null);
     if (!data) {
       missing++;

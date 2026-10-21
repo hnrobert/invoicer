@@ -273,7 +273,7 @@ function fmtAmount(i: InvoicePublic): string {
  *  which reads ¥0 on campaigns whose invoices never entered the flow. */
 const qualifiedTotal = computed(() => {
   let sum = 0;
-  for (const i of inv.filtered.value) {
+  for (const i of filesShown.value) {
     if (i.status !== "qualified") continue;
     const amt = i.extractedAmount ?? i.manualAmount;
     if (amt != null) sum += amt;
@@ -447,17 +447,77 @@ async function submitReview(decision: "qualified" | "unqualified") {
   }
 }
 
+// ---------- URL-driven view filters (?group= / ?payer= / ?filter= / ?q=) ----------
+// Filter state lives in the URL: deep links / reloads restore the view, and
+// the export below reads exactly what the user is looking at. The files tab
+// (status chips + search) and both tabs' group scope share ?group=.
+const router = useRouter();
+function syncQuery(patch: Record<string, string | undefined>) {
+  void router.replace({ query: { ...route.query, ...patch } });
+}
+const groupFilter = computed<number | "all">({
+  get: () => {
+    const g = Number(route.query.group);
+    return groups.value.some((x) => x.id === g) ? g : "all";
+  },
+  set: (v) => syncQuery({ group: v === "all" ? undefined : String(v) }),
+});
+const payerFilter = computed<string | "all">({
+  get: () =>
+    typeof route.query.payer === "string" && route.query.payer
+      ? route.query.payer
+      : "all",
+  set: (v) => syncQuery({ payer: v === "all" ? undefined : v }),
+});
+// Files-tab status + search hydrate from the URL on load and write back on
+// change (search debounced — one replace per pause, not per keystroke).
+inv.filter.value = FILTERS.some((f) => f.key === route.query.filter)
+  ? (route.query.filter as (typeof FILTERS)[number]["key"])
+  : "all";
+inv.search.value = typeof route.query.q === "string" ? route.query.q : "";
+watch(inv.filter, (v) => syncQuery({ filter: v === "all" ? undefined : v }));
+let qTimer: ReturnType<typeof setTimeout> | null = null;
+watch(inv.search, (v) => {
+  if (qTimer) clearTimeout(qTimer);
+  qTimer = setTimeout(() => syncQuery({ q: v.trim() || undefined }), 350);
+});
+watch(
+  () => [route.query.filter, route.query.q],
+  ([f, s]) => {
+    const k = FILTERS.some((x) => x.key === f)
+      ? (f as (typeof FILTERS)[number]["key"])
+      : "all";
+    if (inv.filter.value !== k) inv.filter.value = k;
+    const text = typeof s === "string" ? s : "";
+    if (inv.search.value !== text) inv.search.value = text;
+  },
+);
+
+/** A file's effective channel: its item's group when attached, else its own
+ *  groupId — mirrors the export's group scoping. */
+function groupOfInvoice(i: InvoicePublic): number | null {
+  return items.value.find((it) => it.id === i.itemId)?.groupId ?? i.groupId;
+}
+const filesShown = computed(() =>
+  groupFilter.value === "all"
+    ? inv.filtered.value
+    : inv.filtered.value.filter((i) => groupOfInvoice(i) === groupFilter.value),
+);
+
 // ---------- export ----------
 const exportOpen = ref(false);
-function doExport(
-  fmt: "csv" | "xlsx" | "zip" | "claim" | "package",
-  groupId?: number,
-) {
+function doExport(fmt: "csv" | "xlsx" | "zip" | "claim" | "package") {
   exportOpen.value = false;
-  window.open(
-    `/api/campaigns/${props.campaignId}/export?format=${fmt}${groupId ? `&groupId=${groupId}` : ""}`,
-    "_blank",
-  );
+  const p = new URLSearchParams({ format: fmt });
+  if (groupFilter.value !== "all") p.set("groupId", String(groupFilter.value));
+  // File-list exports ship exactly the rows the files tab shows; the claim
+  // formats take the group scope only (rows are item-based).
+  if (["csv", "xlsx", "zip"].includes(fmt)) {
+    if (inv.filter.value !== "all") p.set("status", inv.filter.value);
+    const q = inv.search.value.trim();
+    if (q) p.set("q", q);
+  }
+  window.open(`/api/campaigns/${props.campaignId}/export?${p}`, "_blank");
 }
 
 // ---------- email report modal ----------
@@ -821,19 +881,6 @@ async function loadAudit() {
               >
                 {{ t(`home.export.${f}`) }}
               </button>
-              <!-- per-group claim packages (团委/CS submit separately) -->
-              <template v-if="groups.length > 1">
-                <div class="border-t" />
-                <button
-                  v-for="g in groups"
-                  :key="`pkg-${g.id}`"
-                  type="button"
-                  class="px-3 py-2 text-left text-xs hover:bg-accent"
-                  @click="doExport('package', g.id)"
-                >
-                  {{ t("home.export.pkgGroup", { name: g.name }) }}
-                </button>
-              </template>
             </div>
           </div>
           <Button
@@ -879,6 +926,8 @@ async function loadAudit() {
     <!-- ============ items tab (报销条目 — the default view) ============ -->
     <div v-if="tab === 'items'" class="flex flex-col gap-4">
       <CampaignItems
+        v-model:group="groupFilter"
+        v-model:payer="payerFilter"
         :items="items"
         :groups="groups"
         :invoices="inv.invoices.value"
@@ -998,6 +1047,36 @@ async function loadAudit() {
 
       <!-- filters + search -->
       <div class="flex flex-wrap items-center gap-2">
+        <!-- group chips: scope BOTH tabs and every export (?group=) -->
+        <template v-if="groups.length > 1">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="
+              groupFilter === 'all'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'hover:bg-accent'
+            "
+            @click="groupFilter = 'all'"
+          >
+            {{ t("campaign.items.allGroups") }}
+          </button>
+          <button
+            v-for="g in groups"
+            :key="g.id"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="
+              groupFilter === g.id
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'hover:bg-accent'
+            "
+            @click="groupFilter = groupFilter === g.id ? 'all' : g.id"
+          >
+            {{ g.name }}
+          </button>
+          <span class="mx-1 h-4 w-px bg-border" />
+        </template>
         <button
           v-for="f in FILTERS"
           :key="f.key"
@@ -1056,8 +1135,8 @@ async function loadAudit() {
             </tr>
           </thead>
           <tbody>
-            <template v-if="inv.filtered.value.length">
-              <template v-for="i in inv.filtered.value" :key="i.id">
+            <template v-if="filesShown.length">
+              <template v-for="i in filesShown" :key="i.id">
                 <tr
                   class="cursor-pointer border-t hover:bg-accent/40"
                   @click="toggleExpand(i.id)"
@@ -1258,13 +1337,13 @@ async function loadAudit() {
               </td>
             </tr>
           </tbody>
-          <tfoot v-if="inv.filtered.value.length">
+          <tfoot v-if="filesShown.length">
             <tr class="border-t bg-accent/30">
               <td colspan="4" class="px-3 py-2 text-sm font-medium">
                 {{ t("home.table.total") }}
                 <span class="ml-2 text-xs font-normal text-muted-foreground">{{
                   t("home.table.totalCount", {
-                    n: inv.filtered.value.length,
+                    n: filesShown.length,
                   })
                 }}</span>
               </td>

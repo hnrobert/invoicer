@@ -538,7 +538,6 @@
       zip: "Invoice files ZIP",
       claim: "Claim form (xlsx)",
       package: "Claim package (docx+files+roster)",
-      pkgGroup: "Claim package · {name}",
     },
     groups: {
       title: "Groups & reviewers",

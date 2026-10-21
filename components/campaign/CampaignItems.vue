@@ -50,11 +50,13 @@ function amountMismatch(it: ItemPublic): { inv: number; ev: number } | null {
     ? { inv: it.actualTotal, ev: it.evidenceTotal }
     : null;
 }
-// group filter: chips above the list (全部 / each group)
-const groupFilter = ref<number | "all">("all");
+// group filter: chips above the list (全部 / each group). State lives in the
+// URL (?group=) — owned by the parent (CampaignDetail) so the files tab and
+// the exports share the same scope.
+const groupFilter = defineModel<number | "all">("group", { default: "all" });
 // payer filter: second chip row — each badge shows the person's advance
-// total (their items' actual totals), right inside the badge.
-const payerFilter = ref<string | "all">("all");
+// total (their items' actual totals), right inside the badge (?payer=).
+const payerFilter = defineModel<string | "all">("payer", { default: "all" });
 const payers = computed(() => {
   // scoped to the current group filter — the badges answer "who advanced
   // what IN THIS VIEW", not campaign-wide.

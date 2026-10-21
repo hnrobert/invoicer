@@ -21,15 +21,21 @@ export default defineEventHandler(async (event) => {
   );
   // Optional single-group scope: ?groupId=N limits every format to that
   // group's items + invoices (团委/CS export their own claim packages).
-  const groupIdRaw = getQuery(event).groupId;
+  // ?status= / ?q= mirror the files tab's filter bar for the csv/xlsx/zip
+  // formats — "export what I'm looking at".
+  const q = getQuery(event);
   const groupId =
-    typeof groupIdRaw === "string" && groupIdRaw ? Number(groupIdRaw) : null;
+    typeof q.groupId === "string" && q.groupId ? Number(q.groupId) : null;
+  const status =
+    typeof q.status === "string" && q.status ? q.status : undefined;
+  const search = typeof q.q === "string" && q.q ? q.q : undefined;
   const { body, contentType, filename } = await exportCampaign(
     user,
     campaign,
     rights,
     format as ExportFormat,
     groupId,
+    { status, q: search },
   );
   // HTTP headers are ByteStrings — a Chinese campaign name in filename=
   // throws. Send an ASCII fallback plus the RFC 5987 encoded form (what

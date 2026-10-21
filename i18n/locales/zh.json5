@@ -536,7 +536,6 @@
       zip: "发票原件 ZIP",
       claim: "学生活动经费报销表 (xlsx)",
       package: "报销包（docx+文件+名单）",
-      pkgGroup: "报销包 · {name}",
     },
     groups: {
       title: "分组与审核员",
