@@ -245,21 +245,18 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     if (r) out += detail.slice(cursor, a) + buildRow(r);
     cursor = b;
   });
-  // tail = whatever follows the last pre-numbered slot; drop its trailing
-  // blank row. Extra rows (>11 items) splice INSIDE the table, right before
-  // </w:tbl> — appending after the close put them outside the table and Word
-  // silently dropped them (the form capped at 11).
-  let tail = detail
-    .slice(cursor)
-    .replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/, "");
-  const extra = data.rows
+  // >11 items: extra rows continue RIGHT AFTER the last numbered slot — the
+  // table's Note/footer rows must stay last (splicing before </w:tbl> put
+  // them after the Note block; appending past the close made Word drop
+  // them entirely).
+  out += data.rows
     .slice(dataRows.length)
     .map((r) => buildRow(r))
     .join("");
-  const closeAt = tail.lastIndexOf("</w:tbl>");
-  if (closeAt >= 0) tail = tail.slice(0, closeAt) + extra + tail.slice(closeAt);
-  else tail += extra;
-  out += tail;
+  // tail = the Note/footer rows + table close; drop its trailing blank row.
+  out += detail
+    .slice(cursor)
+    .replace(/<w:tr[ >](?:(?!<w:tr[ >])[\s\S])*?<\/w:tr>$/, "");
 
   xml =
     xml.slice(0, tblSpans[0]![0]) +
