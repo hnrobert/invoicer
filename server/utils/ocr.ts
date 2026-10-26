@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createWorker } from "tesseract.js";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { Jimp } from "jimp";
 
 // Resolve the bundled tessdata dir (chi_sim / chi_tra / eng). In dev this points
 // at <repo>/tessdata; in the docker image we set TESSDATA_DIR=/app/tessdata.
@@ -88,6 +89,47 @@ async function withPaddleSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** PaddleX CPU inference CRASHES the whole sidecar process on very large
+ *  photos (a 2296×4080 phone shot exits the server with code 0 — taking
+ *  every concurrent request down with it); downscaled to ≤1600px the same
+ *  images OCR fine. Sniff the dimensions from the JPEG/PNG headers and only
+ *  re-encode when the long edge exceeds the limit — most files pass through
+ *  untouched. */
+const PADDLE_MAX_EDGE = 1600;
+function imageDimensions(buf: Buffer): { w: number; h: number } | null {
+  // PNG: IHDR at fixed offset
+  if (buf.length > 24 && buf.readUInt32BE(12) === 0x49484452) {
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  }
+  // JPEG: walk the segment markers to a SOF frame header
+  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) break;
+      const marker = buf[i + 1]!;
+      const size = buf.readUInt16BE(i + 2);
+      const isSof =
+        marker >= 0xc0 &&
+        marker <= 0xcf &&
+        ![0xc4, 0xc8, 0xcc].includes(marker);
+      if (isSof)
+        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+      i += 2 + size;
+    }
+  }
+  return null;
+}
+async function paddleNormalize(buf: Buffer): Promise<Buffer> {
+  const dim = imageDimensions(buf);
+  if (!dim) return buf;
+  const longEdge = Math.max(dim.w, dim.h);
+  if (longEdge <= PADDLE_MAX_EDGE) return buf;
+  const img = await Jimp.read(buf);
+  // fit inside the box preserving aspect — only the long edge hits the limit
+  img.scaleToFit({ w: PADDLE_MAX_EDGE, h: PADDLE_MAX_EDGE });
+  return img.getBuffer("image/jpeg", { quality: 85 });
+}
+
 async function paddleOcrOnce(
   buf: Buffer,
   ignoreBackoff = false,
@@ -99,11 +141,12 @@ async function paddleOcrOnce(
     ? base
     : `${base.replace(/\/$/, "")}/ocr`;
   try {
+    const payload = await paddleNormalize(buf);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        file: buf.toString("base64"),
+        file: payload.toString("base64"),
         fileType: 1, // 1 = image (PaddleX serving contract)
       }),
       signal: AbortSignal.timeout(PADDLE_TIMEOUT_MS),
