@@ -69,10 +69,32 @@ function deepFindTextArray(node: unknown, depth = 0): string[] | null {
   return null;
 }
 
-async function paddleOcr(buf: Buffer): Promise<string | null> {
+// The sidecar is single-CPU: an upload burst firing every paddle request at
+// once overloads it into timeouts, and ONE transport failure used to flip the
+// whole app onto tesseract for 5 minutes — half a batch recognized on the
+// weak engine. Serialize through a small pool instead.
+let paddleActive = 0;
+const paddleQueue: (() => void)[] = [];
+async function withPaddleSlot<T>(fn: () => Promise<T>): Promise<T> {
+  while (paddleActive >= 2) {
+    await new Promise<void>((r) => paddleQueue.push(r));
+  }
+  paddleActive++;
+  try {
+    return await fn();
+  } finally {
+    paddleActive--;
+    paddleQueue.shift()?.();
+  }
+}
+
+async function paddleOcrOnce(
+  buf: Buffer,
+  ignoreBackoff = false,
+): Promise<string | null> {
   const base = process.env.PADDLEOCR_URL;
   if (!base) return null;
-  if (Date.now() < paddleDownUntil) return null;
+  if (!ignoreBackoff && Date.now() < paddleDownUntil) return null;
   const url = /\/(ocr|predict)$/i.test(base)
     ? base
     : `${base.replace(/\/$/, "")}/ocr`;
@@ -99,6 +121,16 @@ async function paddleOcr(buf: Buffer): Promise<string | null> {
     );
     return null;
   }
+}
+
+/** One retry before the back-off holds — a burst overload hiccup should
+ *  not degrade the rest of the batch to tesseract. */
+async function paddleOcr(buf: Buffer): Promise<string | null> {
+  return withPaddleSlot(async () => {
+    const first = await paddleOcrOnce(buf);
+    if (first != null) return first;
+    return paddleOcrOnce(buf, true);
+  });
 }
 
 /**

@@ -9,6 +9,7 @@ import { detectKind, extractReceiptFields, normalizeOcrText } from "./receipt";
 import { matchInvoiceMulti } from "./match";
 import { allowedPairs } from "./campaignTitles";
 import { parseElectronicInvoice } from "./einvoice";
+import { scheduleAutoMatch } from "#server/service/campaigns/automatch.service";
 
 /**
  * Process one invoice end-to-end: extract fields — 数电票 XML/OFD are parsed
@@ -82,7 +83,15 @@ export async function processInvoice(invoiceId: number): Promise<void> {
     // match, which used to brand every attached quotation "unqualified".
     // XML/OFD 数电票 are always invoices.
     if (!directFields) {
-      const kind = detectKind(text);
+      let kind = detectKind(text);
+      // Garbled OCR can strip every receipt keyword from an order screenshot
+      // while leaving a text layer that also yields no invoice fields — those
+      // must NOT fall through to the invoice branch (they'd become
+      // unqualified null-amount pseudo-invoices and pollute auto-matching).
+      if (kind === "invoice" && inv.fileType === "image") {
+        const probe = extractInvoiceFields(text);
+        if (probe.title == null && probe.amount == null) kind = "receipt";
+      }
       if (kind === "quotation") {
         // Quotations still carry a headline price worth reconciling —
         // "活动共计费⽤ 300" / "总计金额 100" (Kangxi-radical lookalikes in
@@ -173,5 +182,10 @@ export async function processInvoice(invoiceId: number): Promise<void> {
       },
     );
     console.error(`[process] invoice ${invoiceId} failed:`, e);
+  } finally {
+    // When this was the campaign's LAST in-flight file, run the automatic
+    // invoice↔evidence pairing + item creation (debounced: parallel
+    // finishers coalesce into one check).
+    scheduleAutoMatch(inv.campaignId);
   }
 }

@@ -155,16 +155,16 @@ const ORDER_NO_PATTERNS: RegExp[] = [
 const AMOUNT_PATTERNS: RegExp[] = [
   // Meituan grand total: "实付总额 ￥8.4" must beat the item's unit-price
   // "实付￥7.9" printed above it.
-  /实付总额\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  /实付总额\s*[,，;；:：]?\s*[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   // Sam's Club paper receipts: "实 付 合计 ; 39 ,3?" is THE grand total —
   // must beat the (post-coupon) bare "实 付 ， 33.37" line above it.
-  /实付合计\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  /实付合计\s*[,，;；:：]?\s*[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   // Meituan PaddleOCR layout mirrors it: the total prints BEFORE the label
   // ("元￥205.9 合计 已优惠23.3元") — anchor on 合计 right after the amount.
-  /[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*元?\s*合计/,
+  /[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*元\s*合计/,
   // Meituan delivery orders: "合计 已 优惠 23.3 元 ¥205.9" — an optional
   // savings note sits between the label and the grand total.
-  /合计\s*(?:已\s*优惠\s*[0-9.]+\s*元)?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  /合计\s*(?:已\s*优惠\s*[0-9.]+\s*元)?\s*[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   /实付款?金额?\s*[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
   /支付金额[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
   /(?:合计|总计|总额|实收)[:：]?\s*[¥￥]?\s*([0-9]+(?:,?[0-9]{3})*\.[0-9]{2})/,
@@ -182,15 +182,15 @@ const AMOUNT_PATTERNS: RegExp[] = [
   // "总实付 ¥1341.00" — MUST beat the bare 实付 below: item-detail pages
   // print "实付¥18.30" as the UNIT price label, which sits earlier in the
   // text than the grand total.
-  /总实付\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  /总实付\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[:：]?\s*[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
   // "实付款 共减(站)80 ¥140" — the discount segment may carry OCR noise
   // characters (站/#) and its own ¥; the TOTAL sits AFTER it. Also tolerates
   // the ¥-less form "共减¥80  140" where only the total prints bare.
-  /(?:实付款?|实付金额)\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[,，;；:：]?\s*[¥￥Y半羊#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})/,
+  /(?:实付款?|实付金额)\s*(?:共减[\s¥￥Y半羊站#*]{0,3}[0-9][0-9.]{0,8})?\s*[,，;；:：]?\s*[¥￥Y半羊尘v#*]?\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})(?![\s\S]{0,150}总实付)/,
   // PaddleOCR layout variant: the total prints BEFORE the label —
   // "…官方立减 ￥140\n实付款\n共减￥80". Anchored on 实付款 right after the
   // amount so the pre-discount price (￥220 … 共1件) never matches.
-  /[¥￥Y半羊#*]\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*(?:\n|\s)*实付款/,
+  /[¥￥Y半羊尘v#*]\s*([0-9][0-9,oO\s]{0,10}[.,][0-9oO]{1,2}|[0-9]{2,7})\s*(?:\n|\s)*实付款/,
 ];
 
 /** Tolerant numeric cleanup for the OCR amount above (spaces, o/O for 0). */
@@ -220,6 +220,40 @@ export function extractReceiptFields(rawText: string): ReceiptFields {
         const v = parseOcrAmount(m[1]) ?? parseFloat(m[1].replace(/,/g, ""));
         if (Number.isFinite(v)) return v;
       }
+    }
+    // 1688 item pages where the TOTAL got destroyed by OCR ("总实付D0.o0")
+    // still print the unit price next to its quantity chip — "¥0.50 … x100".
+    // unit × qty reconstructs the total; guards: a real ¥ decimal price and a
+    // bounded quantity right after it.
+    const uq = text.match(
+      /[¥￥Y半羊尘v#*]\s*([0-9]{1,6}(?:[.,][0-9]{1,2})?)[\s\S]{0,80}?[x×]\s*([0-9]{1,5})(?![0-9.])/,
+    );
+    if (uq?.[1] && uq[2]) {
+      const unit = parseOcrAmount(uq[1]);
+      const qty = Number(uq[2]);
+      if (unit != null && qty >= 2 && qty <= 100000)
+        return Math.round(unit * qty * 100) / 100;
+    }
+    // Crumpled paper receipts: every total-line label may be OCR-destroyed,
+    // but the grand total prints 2-3 times (subtotal / total / paid) while
+    // any single line price appears once — the repeated decimal value IS the
+    // total. Only fires when nothing labeled matched.
+    const freq = new Map<string, number>();
+    for (const m of text.matchAll(/([0-9]{1,6}[.,][0-9]{1,2})/g)) {
+      const k = m[1]!;
+      freq.set(k, (freq.get(k) ?? 0) + 1);
+    }
+    const repeated = [...freq.entries().filter(([, n]) => n >= 2)];
+    if (repeated.length) {
+      const best = repeated.sort(
+        (a, b) =>
+          b[1] - a[1] ||
+          parseFloat(b[0].replace(/[.,](?=[0-9]{1,2}$)/, ".")) -
+            parseFloat(a[0].replace(/[.,](?=[0-9]{1,2}$)/, ".")),
+      )[0]!;
+      const v = parseOcrAmount(best[0]);
+      // floor ¥5 — repeated ¥1.00/¥0.50 price chips are line noise, not totals
+      if (v != null && v >= 5) return v;
     }
     // No labeled total — fall back to the last ¥ amount in the image (user
     // rule: the 实付款-labeled total is the source of truth; unlabelled picks

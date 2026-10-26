@@ -16,6 +16,10 @@ RUN TESSDATA_STRICT=1 pnpm install --frozen-lockfile
 # --- build ---
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
+# Carry the corepack-prepared pnpm over — without it every build re-downloads
+# the pinned pnpm from the npm registry, which fails whenever the network (or
+# the host proxy Docker forwards to) is down.
+COPY --from=deps /root/.cache/node/corepack /root/.cache/node/corepack
 COPY . .
 RUN pnpm build
 # Nitro externalizes tesseract.js-core and copies its .js into the bundled
