@@ -4,3 +4,4 @@ uploads/**
 .output/**
 .nuxt/**
 node_modules/**
+.vscode/**
