@@ -49,6 +49,8 @@ function goodsName(b: Bill): string | null {
   const m = b.text.match(/\*[^*\n]{1,14}\*(.{1,24}?)\s+\d/);
   const name = m?.[1]
     ?.replace(/\s*[把张个件套次箱支盒]\s*$/, "")
+    // e-invoices print 规格="无" ("收派服务 无 次 1 …") — drop the filler
+    .replace(/\s*无$/g, "")
     .replace(/[\s.。·]+$/, "")
     .trim();
   return name && name.length >= 2 ? name : null;
