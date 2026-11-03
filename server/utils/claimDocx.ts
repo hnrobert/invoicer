@@ -285,13 +285,19 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
 
   // ---- detail table ----
   const [da, db] = tblSpans[1]!;
-  const detail = xml.slice(da, db);
+  let detail = xml.slice(da, db);
+  // drop the mould's EXAMPLE row ("E.G. 例如 节庆用品 气球 2.00 10 20.00") —
+  // the filled claim form goes straight from the header into real rows
+  const egRow = trSpans(detail).find(([a, b]) =>
+    rowText(detail.slice(a, b)).startsWith("E.G."),
+  );
+  if (egRow) detail = detail.slice(0, egRow[0]) + detail.slice(egRow[1]);
   const rows = trSpans(detail);
   // data rows = rows whose whole text is just their number (1..11 blanks)
   const dataRows = rows.filter(([a, b]) =>
     /^\d+$/.test(rowText(detail.slice(a, b)).trim()),
   );
-  const [t0a, t0b] = dataRows[0] ?? rows[3]!;
+  const [t0a, t0b] = dataRows[0] ?? rows[2]!;
   const template = detail.slice(t0a, t0b);
 
   // splice built rows over the pre-numbered slots BY ABSOLUTE POSITION —
