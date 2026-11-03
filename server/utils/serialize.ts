@@ -31,7 +31,7 @@ export function invoiceToPublic(r: Invoice): InvoicePublic {
 export function sumRows(rows: Invoice[]): number {
   let total = 0;
   for (const r of rows) {
-    const amt = r.extractedAmount ?? r.manualAmount;
+    const amt = r.manualAmount ?? r.extractedAmount;
     if (amt != null) total += amt;
   }
   return Math.round(total * 100) / 100;
@@ -62,7 +62,7 @@ export async function calcTotal(
   const rows = await AppDataSource.getRepository(Invoice).find({ where });
   let total = 0;
   for (const r of rows) {
-    const amt = r.extractedAmount ?? r.manualAmount;
+    const amt = r.manualAmount ?? r.extractedAmount;
     if (amt != null) total += amt;
   }
   return Math.round(total * 100) / 100;

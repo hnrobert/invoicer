@@ -51,7 +51,7 @@ function toPublic(
  * falling back to the operator-entered one, mirroring calcTotal/sumRows.
  */
 function countedAmount(r: Pick<Invoice, "extractedAmount" | "manualAmount">) {
-  return r.extractedAmount ?? r.manualAmount;
+  return r.manualAmount ?? r.extractedAmount;
 }
 
 /**

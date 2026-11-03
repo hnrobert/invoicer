@@ -38,10 +38,11 @@ function csvEscape(v: string | number | null | undefined): string {
 }
 
 function amountOf(i: Invoice): number | null {
-  return i.extractedAmount ?? i.manualAmount;
+  return i.manualAmount ?? i.extractedAmount;
 }
 
-export type ExportFormat = "csv" | "xlsx" | "zip" | "claim" | "package";
+export type ExportFormat =
+  "csv" | "xlsx" | "zip" | "claim" | "form" | "package";
 
 /**
  * Export a campaign's full invoice data (Editor+ / legacy). Formats:
@@ -417,6 +418,58 @@ async function orgSignature(organizationId: string | null): Promise<{
   }
 }
 
+/** The filled official claim-form docx alone (shared by the standalone
+ *  "form" export and the full package). */
+async function claimFormDocx(
+  user: Pick<AuthUser, "id" | "name">,
+  campaign: Campaign,
+  campaignId: number,
+  invoices: Invoice[],
+): Promise<Buffer> {
+  const rows = await buildClaimRows(campaignId, invoices);
+  const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+  const idRow = await sqlGet<{
+    displayName: string | null;
+    phone: string | null;
+    chineseId: string | null;
+  }>('SELECT "displayName", "phone", "chineseId" FROM "user" WHERE id = $1', [
+    user.id,
+  ]);
+  const orgRow = campaign.organizationId
+    ? await sqlGet<{ name: string }>(
+        'SELECT "name" FROM "organization" WHERE id = $1',
+        [campaign.organizationId],
+      )
+    : undefined;
+  const applicant = idRow?.displayName || user.name;
+  const activity =
+    campaign.name || campaign.expectedTitle || `campaign #${campaignId}`;
+  const mouldPath =
+    process.env.CLAIM_MOULD_PATH ||
+    resolve(process.cwd(), "server/assets/claim-mould.docx");
+  const mould = readFileSync(mouldPath);
+  return fillClaimDocx(mould, {
+    applicant,
+    phone: idRow?.phone ?? "",
+    payeeName: idRow?.displayName || applicant,
+    payeeChineseId: idRow?.chineseId ?? "",
+    organization: orgRow?.name ?? "",
+    activity,
+    totalArabic: total.toFixed(2),
+    totalChinese: `人民币${rmbUppercase(total)}`,
+    ...(await orgSignature(campaign.organizationId)),
+    rows: rows.map((r) => ({
+      no: r.no,
+      receiptItem: r.receiptItem,
+      concreteItem: r.concreteItem,
+      unitPrice: r.unitPrice,
+      quantity: r.quantity,
+      amount: r.amount != null ? r.amount.toFixed(2) : "",
+      note: r.note,
+    })),
+  });
+}
+
 export async function exportCampaign(
   user: Pick<AuthUser, "id" | "name" | "email">,
   campaign: Campaign,
@@ -632,6 +685,17 @@ export async function exportCampaign(
     };
   }
 
+  if (format === "form") {
+    // the filled official claim-form docx ALONE (no file folders / roster)
+    const buf = await claimFormDocx(user, campaign, campaignId, invoices);
+    return {
+      body: buf as unknown as ArrayBuffer,
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      filename: `${safeName}-报销表.docx`,
+    };
+  }
+
   if (format === "package") {
     const buf = await buildClaimPackage(user, campaign, campaignId, invoices);
     return {
@@ -658,52 +722,16 @@ export async function exportCampaign(
     campaignId: number,
     invoices: Invoice[],
   ): Promise<Buffer> {
-    const rows = await buildClaimRows(campaignId, invoices);
-    const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
-    const idRow = await sqlGet<{
-      displayName: string | null;
-      phone: string | null;
-      chineseId: string | null;
-    }>('SELECT "displayName", "phone", "chineseId" FROM "user" WHERE id = $1', [
-      user.id,
-    ]);
-    const orgRow = campaign.organizationId
-      ? await sqlGet<{ name: string }>(
-          'SELECT "name" FROM "organization" WHERE id = $1',
-          [campaign.organizationId],
-        )
-      : undefined;
-    const applicant = idRow?.displayName || user.name;
     const activity =
       campaign.name || campaign.expectedTitle || `campaign #${campaignId}`;
     const safeAct = activity.replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40);
     const dateTag = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-
-    // 1) filled docx from the official mould
-    const mouldPath =
-      process.env.CLAIM_MOULD_PATH ||
-      resolve(process.cwd(), "server/assets/claim-mould.docx");
-    const mould = readFileSync(mouldPath);
-    const docx = fillClaimDocx(mould, {
-      applicant,
-      phone: idRow?.phone ?? "",
-      payeeName: idRow?.displayName || applicant,
-      payeeChineseId: idRow?.chineseId ?? "",
-      organization: orgRow?.name ?? "",
-      activity,
-      totalArabic: total.toFixed(2),
-      totalChinese: `人民币${rmbUppercase(total)}`,
-      ...(await orgSignature(campaign.organizationId)),
-      rows: rows.map((r) => ({
-        no: r.no,
-        receiptItem: r.receiptItem,
-        concreteItem: r.concreteItem,
-        unitPrice: r.unitPrice,
-        quantity: r.quantity,
-        amount: r.amount != null ? r.amount.toFixed(2) : "",
-        note: r.note,
-      })),
-    });
+    const idRow = await sqlGet<{ displayName: string | null }>(
+      'SELECT "displayName" FROM "user" WHERE id = $1',
+      [user.id],
+    );
+    const applicant = idRow?.displayName || user.name;
+    const docx = await claimFormDocx(user, campaign, campaignId, invoices);
 
     const zip = new AdmZip();
     zip.addFile(

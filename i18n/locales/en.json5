@@ -207,6 +207,7 @@
     leave: "Leave organization",
     delete: "Delete organization",
     leaveConfirm: "Leave this organization?",
+
     deleteConfirm: "Permanently delete this organization? This cannot be undone.",
     danger: { title: "Danger zone" },
     invitations: "Pending invitations",
@@ -542,6 +543,7 @@
       xlsx: "Excel workbook",
       zip: "Invoice files ZIP",
       claim: "Claim form (xlsx)",
+      form: "Claim form (docx)",
       package: "Claim package (docx+files+roster)",
     },
     groups: {

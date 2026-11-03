@@ -208,6 +208,7 @@
     leave: "退出组织",
     delete: "删除组织",
     leaveConfirm: "确定退出该组织吗？",
+
     deleteConfirm: "确定永久删除该组织吗？此操作不可恢复。",
     danger: { title: "危险区" },
     invitations: "待处理邀请",
@@ -540,6 +541,7 @@
       xlsx: "Excel 表格",
       zip: "发票原件 ZIP",
       claim: "学生活动经费报销表 (xlsx)",
+      form: "报销表（docx）",
       package: "报销包（docx+文件+名单）",
     },
     groups: {

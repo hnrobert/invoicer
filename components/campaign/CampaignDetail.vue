@@ -265,7 +265,7 @@ function toggleExpand(id: number) {
   expanded.value = s;
 }
 function fmtAmount(i: InvoicePublic): string {
-  const amt = i.extractedAmount ?? i.manualAmount;
+  const amt = i.manualAmount ?? i.extractedAmount;
   return amt != null ? `¥${amt.toFixed(2)}` : t("common.dash");
 }
 /** Table footer total: sum of the QUALIFIED rows currently shown. Deliberately
@@ -275,13 +275,15 @@ const qualifiedTotal = computed(() => {
   let sum = 0;
   for (const i of filesShown.value) {
     if (i.status !== "qualified") continue;
-    const amt = i.extractedAmount ?? i.manualAmount;
+    const amt = i.manualAmount ?? i.extractedAmount;
     if (amt != null) sum += amt;
   }
   return Math.round(sum * 100) / 100;
 });
 function isManual(i: InvoicePublic): boolean {
-  return i.extractedAmount == null && i.manualAmount != null;
+  // manual_amount now OVERRIDES the extracted value (amount edit), so the
+  // 手工 tag marks any override — not only fills for missing OCR values
+  return i.manualAmount != null;
 }
 const STATUS_CLS: Record<string, string> = {
   qualified: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
@@ -392,6 +394,33 @@ async function doSubmitAll() {
  * (the server re-checks; this gates the button). */
 function canDeleteFile(i: InvoicePublic): boolean {
   return canManage.value || canReview.value || i.uploaderId === user.value?.id;
+}
+/** Manual amount override (OCR misreads) — empty input reverts to the
+ *  extracted value. Same permission gate as delete. */
+async function onEditAmount(i: InvoicePublic) {
+  const cur = i.manualAmount ?? i.extractedAmount;
+  const v = prompt(
+    t("home.action.amountPrompt", { name: i.filename }),
+    cur != null ? String(cur) : "",
+  );
+  if (v === null) return;
+  const trimmed = v.trim();
+  const amount =
+    trimmed === "" || Number.isNaN(Number(trimmed)) ? null : Number(trimmed);
+  if (trimmed !== "" && amount == null) {
+    toast.error(t("home.action.amountInvalid"));
+    return;
+  }
+  try {
+    await $fetch(`/api/campaigns/${props.campaignId}/invoices/${i.id}/amount`, {
+      method: "PUT",
+      body: { amount },
+    });
+    await inv.refresh();
+    void loadItems(); // rollups/totals follow the override
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
 }
 async function onDeleteInvoice(i: InvoicePublic) {
   if (!confirm(t("home.action.deleteConfirm", { name: i.filename }))) return;
@@ -506,7 +535,7 @@ const filesShown = computed(() =>
 
 // ---------- export ----------
 const exportOpen = ref(false);
-function doExport(fmt: "csv" | "xlsx" | "zip" | "claim" | "package") {
+function doExport(fmt: "csv" | "xlsx" | "zip" | "claim" | "form" | "package") {
   exportOpen.value = false;
   const p = new URLSearchParams({ format: fmt });
   if (groupFilter.value !== "all") p.set("groupId", String(groupFilter.value));
@@ -873,7 +902,14 @@ async function loadAudit() {
               class="absolute right-0 z-20 mt-1 flex w-48 flex-col overflow-hidden rounded-md border bg-popover shadow-md"
             >
               <button
-                v-for="f in ['csv', 'xlsx', 'zip', 'claim', 'package'] as const"
+                v-for="f in [
+                  'csv',
+                  'xlsx',
+                  'zip',
+                  'claim',
+                  'form',
+                  'package',
+                ] as const"
                 :key="f"
                 type="button"
                 class="px-3 py-2 text-left text-xs hover:bg-accent"
@@ -1231,6 +1267,15 @@ async function loadAudit() {
                   </td>
                   <td class="px-3 py-2 text-right tabular-nums">
                     {{ fmtAmount(i) }}
+                    <button
+                      v-if="canDeleteFile(i)"
+                      type="button"
+                      class="ml-0.5 text-muted-foreground/60 hover:text-foreground"
+                      :title="t('home.action.editAmount')"
+                      @click.stop="onEditAmount(i)"
+                    >
+                      <Icon spec="Pencil" :size="11" />
+                    </button>
                     <span
                       v-if="isManual(i)"
                       class="text-[10px] text-muted-foreground"
