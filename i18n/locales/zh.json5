@@ -138,6 +138,11 @@
       slugLabel: "标识（URL）",
       nameSaved: "组织名称已更新",
       ownersOnly: "仅 Owner / Admin 可访问组织设置。",
+      signatureLabel: "负责人签名",
+      signatureDesc: "嵌入报销表 Head of Organization/Society 签名框（png/jpg，≤1MB）。",
+      sigUpload: "上传签名",
+      sigSaved: "签名已更新",
+      sigTooLarge: "签名图片过大（≤1MB）",
     },
     migration: {
       nav: "活动迁移",

@@ -6,6 +6,8 @@ import { Campaign } from "#server/entities/campaign.entity";
 import { getOrgRole } from "#server/utils/campaign";
 import { sqlGet } from "#server/utils/auth";
 import type {
+  OrgSignatureBody,
+  OrgSignatureResponse,
   OrgTransfersResponse,
   OrgVisibilityBody,
   VisibilityResponse,
@@ -56,6 +58,63 @@ export async function setOrgVisibility(
     visibility,
   });
   return { ok: true, visibility: saved.visibility };
+}
+
+/** Read the org's head-of-org signature data URL (members). */
+export async function getOrgSignature(
+  orgId: string,
+  userId: string,
+): Promise<OrgSignatureResponse> {
+  if (!(await getOrgRole(orgId, userId))) {
+    throw createError({ statusCode: 403, statusMessage: "Forbidden" });
+  }
+  const setting = await AppDataSource.getRepository(OrgSetting).findOneBy({
+    organizationId: orgId,
+  });
+  return { ok: true, data: setting?.signature ?? null };
+}
+
+/**
+ * Set / clear the head-of-org signature stamped into the claim-form export's
+ * "Head of Organization/Society" cell. Owner/Admin only. Accepts a data URL
+ * (png/jpeg, ≤1 MB decoded — signatures are small) or null to remove.
+ */
+export async function setOrgSignature(
+  orgId: string,
+  userId: string,
+  data: OrgSignatureBody["data"],
+): Promise<OrgSignatureResponse> {
+  const role = await getOrgRole(orgId, userId);
+  if (role !== "owner" && role !== "admin") {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Only Owner/Admin can change the signature",
+    });
+  }
+  let value: string | null = null;
+  if (data != null) {
+    const m = /^data:image\/(png|jpe?g);base64,([A-Za-z0-9+/=]+)$/.exec(data);
+    if (!m) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "signature must be a base64 png/jpeg data URL",
+      });
+    }
+    if (m[2]!.length > 1_400_000) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "signature image too large (max ~1 MB)",
+      });
+    }
+    value = data;
+  }
+  const repo = AppDataSource.getRepository(OrgSetting);
+  const existing = await repo.findOneBy({ organizationId: orgId });
+  await repo.save({
+    ...(existing ?? { organizationId: orgId }),
+    signature: value,
+  });
+  return { ok: true, data: value };
 }
 
 /**

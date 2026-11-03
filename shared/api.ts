@@ -247,6 +247,18 @@ export interface OrgVisibilityBody {
   visibility?: string;
 }
 
+/** PUT /api/orgs/:orgId/signature — data URL of the head signature image,
+ *  or null to clear it. */
+export interface OrgSignatureBody {
+  data?: string | null;
+}
+
+/** GET /api/orgs/:orgId/signature */
+export interface OrgSignatureResponse extends OkResponse {
+  /** data:image/png;base64,… (null = none on file) */
+  data: string | null;
+}
+
 /** POST /api/orgs/:orgId/roles */
 export interface RoleCreateBody {
   name?: string;

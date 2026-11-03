@@ -138,6 +138,11 @@
       slugLabel: "Slug (URL)",
       nameSaved: "Organization name updated",
       ownersOnly: "Only Owner / Admin can access organization settings.",
+      signatureLabel: "Head signature",
+      signatureDesc: "Stamps the claim form's Head of Organization/Society box (png/jpg, ≤1MB).",
+      sigUpload: "Upload signature",
+      sigSaved: "Signature updated",
+      sigTooLarge: "Signature image too large (≤1MB)",
     },
     migration: {
       nav: "Campaign migration",

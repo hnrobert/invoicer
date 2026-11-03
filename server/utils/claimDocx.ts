@@ -20,8 +20,11 @@ export interface ClaimDocxData {
   activity: string;
   /** Grand total in arabic numerals, e.g. "5418.05". */
   totalArabic: string;
-  /** Grand total in Chinese capital letters, e.g. 伍仟肆佰壹拾捌元零伍分. */
+  /** Grand total in Chinese capital letters, e.g. 人民币贰仟壹佰元整. */
   totalChinese: string;
+  /** Head-of-org signature, embedded into the "Head of Organization/Society"
+   *  cell contain-fit to the box. Omit = no signature. */
+  signature?: { data: Buffer; mime: string; width: number; height: number };
   rows: {
     no: number;
     receiptItem: string;
@@ -209,6 +212,77 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     head = head.slice(0, na) + row + head.slice(nb);
   }
 
+  // ---- head-of-org signature: append a drawing run into the EMPTY cell
+  //      next to the "Head of Organization/Society" label ----
+  let signatureMedia: {
+    name: string;
+    bytes: Uint8Array<ArrayBuffer>;
+  } | null = null;
+  let signatureRel = "";
+  if (data.signature) {
+    const sigRow = trSpans(head).find(([a, b]) =>
+      rowText(head.slice(a, b)).includes("Head of Organization/Society"),
+    );
+    const sigCell = sigRow
+      ? cellSpans(head.slice(...sigRow)).find(
+          ([a, b]) => rowText(head.slice(a, b)).trim() === "",
+        )
+      : null;
+    if (sigCell) {
+      const [ra, rb] = sigRow!;
+      const row = head.slice(ra, rb);
+      const cells = cellSpans(row);
+      // locate the same empty cell inside the ROW string (offsets differ)
+      const emptyIx = cells.findIndex(
+        ([a, b]) => rowText(row.slice(a, b)).trim() === "",
+      );
+      const [ca, cb] = cells[emptyIx]!;
+      const cell = row.slice(ca, cb);
+      // contain-fit into the signing box (6173 twips wide × 685 high row;
+      // leave margins) — 1 twip = 635 EMU
+      const box = { w: 5900, h: 620 };
+      const aspect = data.signature.width / data.signature.height;
+      let h = box.h;
+      let w = Math.round(h * aspect);
+      if (w > box.w) {
+        w = box.w;
+        h = Math.round(w / aspect);
+      }
+      const cx = w * 635;
+      const cy = h * 635;
+      const ext = data.signature.mime === "image/jpeg" ? "jpeg" : "png";
+      const raw = new Uint8Array(data.signature.data);
+      const bytes = new Uint8Array(raw.length);
+      bytes.set(raw);
+      signatureMedia = { name: `word/media/signature.${ext}`, bytes };
+      signatureRel = `signature-${Date.now()}`;
+      const drawing =
+        `<w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0">` +
+        `<wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>` +
+        `<wp:docPr id="9001" name="head-signature"/>` +
+        `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">` +
+        `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+        `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+        `<pic:nvPicPr><pic:cNvPr id="9001" name="head-signature"/><pic:cNvPicPr/></pic:nvPicPr>` +
+        `<pic:blipFill><a:blip r:embed="${signatureRel}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+        `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+        `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+        `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+      // append into the cell's FIRST paragraph, before </w:p>
+      const pEnd = cell.indexOf("</w:p>");
+      const newCell =
+        pEnd >= 0
+          ? cell.slice(0, pEnd) + drawing + cell.slice(pEnd)
+          : cell + drawing;
+      head =
+        head.slice(0, ra) +
+        row.slice(0, ca) +
+        newCell +
+        row.slice(cb) +
+        head.slice(rb);
+    }
+  }
+
   // ---- detail table ----
   const [da, db] = tblSpans[1]!;
   const detail = xml.slice(da, db);
@@ -266,5 +340,27 @@ export function fillClaimDocx(mould: Uint8Array, data: ClaimDocxData): Buffer {
     xml.slice(tblSpans[1]![1]);
 
   files["word/document.xml"] = strToU8(xml);
+
+  // ---- signature plumbing: media part + relationship + content type ----
+  if (signatureMedia && signatureRel) {
+    files[signatureMedia.name] = signatureMedia.bytes;
+    const rels = strFromU8(files["word/_rels/document.xml.rels"]!);
+    const rel =
+      `<Relationship Id="${signatureRel}" ` +
+      `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ` +
+      `Target="media/${signatureMedia.name.split("/").pop()}"/>`;
+    files["word/_rels/document.xml.rels"] = strToU8(
+      rels.replace("</Relationships>", rel + "</Relationships>"),
+    );
+    const types = strFromU8(files["[Content_Types].xml"]!);
+    const ext = signatureMedia.name.split(".").pop()!;
+    if (!types.includes(`Extension="${ext}"`)) {
+      const def = `<Default Extension="${ext}" ContentType="image/${ext === "jpeg" ? "jpeg" : "png"}"/>`;
+      files["[Content_Types].xml"] = strToU8(
+        types.replace("</Types>", def + "</Types>"),
+      );
+    }
+  }
+
   return Buffer.from(zipSync(files));
 }

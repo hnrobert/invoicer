@@ -4,6 +4,7 @@
 // Owner/Admin only (server enforces every endpoint used here).
 import type {
   AuditResponse,
+  OrgSignatureResponse,
   OrgTransfersResponse,
   RolesResponse,
 } from "#shared/api";
@@ -95,6 +96,63 @@ async function applyOrgName() {
 function discardOrgName() {
   nameDraft.value = org.value?.name ?? "";
   slugDraft.value = org.value?.slug ?? "";
+}
+
+// ---------- general: head-of-org signature (claim-form export) ----------
+const signature = ref<string | null>(null);
+const sigSaving = ref(false);
+const sigFile = ref<HTMLInputElement | null>(null);
+onMounted(async () => {
+  try {
+    const r = await $fetch<OrgSignatureResponse>(
+      `/api/orgs/${org.value!.id}/signature`,
+    );
+    signature.value = r.data;
+  } catch {
+    signature.value = null;
+  }
+});
+async function uploadSignature(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0];
+  if (!f) return;
+  if (f.size > 1_000_000) {
+    toast.error(t("orgs.settings.sigTooLarge"));
+    return;
+  }
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result));
+    fr.onerror = rej;
+    fr.readAsDataURL(f);
+  });
+  sigSaving.value = true;
+  try {
+    const r = await $fetch<OrgSignatureResponse>(
+      `/api/orgs/${org.value!.id}/signature`,
+      { method: "PUT", body: { data: dataUrl } },
+    );
+    signature.value = r.data;
+    toast.success(t("orgs.settings.sigSaved"));
+  } catch (e2) {
+    toast.error((e2 as Error).message);
+  } finally {
+    sigSaving.value = false;
+    if (sigFile.value) sigFile.value.value = "";
+  }
+}
+async function removeSignature() {
+  sigSaving.value = true;
+  try {
+    await $fetch(`/api/orgs/${org.value!.id}/signature`, {
+      method: "PUT",
+      body: { data: null },
+    });
+    signature.value = null;
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    sigSaving.value = false;
+  }
 }
 const { confirmLeave: nameConfirmLeave, proceed: nameProceed } =
   useUnsavedLeaveGuard(nameDirty, nameSaving);
@@ -445,6 +503,47 @@ onMounted(async () => {
             >
               {{ t("orgs.slugHint") }}
             </p>
+          </div>
+        </div>
+
+        <!-- head-of-org signature: stamped into the claim-form export -->
+        <div class="flex flex-col gap-2">
+          <Label>{{ t("orgs.settings.signatureLabel") }}</Label>
+          <p class="text-xs text-muted-foreground">
+            {{ t("orgs.settings.signatureDesc") }}
+          </p>
+          <div class="flex items-center gap-3">
+            <img
+              v-if="signature"
+              :src="signature"
+              alt="signature"
+              class="h-16 rounded border bg-white px-2 py-1"
+            />
+            <span v-else class="text-xs text-muted-foreground">—</span>
+            <input
+              ref="sigFile"
+              type="file"
+              accept="image/png,image/jpeg"
+              class="hidden"
+              @change="uploadSignature"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="sigSaving"
+              @click="sigFile?.click()"
+            >
+              {{ t("orgs.settings.sigUpload") }}
+            </Button>
+            <Button
+              v-if="signature"
+              variant="ghost"
+              size="sm"
+              :disabled="sigSaving"
+              @click="removeSignature"
+            >
+              {{ t("orgs.remove") }}
+            </Button>
           </div>
         </div>
         <SettingsSaveBar

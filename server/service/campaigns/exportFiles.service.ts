@@ -6,6 +6,8 @@ import AdmZip from "adm-zip";
 import { AppDataSource } from "#server/utils/database";
 import { Invoice } from "#server/entities/invoice.entity";
 import { CampaignItem } from "#server/entities/campaignItem.entity";
+import { OrgSetting } from "#server/entities/orgSetting.entity";
+import { Jimp } from "jimp";
 import { CampaignGroup } from "#server/entities/campaignGroup.entity";
 import type { Campaign } from "#server/entities/campaign.entity";
 import { usesSubmitFlow } from "#server/utils/campaign";
@@ -312,7 +314,7 @@ async function buildClaimWorkbook(
     "Activity Details 活动信息",
     campaign.name || campaign.expectedTitle || `campaign #${campaignId}`,
   );
-  field(8, "Claims Amounts 大写", rmbUppercase(total));
+  field(8, "Claims Amounts 大写", `人民币${rmbUppercase(total)}`);
   field(9, "Claims Amounts (Arabic) 小写", `¥${total.toFixed(2)}`);
 
   const headerRow = ws.getRow(11);
@@ -385,6 +387,36 @@ async function buildClaimWorkbook(
   mergeCenter(`A${r + 2}:G${r + 2}`, "纳税人识别号：1233000077647510XG");
   return wb.xlsx.writeBuffer();
 }
+/** Org head-of-org signature → the claim-docx signature field (none if the
+ *  org has none on file). Decodes the stored data URL and reads the pixel
+ *  size for the contain-fit in the signing box. */
+async function orgSignature(organizationId: string | null): Promise<{
+  signature?: { data: Buffer; mime: string; width: number; height: number };
+}> {
+  if (!organizationId) return {};
+  const row = await AppDataSource.getRepository(OrgSetting).findOneBy({
+    organizationId,
+  });
+  const dataUrl = row?.signature;
+  if (!dataUrl) return {};
+  const m = /^data:image\/(png|jpe?g);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!m) return {};
+  try {
+    const data = Buffer.from(m[2]!, "base64");
+    const img = await Jimp.read(data);
+    return {
+      signature: {
+        data,
+        mime: m[1] === "jpeg" ? "image/jpeg" : "image/png",
+        width: img.width,
+        height: img.height,
+      },
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function exportCampaign(
   user: Pick<AuthUser, "id" | "name" | "email">,
   campaign: Campaign,
@@ -660,7 +692,8 @@ export async function exportCampaign(
       organization: orgRow?.name ?? "",
       activity,
       totalArabic: total.toFixed(2),
-      totalChinese: rmbUppercase(total),
+      totalChinese: `人民币${rmbUppercase(total)}`,
+      ...(await orgSignature(campaign.organizationId)),
       rows: rows.map((r) => ({
         no: r.no,
         receiptItem: r.receiptItem,

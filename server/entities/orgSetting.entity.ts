@@ -23,6 +23,11 @@ export class OrgSetting {
   @Column({ type: "text", nullable: false, default: "public" })
   visibility!: "public" | "private";
 
+  /** Head-of-org signature for the claim-form export, as a data URL
+   *  (data:image/png;base64,…). Null = no signature on file. */
+  @Column({ type: "text", nullable: true })
+  signature!: string | null;
+
   @Column({
     name: "updated_at",
     type: "timestamp",
